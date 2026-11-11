@@ -7,3 +7,4 @@ android/keystore.jks
 *.log
 .zcode/
 那年夏天-v*.apk.idsig
+*.idsig
