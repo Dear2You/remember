@@ -1,0 +1,58 @@
+# 那年夏天 · 个人生活管理 App
+
+记账 · 工时薪资 · 时光日程 · 打卡 · AI 助手（GLM-5.3），一个 App 全搞定。纯本地存储 + 自动备份，无需登录，个人自用。
+
+## 一、安装到手机
+
+1. 下载 `apk/nianxiatian.apk`（或仓库首页 Releases 说明）传到 Android 手机
+2. 点击安装，允许"安装未知应用"权限；要求 **Android 7.0+**
+3. 以后更新直接在 App 内操作：**我的 → 应用更新 → 检查更新**（从本仓库在线下载安装）
+
+> 本应用与旧「拾光」是两个独立应用（包名不同），互不影响；旧应用可直接卸载。
+
+## 二、核心功能
+
+| 模块 | 功能 |
+|------|------|
+| 🏠 首页 | 功能宫格（时光/记一笔/会员支出/倒数日/番茄专注/备忘/打卡/AI）+ 今日状态条 |
+| 💰 资产 | 月概况/预算/净资产（负债默认折叠为「🔒 隐藏资产」）/账户管理/会员订阅（SGD↔CNY 汇率折算） |
+| 🕒 工时 | 月历显示每天工时与对应薪资；默认时薪 + 项目时薪 + 单条快照三级计价；总收入/日均收入 |
+| 📋 账单 | 账单报表 / 日历报表双模式；周/月/年账单；周期结余与日均收支；搜索+组合筛选；分类下钻 |
+| ✨ 时光 | 日历（日程+待办+打卡叠加）/ 今日工作台 / 事项四象限 / 番茄专注（真实时间戳）/ 倒数日 |
+| 🤖 AI | GLM-5.3 流式对话；**多会话**（新建/切换/删除）；自然语言记账/建待办/记工时，可撤销 |
+
+**记账规则**：整数分存储；转账/还款不计收支；信用卡刷卡只计一次支出；净资产=资产−负债；一级分类下钻不重复；月总预算与分类预算两套口径。
+
+## 三、数据安全
+
+- **自动备份**：数据变化后自动写入手机「下载/那年夏天备份/nianxiatian-backup.json」——**卸载 App 也不会丢**
+- 手动导出：JSON 完整备份 / CSV 账单（Excel 直开）
+- 恢复：我的 → 数据 → 导入备份
+
+## 四、AI 配置
+
+我的 → AI 助手 → 填入智谱 BigModel API Key（[open.bigmodel.cn](https://open.bigmodel.cn) 注册获取）→ 测试连接。默认模型 GLM-5.3，可换任何 OpenAI 兼容接口。
+
+## 五、开发与发布
+
+```bash
+node tools/serve.js 8765                     # 本地网页调试
+UPDATE_NOTE="更新说明" bash tools/build-apk.sh 2.1   # 构建（自动注入版本+生成更新包）
+git add -A && git commit -m "v2.1" && git push       # 发布（App 内即可检查到更新）
+```
+
+- 构建产物：`那年夏天-v2.1.apk`（本地安装）+ `apk/nianxiatian.apk`（更新包）+ `latest.json`（版本清单）
+- 工具链在 `build/toolchain/`（JDK17 + Android SDK 35，不入库）
+- ⚠️ `android/keystore.jks` 已被 .gitignore 排除——**绝不能上传，请异地备份**（丢失后无法覆盖升级）
+- 仓库需保持 Public（App 匿名读取更新包）
+
+## 六、目录结构
+
+```
+├── app/                 # 前端（HTML/CSS/JS 零依赖）
+│   └── js/views/        # home/assets/worktime/bills/life*/expense/focus/countdown/subs/habit/memo/ai/settings
+├── android/             # WebView 壳（com.nianxiatian.app）+ 自建 ApkProvider（在线更新安装）
+├── tools/               # build-apk.sh / repack.js(arsc修复) / gen-icons.js / serve.js
+├── apk/nianxiatian.apk  # 在线更新包（固定路径）
+└── latest.json          # 版本清单
+```

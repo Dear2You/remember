@@ -1,0 +1,9 @@
+# 构建工具链与中间产物（~500MB，不入库）
+build/
+# 签名密钥——严禁上传公开仓库（泄露=任何人可伪造官方更新）
+android/keystore.jks
+# 历史版本 APK 不累积入库，更新包固定为 apk/nianxiatian.apk
+那年夏天-v*.apk
+*.log
+.zcode/
+那年夏天-v*.apk.idsig

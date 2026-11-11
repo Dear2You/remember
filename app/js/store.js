@@ -1,0 +1,920 @@
+'use strict';
+/* ============ 数据层 v3：多账本 / 二级分类 / 资产负债 / 预算 ============
+ * 业务规则（PRD v2.0 §3.4）：
+ * - 整数分存储；转账/还款不计收支与预算；信用卡消费只计一次支出
+ * - 负债余额 = 期初欠款 + 刷卡支出 - 还款；净资产 = 总资产 - 总负债
+ * - 一级分类金额 = 记在父级的金额 + 子类金额（下钻不重复）
+ * - 月总预算与分类预算是两套口径，不相加；还款额 ≤ 当前负债
+ */
+const Store = {
+  KEY: 'nianxiatian_v1',
+  LEGACY_KEYS: [],
+  data: null,
+  _listeners: {},
+
+  /* ---------- 默认数据 ---------- */
+  DEFAULT_BOOK() {
+    return [{ id: 'book-life', name: '日常生活', icon: '🏠', isDefault: true, archived: false, createdAt: Date.now() }];
+  },
+  DEFAULT_ACCOUNTS() {
+    return [
+      { id: 'acc-wx', name: '微信零钱', type: 'asset', icon: '💚', opening: 0, archived: false, sortOrder: 1, createdAt: Date.now() },
+      { id: 'acc-zfb', name: '支付宝', type: 'asset', icon: '🔵', opening: 0, archived: false, sortOrder: 2, createdAt: Date.now() },
+      { id: 'acc-bank', name: '银行卡', type: 'asset', icon: '💳', opening: 0, archived: false, sortOrder: 3, createdAt: Date.now() },
+      { id: 'acc-cash', name: '现金', type: 'asset', icon: '💵', opening: 0, archived: false, sortOrder: 4, createdAt: Date.now() },
+      { id: 'acc-credit', name: '信用卡欠款', type: 'liability', icon: '🪙', opening: 0, archived: false, sortOrder: 5, createdAt: Date.now() }
+    ];
+  },
+  // 二级分类预设：[一级名, icon, [子类名, 子类icon]...]
+  DEFAULT_CATS() {
+    const out = [
+      ['餐饮', '🍜', [['早餐', '🥣'], ['午餐', '🍱'], ['晚餐', '🍲'], ['外卖', '🛵'], ['零食', '🍬']]],
+      ['交通', '🚌', [['公交地铁', '🚇'], ['打车', '🚕'], ['火车/机票', '🚄']]],
+      ['购物', '🛒', [['服饰', '👕'], ['数码', '📱'], ['日用品', '🧴']]],
+      ['学习科研', '📚', [['图书', '📖'], ['文具', '✏️'], ['软件订阅', '💻'], ['实验耗材', '🧪']]],
+      ['住房', '🏠', [['房租', '🔑'], ['水电', '💡'], ['物业', '🧹']]],
+      ['医疗', '💊', []], ['娱乐', '🎮', []], ['通讯', '📱', []], ['人情', '🎁', []], ['其他支出', '📝', []]
+    ];
+    const inc = [
+      ['工资与劳务', '💰', [['工资', '💼'], ['兼职', '🧰'], ['项目劳务', '🛠️']]],
+      ['补贴与资助', '🧧', [['生活费', '🏠'], ['奖学金', '🎓'], ['科研补贴', '🔬']]],
+      ['其他收入', '✨', [['礼金', '🎁'], []]]
+    ];
+    const cats = [];
+    const mk = (name, kind, icon, parentId, sortOrder) => {
+      const id = (parentId ? parentId + '-s' : 'cat-' + kind + '-') + (parentId ? cats.filter(c => c.parentId === parentId).length : sortOrder);
+      cats.push({ id, name, kind, icon, parentId: parentId || '', archived: false, sortOrder, createdAt: Date.now() });
+      return id;
+    };
+    out.forEach(([name, icon, subs], i) => {
+      const pid = mk(name, 'out', icon, '', i + 1);
+      subs.forEach(([sn, si]) => mk(sn, 'out', si, pid, i + 1));
+    });
+    inc.forEach(([name, icon, subs], i) => {
+      const pid = mk(name, 'in', icon, '', i + 1);
+      subs.forEach(([sn, si]) => { if (sn) mk(sn, 'in', si, pid, i + 1); });
+    });
+    return cats;
+  },
+
+  defaults() {
+    return {
+      version: 4,
+      books: this.DEFAULT_BOOK(),
+      accounts: this.DEFAULT_ACCOUNTS(),
+      categories: this.DEFAULT_CATS(),
+      transactions: [], // {id, bookId, type:'out'|'in'|'transfer', amountMinor, accountId, fromId, toId, categoryId, note, date, createdAt, updatedAt}
+      budgets: [],      // {id, bookId, month:'YYYY-MM', categoryId:''|一级id, amountMinor}
+      // ===== 时光模块（life_，独立于财务）=====
+      tasks: [],           // {id, title, note, dueDate:'YYYY-MM-DD', dueTime:'HH:mm', important, urgent, repeat:'none'|'daily'|'weekly'|'monthly', done(bool 非重复), doneDates:[], completedAt, cancelled, createdAt}
+      events: [],          // {id, title, start:'YYYY-MM-DD HH:mm', end, allDay, location, note, color, repeat:'none'|'weekly', createdAt}
+      countdowns: [],      // {id, title, date:'YYYY-MM-DD', icon, yearly, archived, createdAt}
+      focusSessions: [],   // {id, taskId, mode:'pomodoro'|'countup'|'countdown', targetMin, actualSec, pausedSec, startedAt, endedAt, status:'done'|'broken', createdAt}
+      subscriptions: [],   // {id, name, amount, currency:'SGD'|'CNY', note, createdAt} 每月固定支出
+      wageProjects: [],   // {id, name, rate(元/小时)} 项目时薪表
+      worktimes: [], memos: [], habits: [], habitLogs: {}, chats: [],
+      aiSessions: [],   // {id, title, messages:[{role,content,actions,ts}], createdAt, updatedAt}
+      settings: {
+        aiBase: 'https://open.bigmodel.cn/api/paas/v4',
+        aiKey: '', aiModel: 'glm-5.3',
+        theme: 'auto', hideAmount: false,
+        currentBookId: 'book-life',   // '' = 全部账本
+        lastAccountId: '', lastBookId: 'book-life',
+        sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
+        defaultRate: 0,                // 默认时薪（元/小时），项目未单独设置时使用
+        aiActiveSessionId: ''          // 当前 AI 会话
+      }
+    };
+  },
+
+  /* ---------- 初始化与迁移 ---------- */
+  init() {
+    let v3 = null, legacy = null;
+    try { v3 = JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) { v3 = null; }
+    if (!v3) {
+      for (const k of this.LEGACY_KEYS) {
+        try { legacy = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { legacy = null; }
+        if (legacy) { legacy.__key = k; break; }
+      }
+    }
+    const def = this.defaults();
+    this.data = Object.assign(def, v3 || {});
+    this.data.settings = Object.assign(def.settings, (v3 && v3.settings) || {});
+    if (!Array.isArray(this.data.books) || !this.data.books.length) this.data.books = this.DEFAULT_BOOK();
+    if (!Array.isArray(this.data.accounts) || !this.data.accounts.length) this.data.accounts = this.DEFAULT_ACCOUNTS();
+    if (!Array.isArray(this.data.categories) || !this.data.categories.length) this.data.categories = this.DEFAULT_CATS();
+    if (!Array.isArray(this.data.transactions)) this.data.transactions = [];
+    if (!Array.isArray(this.data.budgets)) this.data.budgets = [];
+    // v4 时光模块集合（旧版本无这些 key 时补空）
+    if (!Array.isArray(this.data.tasks)) this.data.tasks = [];
+    if (!Array.isArray(this.data.events)) this.data.events = [];
+    if (!Array.isArray(this.data.countdowns)) this.data.countdowns = [];
+    if (!Array.isArray(this.data.focusSessions)) this.data.focusSessions = [];
+    if (!Array.isArray(this.data.subscriptions)) this.data.subscriptions = [];
+    if (!Array.isArray(this.data.aiSessions)) this.data.aiSessions = [];
+    // 老版本单聊天记录 → 迁移为一个会话
+    if (!this.data.aiSessions.length && Array.isArray(this.data.chats) && this.data.chats.length) {
+      const firstUser = this.data.chats.find(m => m.role === 'user');
+      this.data.aiSessions.push({
+        id: U.id(), title: firstUser ? firstUser.content.slice(0, 14) : '历史对话',
+        messages: this.data.chats, createdAt: Date.now(), updatedAt: Date.now()
+      });
+      this.data.settings.aiActiveSessionId = this.data.aiSessions[0].id;
+    }
+    // 旧默认模型升级为 GLM-5.3
+    if (this.data.settings.aiModel === 'glm-4-flash') this.data.settings.aiModel = 'glm-5.3';
+    if (!Array.isArray(this.data.wageProjects)) this.data.wageProjects = [];
+    if (typeof this.data.settings.sgdRate !== 'number' || !(this.data.settings.sgdRate > 0)) this.data.settings.sgdRate = 5.30;
+    if (typeof this.data.settings.defaultRate !== 'number' || this.data.settings.defaultRate < 0) this.data.settings.defaultRate = 0;
+    if (this.data.version < 4) { this.data.version = 4; }
+    this.data.accounts.forEach(a => { if (!a.type) a.type = a.id === 'acc-credit' ? 'liability' : 'asset'; });
+    if (!this.data.habitLogs) this.data.habitLogs = {};
+    if (!Array.isArray(this.data.chats)) this.data.chats = [];
+    // 当前账本有效性
+    if (!this.data.books.find(b => b.id === this.data.settings.currentBookId && !b.archived)) {
+      const fb = this.data.books.find(b => !b.archived);
+      this.data.settings.currentBookId = fb ? fb.id : '';
+    }
+    if (legacy && !v3) this._migrateLegacy(legacy);
+    this.save();
+  },
+
+  _migrateLegacy(legacy) {
+    const bookId = this.data.books[0].id;
+    const mapCat = old => { // 旧分类名 → 新分类id
+      if (!old) return '';
+      const kind = old.kind || 'out';
+      let c = this.data.categories.find(x => !x.parentId && x.kind === kind && x.name === old.name) ||
+              this.data.categories.find(x => !x.parentId && x.kind === kind && (x.name.includes(old.name) || old.name.includes(x.name)));
+      if (!c && old.name === '工资') c = this.data.categories.find(x => x.kind === 'in' && x.name === '工资与劳务');
+      if (!c && old.name === '生活费') c = this.data.categories.find(x => x.kind === 'in' && x.parentId && x.name === '生活费');
+      if (!c && old.name === '奖学金/补贴') c = this.data.categories.find(x => x.kind === 'in' && x.name === '补贴与资助');
+      if (!c && (old.name === '兼职' || old.name === '奖金')) c = this.data.categories.find(x => x.kind === 'in' && x.parentId && x.name === '兼职');
+      if (!c) { c = { id: U.id(), name: old.name, kind, icon: old.icon || '🏷️', parentId: '', archived: false, sortOrder: 80, createdAt: Date.now() }; this.data.categories.push(c); }
+      return c.id;
+    };
+    const txs = legacy.transactions || legacy.expenses || [];
+    txs.forEach(t => {
+      const oldCat = t.categoryId ? this.data.categories.find(c => c.id === t.categoryId) : null;
+      // v2 交易有 categoryId（新结构丢失后无法查名），因此迁移时优先使用旧库分类表
+      const legacyCat = (legacy.categories || []).find(c => c.id === t.categoryId);
+      const kind = t.type === 'in' || t.kind === 'in' ? 'in' : 'out';
+      this.data.transactions.push({
+        id: U.id(),
+        bookId, type: t.type === 'transfer' ? 'transfer' : kind,
+        amountMinor: t.amountMinor != null ? t.amountMinor : Math.round((Number(t.amount) || 0) * 100),
+        accountId: t.accountId || '', fromId: t.fromId || '', toId: t.toId || '',
+        categoryId: mapCat(legacyCat || { name: t.category || '', kind, icon: t.icon }),
+        note: t.note || '', date: t.date || U.todayStr(),
+        createdAt: t.createdAt || Date.now(), updatedAt: t.createdAt || Date.now()
+      });
+    });
+    // v2 的月预算 → 默认账本当月总预算
+    const oldBudget = legacy.settings && Number(legacy.settings.budget);
+    if (oldBudget > 0) {
+      this.data.budgets.push({ id: U.id(), bookId, month: U.ymNow(), categoryId: '', amountMinor: Math.round(oldBudget * 100) });
+    }
+    this.data.worktimes = legacy.worktimes || [];
+    this.data.memos = legacy.memos || [];
+    this.data.habits = legacy.habits || [];
+    this.data.habitLogs = legacy.habitLogs || {};
+    this.data.chats = legacy.chats || [];
+    const ls = legacy.settings || {};
+    Object.assign(this.data.settings, {
+      aiBase: ls.aiBase, aiKey: ls.aiKey, aiModel: ls.aiModel, theme: ls.theme,
+      hideAmount: ls.hideAmount, lastAccountId: ls.lastAccountId || ''
+    });
+    try { localStorage.removeItem(legacy.__key); } catch (e) { /* ignore */ }
+  },
+
+  save() {
+    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); }
+    catch (e) { UI.toast('本地存储失败，空间可能已满', 'err'); }
+    this._scheduleAutoBackup();
+  },
+
+  /* ---------- 自动备份到手机下载目录（卸载 App 不丢） ---------- */
+  _backupTimer: null,
+  _scheduleAutoBackup() {
+    if (typeof window === 'undefined' || !window.AndroidBridge || !window.AndroidBridge.writeBackup) return;
+    if (this._backupTimer) clearTimeout(this._backupTimer);
+    this._backupTimer = setTimeout(() => {
+      try {
+        window.AndroidBridge.writeBackup(this.exportData());
+      } catch (e) { /* 静默，不影响使用 */ }
+    }, 8000);   // 停止操作 8 秒后写盘，避免频繁 IO
+  },
+  _lastBackupStatus: null,
+  noteBackupResult(status, msg) {
+    this._lastBackupStatus = { status, msg, ts: Date.now() };
+  },
+  lastBackupText() {
+    const s = this._lastBackupStatus;
+    if (!s) return null;
+    if (s.status === 'ok') return '✅ ' + U.fmtRel(s.ts) + '已自动备份（下载/那年夏天备份/）';
+    if (s.status === 'skip') return '⚠️ ' + s.msg;
+    return '❌ 自动备份失败：' + s.msg;
+  },
+  on(evt, fn) { (this._listeners[evt] = this._listeners[evt] || []).push(fn); },
+  emit(evt) { (this._listeners[evt] || []).forEach(f => { try { f(); } catch (e) { console.error(e); } }); },
+  mutate(fn) { fn(this.data); this.save(); this.emit('change'); },
+  get settings() { return this.data.settings; },
+
+  /* ---------- 金额工具 ---------- */
+  parseAmount(str) {
+    const s = String(str == null ? '' : str).trim().replace(/[，,]/g, '').replace(/￥¥\s/g, '');
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+    const v = Math.round(parseFloat(s) * 100);
+    return v > 0 ? v : null;
+  },
+  fmtMinor(minor) {
+    const n = Math.round(Number(minor) || 0);
+    const neg = n < 0, abs = Math.abs(n);
+    const yuan = Math.floor(abs / 100), fen = abs % 100;
+    let s = fen === 0 ? String(yuan) : (fen % 10 === 0 ? yuan + '.' + (fen / 10) : yuan + '.' + U.pad(fen));
+    return (neg ? '-' : '') + s;
+  },
+  fmtMinorThousand(minor) {
+    const n = Math.round(Number(minor) || 0);
+    const neg = n < 0 ? '-' : '', abs = Math.abs(n);
+    const fen = abs % 100;
+    return neg + Math.floor(abs / 100).toLocaleString('zh-CN') + (fen ? '.' + U.pad(fen).replace(/0$/, '') : '');
+  },
+
+  /* ---------- 账本 ---------- */
+  books(includeArchived) {
+    const list = [...this.data.books].sort((a, b) => (a.isDefault ? -1 : b.isDefault ? 1 : 0) || (a.createdAt || 0) - (b.createdAt || 0));
+    return includeArchived ? list : list.filter(b => !b.archived);
+  },
+  book(id) { return this.data.books.find(b => b.id === id); },
+  currentBook() { return this.book(this.data.settings.currentBookId); },
+  addBook(o) {
+    const item = { id: U.id(), name: (o.name || '').trim() || '新账本', icon: o.icon || '📔', isDefault: false, archived: false, createdAt: Date.now() };
+    if (this.data.books.some(b => b.name === item.name && !b.archived)) return null;
+    this.mutate(d => d.books.push(item));
+    return item;
+  },
+  updateBook(id, patch) { this.mutate(d => { const it = d.books.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id, isDefault: it.isDefault }); }); },
+  removeBook(id) {
+    const b = this.book(id);
+    if (!b || b.isDefault) return false;
+    if (this.data.transactions.some(t => t.bookId === id)) return false; // 有账单只能归档
+    this.mutate(d => { d.books = d.books.filter(x => x.id !== id); });
+    return true;
+  },
+  // 账本筛选：bookId 为空 = 全部账本（每笔只算一次，天然去重）
+  txOfBook(bookId, list) {
+    return (list || this.data.transactions).filter(t => !bookId || t.bookId === bookId);
+  },
+
+  /* ---------- 账户（资产/负债） ---------- */
+  accounts(activeOnly) {
+    const list = [...this.data.accounts].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    return activeOnly ? list.filter(a => !a.archived) : list;
+  },
+  account(id) { return this.data.accounts.find(a => a.id === id); },
+  accountName(id) { const a = this.account(id); return a ? a.name : '已删除账户'; },
+  // 资产余额 = 期初 + 收入 - 支出 + 转入 - 转出
+  // 负债余额 = 期初欠款 + 刷卡支出(该账户的 out) - 还款(转入该账户的 transfer)
+  accountBalance(id) {
+    const a = this.account(id);
+    if (!a) return 0;
+    let bal = a.opening || 0;
+    this.data.transactions.forEach(t => {
+      if (a.type === 'liability') {
+        if (t.type === 'out' && t.accountId === id) bal += t.amountMinor;      // 刷卡 → 欠款增加
+        if (t.type === 'transfer' && t.toId === id) bal -= t.amountMinor;      // 还款 → 欠款减少
+        if (t.type === 'transfer' && t.fromId === id) bal += t.amountMinor;    // 首版不支持，防御性处理
+      } else {
+        if (t.type === 'in' && t.accountId === id) bal += t.amountMinor;
+        if (t.type === 'out' && t.accountId === id) bal -= t.amountMinor;
+        if (t.type === 'transfer' && t.toId === id) bal += t.amountMinor;
+        if (t.type === 'transfer' && t.fromId === id) bal -= t.amountMinor;
+      }
+    });
+    return bal;
+  },
+  totalAssets() { return this.accounts().filter(a => a.type !== 'liability').reduce((s, a) => s + this.accountBalance(a.id), 0); },
+  totalLiabilities() { return this.accounts().filter(a => a.type === 'liability').reduce((s, a) => s + Math.max(this.accountBalance(a.id), 0), 0); },
+  netWorth() { return this.totalAssets() - this.totalLiabilities(); },
+  addAccount(o) {
+    const item = {
+      id: U.id(), name: (o.name || '').trim() || '新账户', type: o.type === 'liability' ? 'liability' : 'asset',
+      icon: o.icon || '💰', opening: Math.round((Number(o.opening) || 0) * 100), archived: false,
+      sortOrder: (this.data.accounts.length + 1) * 10, createdAt: Date.now()
+    };
+    this.mutate(d => d.accounts.push(item));
+    return item;
+  },
+  updateAccount(id, patch) { this.mutate(d => { const it = d.accounts.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeAccount(id) {
+    const used = this.data.transactions.some(t => t.accountId === id || t.fromId === id || t.toId === id);
+    if (used) return false;
+    this.mutate(d => { d.accounts = d.accounts.filter(a => a.id !== id); });
+    return true;
+  },
+
+  /* ---------- 二级分类 ---------- */
+  categories(kind, includeArchived) {
+    return this.data.categories
+      .filter(c => (kind ? c.kind === kind : true) && (includeArchived ? true : !c.archived))
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  },
+  category(id) { return this.data.categories.find(c => c.id === id); },
+  subCategories(parentId) {
+    return this.data.categories.filter(c => c.parentId === parentId && !c.archived)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  },
+  catRoot(id) { const c = this.category(id); return c && c.parentId ? this.category(c.parentId) : c; }, // 所属一级
+  addCategory(o) {
+    // o: {name, kind, icon, parentId} parentId 必须是一级且 kind 相同；一级不能有父级 → 最多两级
+    const parent = o.parentId ? this.category(o.parentId) : null;
+    if (parent && parent.parentId) return null;                     // 禁止三级
+    const kind = parent ? parent.kind : (o.kind === 'in' ? 'in' : 'out');
+    if (parent && parent.kind !== kind) return null;
+    const item = { id: U.id(), name: (o.name || '').trim() || '新分类', kind, icon: o.icon || '🏷️', parentId: parent ? parent.id : '', archived: false, sortOrder: 50 + this.data.categories.length, createdAt: Date.now() };
+    if (this.data.categories.some(c => c.kind === kind && c.name === item.name && c.parentId === item.parentId && !c.archived)) return null;
+    this.mutate(d => d.categories.push(item));
+    return item;
+  },
+  updateCategory(id, patch) { this.mutate(d => { const it = d.categories.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+
+  /* ---------- 交易 ---------- */
+  // o: {bookId, type, amountMinor, accountId?, fromId?, toId?, categoryId?, note, date}
+  // 校验：in 只能资产账户；还款额 ≤ 当前负债
+  addTransaction(o) {
+    const now = Date.now();
+    const item = {
+      id: U.id(), bookId: o.bookId || this.data.settings.currentBookId || (this.books()[0] || {}).id || '',
+      type: o.type, amountMinor: Math.round(Number(o.amountMinor) || 0),
+      accountId: o.accountId || '', fromId: o.fromId || '', toId: o.toId || '',
+      categoryId: o.categoryId || '', note: o.note || '', date: o.date || U.todayStr(),
+      createdAt: now, updatedAt: now
+    };
+    if (item.type === 'in') {
+      const acc = this.account(item.accountId);
+      if (acc && acc.type === 'liability') throw new Error('收入不能记入负债账户');
+    }
+    if (item.type === 'transfer') {
+      const from = this.account(item.fromId), to = this.account(item.toId);
+      if (from && from.type === 'liability') throw new Error('首版不支持从负债账户转出');
+      if (to && to.type === 'liability' && item.amountMinor > Math.max(this.accountBalance(item.toId), 0)) {
+        throw new Error('还款金额不能超过当前欠款');
+      }
+    }
+    this.mutate(d => d.transactions.push(item));
+    if (item.type !== 'transfer' && item.accountId) { this.data.settings.lastAccountId = item.accountId; this.save(); }
+    if (item.bookId) { this.data.settings.lastBookId = item.bookId; this.save(); }
+    return item;
+  },
+  updateTransaction(id, patch) {
+    this.mutate(d => {
+      const it = d.transactions.find(x => x.id === id);
+      if (it) Object.assign(it, patch, { id: it.id, updatedAt: Date.now() });
+    });
+  },
+  removeTransaction(id) { this.mutate(d => { d.transactions = d.transactions.filter(x => x.id !== id); }); },
+  isRepay(t) { return t.type === 'transfer' && this.account(t.toId) && this.account(t.toId).type === 'liability'; },
+
+  /* ---------- 统计（账本维度） ---------- */
+  monthTransactions(bookId, ym) {
+    return this.txOfBook(bookId).filter(t => t.date.startsWith(ym));
+  },
+  // 周期统计：period = {kind:'week'|'month'|'year', start, end, days, label}
+  // 返回 {out, inc, net, list, avgInc, avgOut, days}
+  periodStats(bookId, period) {
+    const list = this.txOfBook(bookId).filter(t => t.date >= period.start && t.date <= period.end);
+    const out = list.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
+    const inc = list.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
+    return {
+      out, inc, net: inc - out, list,
+      avgInc: Math.round(inc / period.days), avgOut: Math.round(out / period.days), days: period.days
+    };
+  },
+  monthStats(bookId, ym) {
+    const list = this.monthTransactions(bookId, ym);
+    const out = list.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
+    const inc = list.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
+    return { out, inc, net: inc - out, list };
+  },
+  todayOut() {
+    const today = U.todayStr();
+    return this.txOfBook(this.data.settings.currentBookId).filter(t => t.date === today && t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
+  },
+  // 一级分类汇总（含子类，父级直记 + 子类；下钻不重复）
+  // list 可传周期过滤后的交易；不传则按月
+  categoryBreakdown(bookId, ymOrList, kind) {
+    const roots = {};
+    const list = Array.isArray(ymOrList) ? ymOrList : this.monthTransactions(bookId, ymOrList);
+    list.filter(t => t.type === kind && t.categoryId).forEach(t => {
+      const cat = this.category(t.categoryId);
+      if (!cat) return;
+      const root = cat.parentId ? this.category(cat.parentId) : cat;
+      if (!root) return;
+      const r = (roots[root.id] = roots[root.id] || { id: root.id, name: root.name, icon: root.icon, minor: 0, count: 0, subs: {} });
+      r.minor += t.amountMinor; r.count++;
+      if (cat.parentId) {
+        const s = (r.subs[cat.id] = r.subs[cat.id] || { id: cat.id, name: cat.name, icon: cat.icon, minor: 0, count: 0 });
+        s.minor += t.amountMinor; s.count++;
+      } else {
+        r.direct = (r.direct || 0) + t.amountMinor;
+      }
+    });
+    return Object.values(roots).map(r => {
+      r.subs = Object.values(r.subs).sort((a, b) => b.minor - a.minor);
+      return r;
+    }).sort((a, b) => b.minor - a.minor);
+  },
+  // 账户维度统计
+  accountBreakdown(bookId, ymOrList) {
+    const map = {};
+    const list = Array.isArray(ymOrList) ? ymOrList : this.monthTransactions(bookId, ymOrList);
+    list.filter(t => t.type !== 'transfer').forEach(t => {
+      const accId = t.accountId;
+      const acc = this.account(accId) || { name: '已删除账户', icon: '❔' };
+      const m = (map[accId] = map[accId] || { id: accId, name: acc.name, icon: acc.icon, out: 0, inc: 0 });
+      if (t.type === 'out') m.out += t.amountMinor; else m.inc += t.amountMinor;
+    });
+    return Object.values(map).sort((a, b) => (b.out + b.inc) - (a.out + a.inc));
+  },
+
+  /* ---------- 预算（总预算/一级分类预算两套口径，不相加） ---------- */
+  getBudget(bookId, month, categoryId) {
+    return this.data.budgets.find(b => b.bookId === bookId && b.month === month && (b.categoryId || '') === (categoryId || ''));
+  },
+  setBudget(bookId, month, categoryId, amountMinor) {
+    this.mutate(d => {
+      const exist = d.budgets.find(b => b.bookId === bookId && b.month === month && (b.categoryId || '') === (categoryId || ''));
+      if (amountMinor > 0) {
+        if (exist) exist.amountMinor = amountMinor;
+        else d.budgets.push({ id: U.id(), bookId, month, categoryId: categoryId || '', amountMinor });
+      } else if (exist) d.budgets = d.budgets.filter(b => b !== exist);
+    });
+  },
+  // 预算已用：categoryId 空 = 该账本当月全部支出；有 = 该一级分类(含子类)当月支出
+  budgetUsed(bookId, month, categoryId) {
+    if (!categoryId) return this.monthStats(bookId, month).out;
+    const st = this.categoryBreakdown(bookId, month, 'out').find(c => c.id === categoryId);
+    return st ? st.minor : 0;
+  },
+
+  /* ---------- 工时 / 薪资 ---------- */
+  // 每条工时的时薪（元/小时）：优先记录快照 → 项目时薪 → 默认时薪
+  workRate(w) {
+    if (w.rate != null && w.rate >= 0) return w.rate;
+    const wp = this.data.wageProjects.find(p => p.name === w.project);
+    if (wp) return wp.rate;
+    return this.settings.defaultRate || 0;
+  },
+  // 单条收入（分）= 时长 × 时薪
+  workPayMinor(w) { return Math.round(w.hours * this.workRate(w) * 100); },
+  addWork(o) {
+    const item = {
+      id: U.id(), date: o.date || U.todayStr(), project: (o.project || '未分类').trim() || '未分类',
+      hours: Math.round((Number(o.hours) || 0) * 10) / 10, note: o.note || '',
+      rate: (o.rate != null && Number(o.rate) >= 0) ? Math.round(Number(o.rate) * 100) / 100 : null,
+      createdAt: Date.now()
+    };
+    this.mutate(d => d.worktimes.push(item));
+    return item;
+  },
+  updateWork(id, patch) { this.mutate(d => { const it = d.worktimes.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeWork(id) { this.mutate(d => { d.worktimes = d.worktimes.filter(x => x.id !== id); }); },
+  monthWorktimes(ym) { return this.data.worktimes.filter(w => w.date.startsWith(ym)); },
+  dayWorktimes(dateStr) { return this.data.worktimes.filter(w => w.date === dateStr).sort((a, b) => b.createdAt - a.createdAt); },
+  allProjects() {
+    const set = new Set();
+    this.data.worktimes.forEach(w => set.add(w.project));
+    this.data.wageProjects.forEach(p => set.add(p.name));
+    return [...set];
+  },
+  dayWorkPayMinor(dateStr) {
+    return this.dayWorktimes(dateStr).reduce((s, w) => s + this.workPayMinor(w), 0);
+  },
+  monthWorkSummary(ym) {
+    const list = this.monthWorktimes(ym);
+    const total = list.reduce((s, w) => s + w.hours, 0);
+    const pay = list.reduce((s, w) => s + this.workPayMinor(w), 0);
+    const days = new Set(list.map(w => w.date)).size;
+    const byProject = {}, byProjectPay = {};
+    list.forEach(w => {
+      byProject[w.project] = (byProject[w.project] || 0) + w.hours;
+      byProjectPay[w.project] = (byProjectPay[w.project] || 0) + this.workPayMinor(w);
+    });
+    const { y, m } = U.ymParts(ym);
+    const dim = U.daysInMonth(y, m);
+    return { total, pay, days, avg: days ? total / days : 0, list, byProject, byProjectPay, avgPay: Math.round(pay / dim) };
+  },
+  // 项目时薪管理
+  findWageProject(name) { return this.data.wageProjects.find(p => p.name === name) || null; },
+  setWageProject(name, rate) {
+    const n = (name || '').trim();
+    if (!n) return false;
+    const r = Math.round((Number(rate) || 0) * 100) / 100;
+    this.mutate(d => {
+      const exist = d.wageProjects.find(p => p.name === n);
+      if (exist) exist.rate = r;
+      else d.wageProjects.push({ id: U.id(), name: n, rate: r });
+    });
+    return true;
+  },
+  removeWageProject(name) { this.mutate(d => { d.wageProjects = d.wageProjects.filter(p => p.name !== name); }); },
+  setDefaultRate(rate) {
+    const r = Math.round((Number(rate) || 0) * 100) / 100;
+    if (r < 0) return false;
+    this.settings.defaultRate = r;
+    this.save();
+    return true;
+  },
+
+  addMemo(o) {
+    const now = Date.now();
+    const item = {
+      id: U.id(), title: (o.title || '').trim() || '无标题', type: o.type === 'list' ? 'list' : 'text',
+      content: o.content || '', items: Array.isArray(o.items) ? o.items.map(i => ({ text: i.text || '', done: !!i.done })) : [],
+      pinned: !!o.pinned, remindDate: o.remindDate || '', createdAt: now, updatedAt: now
+    };
+    this.mutate(d => d.memos.unshift(item));
+    return item;
+  },
+  updateMemo(id, patch) { this.mutate(d => { const it = d.memos.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id, updatedAt: Date.now() }); }); },
+  removeMemo(id) { this.mutate(d => { d.memos = d.memos.filter(x => x.id !== id); }); },
+  memosSorted() { return [...this.data.memos].sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt)); },
+  dueMemos() {
+    const today = U.todayStr();
+    return this.data.memos.filter(m => m.remindDate && m.remindDate <= today).sort((a, b) => a.remindDate.localeCompare(b.remindDate));
+  },
+
+  addHabit(o) {
+    const item = {
+      id: U.id(), name: (o.name || '').trim() || '新习惯', icon: o.icon || '🎯', color: o.color || U.colorFor(o.name || 'x'),
+      freq: o.freq && o.freq.type === 'weekly' && o.freq.days && o.freq.days.length ? { type: 'weekly', days: [...o.freq.days].sort() } : { type: 'daily' },
+      archived: false, createdAt: Date.now()
+    };
+    this.mutate(d => { d.habits.push(item); d.habitLogs[item.id] = []; });
+    return item;
+  },
+  updateHabit(id, patch) { this.mutate(d => { const it = d.habits.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeHabit(id) { this.mutate(d => { d.habits = d.habits.filter(x => x.id !== id); delete d.habitLogs[id]; }); },
+  activeHabits() { return this.data.habits.filter(h => !h.archived); },
+  habitDates(hid) { return this.data.habitLogs[hid] || []; },
+  habitDone(hid, dateStr) { return (this.data.habitLogs[hid] || []).indexOf(dateStr) >= 0; },
+  toggleHabit(hid, dateStr) {
+    this.mutate(d => {
+      const arr = d.habitLogs[hid] = d.habitLogs[hid] || [];
+      const i = arr.indexOf(dateStr);
+      if (i >= 0) arr.splice(i, 1); else { arr.push(dateStr); arr.sort(); }
+    });
+  },
+  habitDueOn(h, date) {
+    if (!h.freq || h.freq.type !== 'weekly') return true;
+    return h.freq.days.indexOf(date.getDay()) >= 0;
+  },
+  habitDueToday(h) { return this.habitDueOn(h, new Date()); },
+  habitStreak(h) {
+    const set = new Set(this.habitDates(h.id));
+    const cur = (() => {
+      let n = 0;
+      let d = new Date();
+      if (!(this.habitDueOn(h, d) && set.has(U.dateStr(d)))) d.setDate(d.getDate() - 1);
+      for (let guard = 0; guard < 3000; guard++) {
+        const ds = U.dateStr(d);
+        if (!this.habitDueOn(h, d)) { d.setDate(d.getDate() - 1); continue; }
+        if (set.has(ds)) { n++; d.setDate(d.getDate() - 1); } else break;
+      }
+      return n;
+    })();
+    const longest = (() => {
+      const dates = [...set].sort();
+      if (!dates.length) return 0;
+      let best = 0, run = 0;
+      let d = U.parseDate(dates[0]);
+      const end = new Date();
+      for (let guard = 0; guard < 5000 && d <= end; guard++) {
+        const ds = U.dateStr(d);
+        if (this.habitDueOn(h, d)) {
+          if (set.has(ds)) { run++; if (run > best) best = run; } else run = 0;
+        }
+        d.setDate(d.getDate() + 1);
+      }
+      return Math.max(best, cur);
+    })();
+    return { current: cur, longest };
+  },
+  habitFreqLabel(h) {
+    if (!h.freq || h.freq.type !== 'weekly') return '每天';
+    const days = h.freq.days;
+    if (days.length === 7) return '每天';
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const sorted = order.filter(d => days.includes(d));
+    if (sorted.length === 5 && [1, 2, 3, 4, 5].every(d => days.includes(d))) return '工作日';
+    return '每周' + sorted.map(d => '一二三四五六日'[d === 0 ? 6 : d - 1]).join('、');
+  },
+
+  /* ==================== 时光模块（独立于财务） ==================== */
+
+  /* ---------- 待办事项 / 四象限 ---------- */
+  // 某日发生的任务：非重复=截止日当天；重复=按规则展开（daily 每日 / weekly 同星期 / monthly 同日期）
+  tasksDueOn(dateStr) {
+    const dow = U.parseDate(dateStr).getDay();
+    const day = U.parseDate(dateStr).getDate();
+    return this.data.tasks.filter(t => {
+      if (t.cancelled) return false;
+      if (t.repeat === 'daily') return true;
+      if (t.repeat === 'weekly') return dow === (U.parseDate(t.createdDate || t.dueDate || dateStr).getDay());
+      if (t.repeat === 'monthly') return day === (t.repeatDay || 15);
+      return t.dueDate === dateStr;
+    });
+  },
+  // 任务在某天是否已完成（重复任务查 doneDates；非重复查 done）
+  taskDoneOn(t, dateStr) {
+    if (t.repeat && t.repeat !== 'none') return (t.doneDates || []).indexOf(dateStr) >= 0;
+    return !!t.done;
+  },
+  isTaskOverdue(t) {
+    if (!t.dueDate || t.cancelled) return false;
+    if (t.repeat && t.repeat !== 'none') return false;              // 重复任务不判逾期
+    return !this.taskDoneOn(t, U.todayStr()) && t.dueDate < U.todayStr();
+  },
+  addTask(o) {
+    const item = {
+      id: U.id(), title: (o.title || '').trim() || '新事项', note: o.note || '',
+      dueDate: o.dueDate || '', dueTime: o.dueTime || '',
+      important: !!o.important, urgent: !!o.urgent,
+      repeat: ['daily', 'weekly', 'monthly'].includes(o.repeat) ? o.repeat : 'none',
+      done: false, doneDates: [], completedAt: null, cancelled: false,
+      createdDate: U.todayStr(),
+      repeatDay: o.dueDate ? parseInt(o.dueDate.slice(8), 10) : new Date().getDate(),
+      createdAt: Date.now()
+    };
+    this.mutate(d => d.tasks.unshift(item));
+    return item;
+  },
+  updateTask(id, patch) { this.mutate(d => { const it = d.tasks.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeTask(id) { this.mutate(d => { d.tasks = d.tasks.filter(x => x.id !== id); }); },
+  // 完成/撤销（dateStr 用于重复任务）
+  toggleTask(id, dateStr) {
+    this.mutate(d => {
+      const t = d.tasks.find(x => x.id === id);
+      if (!t) return;
+      const ds = dateStr || U.todayStr();
+      if (t.repeat && t.repeat !== 'none') {
+        const arr = t.doneDates = t.doneDates || [];
+        const i = arr.indexOf(ds);
+        if (i >= 0) arr.splice(i, 1); else { arr.push(ds); arr.sort(); }
+      } else {
+        t.done = !t.done;
+        t.completedAt = t.done ? Date.now() : null;
+      }
+    });
+  },
+  // 事项筛选：today | week | overdue | done | all
+  tasksBy(filter2) {
+    const today = U.todayStr();
+    const week = new Date(); week.setDate(week.getDate() + 7);
+    const weekStr = U.dateStr(week);
+    const list = this.data.tasks.filter(t => !t.cancelled);
+    switch (filter2) {
+      case 'today':
+        return list.filter(t => (t.repeat !== 'none' ? true : (!t.dueDate || t.dueDate === today)) && !this.taskDoneOn(t, today));
+      case 'week':
+        return list.filter(t => !t.dueDate ? false : (t.dueDate >= today && t.dueDate <= weekStr) || (t.repeat !== 'none'))
+          .filter(t => !this.taskDoneOn(t, today));
+      case 'overdue': return list.filter(t => this.isTaskOverdue(t));
+      case 'done': return list.filter(t => t.repeat === 'none' ? t.done : (t.doneDates || []).length > 0).sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+      default: return list;
+    }
+  },
+  quadrantOf(t) { return t.important && t.urgent ? 1 : (t.important ? 2 : (t.urgent ? 3 : 4)); },
+
+  /* ---------- 日程 ---------- */
+  addEvent(o) {
+    const item = {
+      id: U.id(), title: (o.title || '').trim() || '新日程',
+      start: o.start || '', end: o.end || '', allDay: !!o.allDay,
+      location: o.location || '', note: o.note || '',
+      color: o.color || '#4a9bff', repeat: o.repeat === 'weekly' ? 'weekly' : 'none',
+      createdAt: Date.now()
+    };
+    this.mutate(d => d.events.unshift(item));
+    return item;
+  },
+  updateEvent(id, patch) { this.mutate(d => { const it = d.events.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeEvent(id) { this.mutate(d => { d.events = d.events.filter(x => x.id !== id); }); },
+  // 某日期的日程（含每周重复虚拟展开，不复制源记录）
+  eventsOn(dateStr) {
+    const dow = U.parseDate(dateStr).getDay();
+    return this.data.events.filter(e => {
+      if (!e.start) return false;
+      const d0 = e.start.slice(0, 10);
+      if (e.repeat === 'weekly') {
+        const dow0 = U.parseDate(d0).getDay();
+        return dateStr >= d0 && dow === dow0;
+      }
+      if (e.end && e.end.slice(0, 10) > d0) return dateStr >= d0 && dateStr <= e.end.slice(0, 10); // 跨日
+      return d0 === dateStr;
+    }).sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  },
+  // 下一场日程（从现在起）
+  nextEvent() {
+    const now = new Date();
+    const nowStr = U.todayStr(), nowHM = U.pad(now.getHours()) + ':' + U.pad(now.getMinutes());
+    let best = null;
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(); d.setDate(d.getDate() + i);
+      const ds = U.dateStr(d);
+      const evs = this.eventsOn(ds).filter(e => e.start.slice(0, 10) < ds || e.start.slice(11) >= nowHM || i > 0);
+      if (evs.length) { best = evs.find(e => !(i === 0 && e.start.slice(11) < nowHM && !e.allDay)) || evs[0]; if (best) return { ev: best, date: ds }; }
+    }
+    return null;
+  },
+
+  /* ---------- 倒数日 ---------- */
+  addCountdown(o) {
+    const item = { id: U.id(), title: (o.title || '').trim() || '倒数日', date: o.date || U.todayStr(), icon: o.icon || '🎉', yearly: !!o.yearly, archived: false, createdAt: Date.now() };
+    this.mutate(d => d.countdowns.push(item));
+    return item;
+  },
+  updateCountdown(id, patch) { this.mutate(d => { const it = d.countdowns.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeCountdown(id) { this.mutate(d => { d.countdowns = d.countdowns.filter(x => x.id !== id); }); },
+  // 距离天数：>0 未来，<0 已过，0 今天；yearly 取最近一次周年
+  countdownDays(c) {
+    const today = U.todayStr();
+    if (!c.yearly) {
+      return Math.round((U.parseDate(c.date) - U.parseDate(today)) / 86400000);
+    }
+    // 每年重复：目标 = 今年或明年的月日
+    const md = c.date.slice(5);
+    const y = parseInt(today.slice(0, 4), 10);
+    let target = y + '-' + md;
+    if (target < today) target = (y + 1) + '-' + md;
+    return Math.round((U.parseDate(target) - U.parseDate(today)) / 86400000);
+  },
+  countdownsSorted() {
+    return [...this.data.countdowns].filter(c => !c.archived).sort((a, b) => Math.abs(this.countdownDays(a)) - Math.abs(this.countdownDays(b)));
+  },
+
+  /* ---------- 番茄专注 ---------- */
+  addFocusSession(o) {
+    const item = {
+      id: U.id(), taskId: o.taskId || '',
+      mode: o.mode || 'pomodoro', targetMin: o.targetMin || 0,
+      actualSec: Math.round(Number(o.actualSec) || 0), pausedSec: Math.round(Number(o.pausedSec) || 0),
+      startedAt: o.startedAt || Date.now(), endedAt: o.endedAt || Date.now(),
+      status: o.status === 'broken' ? 'broken' : 'done', createdAt: Date.now()
+    };
+    if (item.actualSec < 5) return null; // 过短的抖动不记录
+    this.mutate(d => d.focusSessions.unshift(item));
+    return item;
+  },
+  removeFocusSession(id) { this.mutate(d => { d.focusSessions = d.focusSessions.filter(x => x.id !== id); }); },
+  focusTotal(dateStr) {
+    return this.data.focusSessions.filter(s => U.dateStr(new Date(s.startedAt)) === dateStr)
+      .reduce((s2, x) => s2 + x.actualSec, 0);
+  },
+  focusWeek() {
+    const from = new Date(); from.setDate(from.getDate() - 6);
+    const fromStr = U.dateStr(from);
+    return this.data.focusSessions.filter(s => U.dateStr(new Date(s.startedAt)) >= fromStr)
+      .reduce((s2, x) => s2 + x.actualSec, 0);
+  },
+  focusCount(dateStr) {
+    return this.data.focusSessions.filter(s => U.dateStr(new Date(s.startedAt)) === dateStr).length;
+  },
+
+  /* ---------- 每月会员支出（固定订阅） ---------- */
+  addSubscription(o) {
+    const item = {
+      id: U.id(), name: (o.name || '').trim() || '新订阅', amount: Math.round((Number(o.amount) || 0) * 100) / 100,
+      currency: o.currency === 'SGD' ? 'SGD' : 'CNY', note: o.note || '', createdAt: Date.now()
+    };
+    this.mutate(d => d.subscriptions.push(item));
+    return item;
+  },
+  updateSubscription(id, patch) { this.mutate(d => { const it = d.subscriptions.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  removeSubscription(id) { this.mutate(d => { d.subscriptions = d.subscriptions.filter(x => x.id !== id); }); },
+  // 全部折算为 CNY 的每月合计（分）
+  subscriptionsTotalCNY() {
+    const rate = this.settings.sgdRate || 5.30;
+    return this.data.subscriptions.reduce((s, x) => {
+      const cny = x.currency === 'SGD' ? x.amount * rate : x.amount;
+      return s + Math.round(cny * 100);
+    }, 0);
+  },
+  setSgdRate(rate) {
+    const v = Math.round(Number(rate) * 10000) / 10000;
+    if (!(v > 0 && v < 100)) return false;
+    this.settings.sgdRate = v;
+    this.save();
+    return true;
+  },
+
+  /* ---------- 今日工作台汇总（只读引用，不建副本） ---------- */
+  todayDigest() {
+    const today = U.todayStr();
+    const tasksToday = this.tasksBy('today');
+    const tasksOverdue = this.tasksBy('overdue');
+    const habitsDue = this.activeHabits().filter(h => this.habitDueToday(h));
+    const habitsDone = habitsDue.filter(h => this.habitDone(h.id, today));
+    return {
+      tasksTotal: tasksToday.length + tasksOverdue.length,
+      tasksDone: 0, // 今日完成的算 done（简化：今日完成数 = 今日被打勾的非重复 + 重复今日已打）
+      tasksOpen: tasksToday.length,
+      tasksOverdue: tasksOverdue.length,
+      habitsDue: habitsDue.length, habitsDone: habitsDone.length, habits: habitsDue,
+      focusSec: this.focusTotal(today), focusCount: this.focusCount(today),
+      nextEvent: this.nextEvent(),
+      countdowns: this.countdownsSorted().slice(0, 3)
+    };
+  },
+
+  /* ---------- AI 多会话 ---------- */
+  aiSessions() {
+    return [...this.data.aiSessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  },
+  aiActive() {
+    const id = this.data.settings.aiActiveSessionId;
+    return this.data.aiSessions.find(s => s.id === id) || null;
+  },
+  // 取当前会话；不存在（或创建）时返回一个新会话（已入库）
+  aiEnsure() {
+    let s = this.aiActive();
+    if (!s) {
+      s = { id: U.id(), title: '新对话', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+      this.data.aiSessions.push(s);
+      this.data.settings.aiActiveSessionId = s.id;
+      this.save();
+    }
+    return s;
+  },
+  aiNewSession() {
+    const s = { id: U.id(), title: '新对话', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+    this.mutate(d => { d.aiSessions.unshift(s); d.settings.aiActiveSessionId = s.id; });
+    return s;
+  },
+  aiSwitch(id) {
+    this.data.settings.aiActiveSessionId = id;
+    this.save();
+  },
+  aiDeleteSession(id) {
+    this.mutate(d => {
+      d.aiSessions = d.aiSessions.filter(s => s.id !== id);
+      if (d.settings.aiActiveSessionId === id) {
+        d.settings.aiActiveSessionId = (d.aiSessions[0] || {}).id || '';
+      }
+    });
+  },
+  aiTouch(session, patch) {
+    // 会话内部消息更新（不走 mutate，避免整页刷新打断流式输出）
+    if (patch) Object.assign(session, patch);
+    session.updatedAt = Date.now();
+    this.save();
+  },
+
+  /* ---------- 备份 ---------- */
+  exportData() {
+    return JSON.stringify({ app: 'nianxiatian', version: 3, exportedAt: new Date().toISOString(), data: this.data }, null, 2);
+  },
+  exportCSV() {
+    const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const typeLabel = { out: '支出', in: '收入', transfer: '转账/还款' };
+    const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注']];
+    [...this.data.transactions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
+      const cat = this.category(t.categoryId);
+      const root = cat ? this.catRoot(t.categoryId) : null;
+      let acc;
+      if (t.type === 'transfer') {
+        const toLiability = this.isRepay(t);
+        acc = this.accountName(t.fromId) + (toLiability ? ' 还款→ ' : ' → ') + this.accountName(t.toId);
+      } else acc = this.accountName(t.accountId);
+      rows.push([
+        t.date,
+        (this.book(t.bookId) || {}).name || '',
+        typeLabel[t.type] || t.type,
+        root && !cat.parentId ? root.name : (root ? root.name : ''),
+        cat && cat.parentId ? cat.name : '',
+        acc, (t.amountMinor / 100).toFixed(2), t.note || ''
+      ]);
+    });
+    return '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
+  },
+  importData(str) {
+    let obj;
+    try { obj = JSON.parse(str); } catch (e) { return { ok: false, msg: '文件不是有效的 JSON' }; }
+    const d = obj && obj.data ? obj.data : obj;
+    if (!d || typeof d !== 'object' || !Array.isArray(d.transactions) || !Array.isArray(d.accounts) || !Array.isArray(d.books)) {
+      return { ok: false, msg: '文件格式不匹配，请选择那年夏天导出的备份' };
+    }
+    for (const t of d.transactions.slice(0, 50)) {
+      if (!t.date || !t.type || !(t.amountMinor > 0) || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
+    }
+    this.data = Object.assign(this.defaults(), d);
+    this.data.settings = Object.assign(this.defaults().settings, d.settings || {});
+    this.save();
+    this.emit('change');
+    return { ok: true, msg: '导入成功' };
+  },
+  clearAll() { this.data = this.defaults(); this.save(); this.emit('change'); }
+};
+
+window.Store = Store;

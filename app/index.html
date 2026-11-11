@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>那年夏天</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <main id="pageBody"></main>
+
+    <nav id="tabbar">
+      <button class="tab" data-route="home">
+        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+        <span>首页</span>
+      </button>
+      <button class="tab" data-route="assets">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M15.5 14.5h2"/></svg>
+        <span>资产</span>
+      </button>
+      <button class="tab" data-route="worktime">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5v3l2 1.5"/></svg>
+        <span>工时</span>
+      </button>
+      <button class="tab-plus j-add" aria-label="记一笔">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="tab" data-route="bills">
+        <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+        <span>账单</span>
+      </button>
+      <button class="tab" data-route="life">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span>时光</span>
+      </button>
+      <button class="tab" data-route="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
+        <span>我的</span>
+      </button>
+    </nav>
+
+    <button id="fab" title="AI 助手">
+      <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+    </button>
+  </div>
+
+  <div id="sheetRoot"></div>
+  <div id="dialogRoot"></div>
+  <div id="toastRoot"></div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/charts.js"></script>
+  <script>window.Views = {};</script>
+  <script>window.__APP_VERSION = '1.15'; window.__APP_CODE = 115;</script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/expense.js"></script>
+  <script src="js/views/bills.js"></script>
+  <script src="js/views/assets.js"></script>
+  <script src="js/views/life.js"></script>
+  <script src="js/views/lifetasks.js"></script>
+  <script src="js/views/lifecal.js"></script>
+  <script src="js/views/countdown.js"></script>
+  <script src="js/views/focus.js"></script>
+  <script src="js/views/subs.js"></script>
+  <script src="js/views/worktime.js"></script>
+  <script src="js/views/memo.js"></script>
+  <script src="js/views/habit.js"></script>
+  <script src="js/views/ai.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
