@@ -48,6 +48,21 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new NativeBridge(), "AndroidBridge");
 
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setBackgroundColor(0xFFF6F7F9);
+
+        // Android 15+ 强制边缘到边缘：把系统栏高度作为安全衬距，内容不再延伸进状态栏
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            webView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override
+                public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
+                    android.graphics.Insets sys = insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+                    v.setPadding(0, sys.top, 0, sys.bottom);
+                    return android.view.WindowInsets.CONSUMED;
+                }
+            });
+        }
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -64,6 +79,26 @@ public class MainActivity extends Activity {
     }
 
     class NativeBridge {
+        /** 前端主题切换时同步状态栏：深色模式给深底浅字，浅色模式给浅底深字 */
+        @JavascriptInterface
+        public void setStatusBar(final boolean dark) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        getWindow().setStatusBarColor(dark ? 0xFF101114 : 0xFFF6F7F9);
+                        getWindow().setNavigationBarColor(dark ? 0xFF101114 : 0xFFF6F7F9);
+                        View decor = getWindow().getDecorView();
+                        int vis = decor.getSystemUiVisibility();
+                        if (dark) vis &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        else vis |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                        decor.setSystemUiVisibility(vis);
+                        webView.setBackgroundColor(dark ? 0xFF101114 : 0xFFF6F7F9);
+                    } catch (Exception ignored) { }
+                }
+            });
+        }
+
         /**
          * 自动备份：把完整数据 JSON 写到 公共下载目录/那年夏天备份/nianxiatian-backup.json
          * （MediaStore 方式，API 29+ 免权限；同名覆盖更新。卸载 App 该文件仍在。）

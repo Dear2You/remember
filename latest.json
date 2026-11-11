@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "2.0",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=20",
-  "note": "「那年夏天」全新发布：全新包名与签名，AI多会话/GLM-5.3，应用内更新"
+  "versionCode": 21,
+  "versionName": "2.1",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21",
+  "note": "修复状态栏重叠（安全区衬距+状态栏随主题变色）；AI多会话确认包含"
 }

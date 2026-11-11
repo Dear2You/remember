@@ -44,6 +44,10 @@ const App = {
     const dark = Store.settings.theme === 'dark' ||
       (Store.settings.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#101114' : '#f6f7f9');
+    // 同步 Android 状态栏（颜色/图标深浅）
+    if (window.AndroidBridge && window.AndroidBridge.setStatusBar) {
+      try { window.AndroidBridge.setStatusBar(dark); } catch (e) { /* ignore */ }
+    }
   },
 
   render(hash) {
