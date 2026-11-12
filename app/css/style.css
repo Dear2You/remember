@@ -328,9 +328,9 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 /* ---------- 日历（色块卡片式） ---------- */
 .cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .cal th { font-size: 11.5px; color: var(--text-3); font-weight: 500; padding: 4px 0; }
-.cal td { padding: 2px; vertical-align: stretch; }
+.cal td { padding: 1.5px; vertical-align: stretch; }
 .cal-cell {
-  border-radius: 9px; height: 52px; padding: 3px 2px; background: transparent;
+  border-radius: 8px; height: 43px; padding: 2.5px 2px; background: transparent;
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   font-size: 12.5px; overflow: hidden;
 }
@@ -343,10 +343,10 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .cal-cell.fill .cal-num { color: #fff; font-weight: 700; }
 .cal-cell.fill.today { box-shadow: inset 0 0 0 2px rgba(255,255,255,.85); }
 .cal-cell.fill.today .cal-num { color: #fff; }
-.cal-num { font-weight: 600; font-size: 12px; line-height: 17px; color: var(--text-3); }
-.cal-tail { font-size: 9px; font-weight: 700; color: #fff; line-height: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-num { font-weight: 600; font-size: 12px; line-height: 16px; color: var(--text-3); }
+.cal-tail { font-size: 8.5px; font-weight: 700; color: #fff; line-height: 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-tail.dark { color: var(--text-2); }
-.cal-sub { font-size: 9.5px; font-weight: 700; line-height: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-sub { font-size: 9px; font-weight: 700; line-height: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-sub.rest { color: var(--text-3); font-weight: 500; }
 .cal-dots { display: flex; gap: 3px; height: 5px; }
 .cal-dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
@@ -355,7 +355,7 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .cal-more { font-size: 8.5px; color: var(--text-3); line-height: 9px; }
 
 .mini-cal td { padding: 2px; }
-.mini-cal .cal-cell { height: 36px; border-radius: 7px; }
+.mini-cal .cal-cell { height: 34px; border-radius: 7px; }
 .mini-cal .cal-dot-big { width: 22px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 .mini-cal .cal-dot-big.done { background: var(--accent); color: #fff; }
 .mini-cal .cal-dot-big.miss { border: 1.5px dashed var(--text-3); color: var(--text-3); border-radius: 4px; }

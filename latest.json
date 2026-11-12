@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "2.6",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=26",
-  "note": "日历改为色块卡片风（参考图样式）：有记录整格染色+白字，无记录灰字裸格，卡片间隙无边框"
+  "versionCode": 27,
+  "versionName": "2.7",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=27",
+  "note": "日历格子改圆角正方形"
 }
