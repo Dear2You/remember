@@ -1,8 +1,8 @@
 {
-  "versionCode": 21700,
-  "versionName": "2.17",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.17/nianxiatian.apk",
-  "sha256": "adf3bc6196492838aa3c12192561b24ac269793cfd1dbac24820bc7cc286f6a1",
-  "apkBlob": "3584ecb5b8f86c5222c76a1acd6afc19050526d6",
-  "note": "待办、备忘录新增安卓到时通知与今天/明天快捷日期。点通知直达原事项，重复待办可完成当次；支持另设手机时钟闹钟。"
+  "versionCode": 21800,
+  "versionName": "2.18",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.18/nianxiatian.apk",
+  "sha256": "10b8d77dc963f611713fc9f83d93d7d6d05648f792ce7f341840165c3a9f29af",
+  "apkBlob": "fe18b58623fb351674d376c9645ef75753392600",
+  "note": "「我的」数据与 AI 设置默认收起。恢复前可核对备份时间与记录数量；修复清空本机后空白备份覆盖原文件、预算误清和更新状态丢失。"
 }

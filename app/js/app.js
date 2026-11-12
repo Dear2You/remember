@@ -35,6 +35,7 @@ const App = {
     });
     // 自动备份结果回传（来自 Android 原生桥）
     window.__backupDone = (status, msg) => Store.noteBackupResult(status, msg);
+    Store.on('localBackup', Views.settings.updateLocalBackup);
     // Android 返回键：先关弹层/对话框，都关了才后退页面（由原生 onBackPressed 调用）
     window.__tryCloseOverlays = () => {
       const dlg = document.getElementById('dialogRoot');

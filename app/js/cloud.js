@@ -36,7 +36,7 @@ const Cloud = (() => {
     return [s.error || (s.pending ? '等待上传' : '自动备份已开启'), last].filter(Boolean).join(' · ');
   }
   function updateStatus() {
-    const targets = document.querySelectorAll('.j-cloud-status');
+    const targets = [...document.querySelectorAll('.j-cloud-status')].filter(el => !el.closest('details:not([open])'));
     if (!targets.length) return;
     const text = detail(status());
     targets.forEach(el => { if (el.textContent !== text) el.textContent = text; });
@@ -108,13 +108,10 @@ const Cloud = (() => {
           const file = body.querySelector('#cloudVersions').value;
           const result = await request('get', {name:file});
           if (!body.isConnected) return;
-          const backup = JSON.parse(result.backup);
-          if (backup.app !== 'nianxiatian' || !backup.data || !Array.isArray(backup.data.transactions))
-            throw new Error('文件不是有效的那年夏天备份');
-          const d = backup.data;
-          const when = new Date(backup.exportedAt).toLocaleString('zh-CN', {hour12:false});
-          const confirmed = await UI.confirm({title:'恢复云端备份？',msg:when + ' 的副本有 ' + d.transactions.length + ' 笔账单、' +
-            (d.worktimes || []).length + ' 条工时。恢复将替换本机数据，并开启自动备份。',okText:'恢复并开启备份'});
+          const preview = Store.inspectBackup(result.backup);
+          if (!preview.ok) throw new Error(preview.msg);
+          if (preview.app !== 'nianxiatian') throw new Error('文件不是有效的那年夏天备份');
+          const confirmed = await UI.confirm({title:'恢复云端备份？',msg:preview.summary + '\n\n恢复将替换本机数据和设置，并开启自动备份。',okText:'恢复并开启备份'});
           if (!confirmed) return;
           const restored = Store.importData(result.backup);
           if (!restored.ok) throw new Error(restored.msg);

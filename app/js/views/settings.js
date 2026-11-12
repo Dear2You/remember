@@ -82,11 +82,19 @@ Views.settings = (() => {
   /* ---------- 预算管理（总预算 + 一级分类预算，两套口径） ---------- */
   function openBudgetSheet(bookId) {
     const ym = U.ymNow();
+    const books = Store.books();
+    if (!bookId && books.length === 1) bookId = books[0].id;
     UI.sheet({
       title: '预算设置 · ' + U.ymLabel(ym),
       content(body, close) {
         const book = Store.book(bookId);
-        if (!book) { body.innerHTML = '<div class="empty">请先选择具体账本</div>'; return; }
+        if (!book) {
+          body.innerHTML = '<div class="section-title">选择要设置预算的账本</div>' + books.map(b =>
+            '<button class="set-row settings-nav j-pick-book" data-id="' + U.escapeHtml(b.id) + '"><span>' +
+            U.escapeHtml(b.name) + '</span><span aria-hidden="true">›</span></button>').join('');
+          body.querySelectorAll('.j-pick-book').forEach(b => b.onclick = () => openBudgetSheet(b.dataset.id));
+          return;
+        }
         const roots = Store.rootCategories('out');
         const total = Store.getBudget(book.id, ym, '');
         const totalUsed = Store.budgetUsed(book.id, ym, '');
@@ -100,7 +108,7 @@ Views.settings = (() => {
             '  </div>' +
             '  <div class="progress ' + (total && totalUsed > total.amountMinor ? 'over' : '') + '"><div style="width:' + (total ? Math.min(totalUsed / total.amountMinor, 1) * 100 : 0).toFixed(1) + '%"></div></div>' +
             '  <div class="field-row" style="margin-top:10px">' +
-            '    <input class="j-total num" inputmode="decimal" placeholder="输入月总预算（元）" style="flex:1">' +
+            '    <input class="j-total num" type="' + (Store.settings.hideAmount ? 'password' : 'text') + '" inputmode="decimal" aria-label="月总预算（元）" placeholder="输入月总预算（元）" value="' + (total ? Store.fmtMinor(total.amountMinor) : '') + '" style="flex:1">' +
             '    <button class="btn btn-primary j-save-total" style="flex:0 0 76px">保存</button>' +
             '  </div>' +
             '</div>' +
@@ -113,7 +121,7 @@ Views.settings = (() => {
                 '  <div class="c-ico">' + c.icon + '</div>' +
                 '  <div class="c-main"><div class="c-title">' + U.escapeHtml(c.name) + '</div>' +
                 '  <div class="c-sub">已用 ¥' + UI.amount(used) + (b ? ' · ' + (used > b.amountMinor ? '<span style="color:var(--danger)">超支 ¥' + UI.amount(used - b.amountMinor) + '</span>' : '剩余 ¥' + UI.amount(b.amountMinor - used)) : ' · 未设预算') + '</div></div>' +
-                '  <input class="j-cb num" data-id="' + c.id + '" inputmode="decimal" placeholder="¥" style="max-width:86px;text-align:center" value="' + (b ? b.amountMinor / 100 : '') + '">' +
+                '  <input class="j-cb num" data-id="' + c.id + '" type="' + (Store.settings.hideAmount ? 'password' : 'text') + '" inputmode="decimal" aria-label="' + U.escapeHtml(c.name) + '预算（元）" placeholder="¥" style="max-width:86px;text-align:center" value="' + (b ? b.amountMinor / 100 : '') + '">' +
                 '</div>';
               return rowHtml;
             }).join('') +
@@ -131,10 +139,13 @@ Views.settings = (() => {
             inp.onchange = () => {
               const v = inp.value.trim();
               const minor = v === '' ? 0 : Store.parseAmount(v);
-              if (v !== '' && !minor) { UI.toast('金额无效', 'err'); inp.value = ''; return; }
+              if (v !== '' && !minor) { UI.toast('金额无效', 'err'); inp.value = inp.defaultValue; return; }
               Store.setBudget(book.id, ym, inp.dataset.id, minor || 0);
               UI.toast('已保存');
-              render();
+              inp.value = inp.defaultValue = minor ? Store.fmtMinor(minor) : '';
+              const used = Store.budgetUsed(book.id,ym,inp.dataset.id);
+              inp.closest('.cell').querySelector('.c-sub').textContent = '已用 ¥' + UI.amount(used) +
+                (minor ? (used > minor ? ' · 超支 ¥' : ' · 剩余 ¥') + UI.amount(Math.abs(minor-used)) : ' · 未设预算');
             };
           });
         }
@@ -352,15 +363,24 @@ Views.settings = (() => {
   /* ---------- 页面 ---------- */
   let showAI = false;
   function openAI() { showAI = true; App.go('settings'); }
+  function updateLocalBackup() {
+    const el = document.querySelector('.j-local-status');
+    if (el) el.textContent = window.AndroidBridge && window.AndroidBridge.writeBackup
+      ? Store.lastBackupText() || '等待首次自动备份 · 下载/那年夏天备份/'
+      : '网页版可通过「导出完整备份」保存文件';
+  }
   function mount(root) {
     const wasOpen = !!root.querySelector('.settings-ai[open]');
+    const accountDescription = () => '资产账户 ' + Store.accounts(true).filter(a=>a.type !== 'liability').length +
+      ' · 负债账户 ' + Store.accounts(true).filter(a=>a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth());
+    const dataWasOpen = !!root.querySelector('.settings-data[open]');
     const s = Store.settings;
     const book = Store.currentBook();
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page settings-page">' +
       '  <div class="page-head"><div><div class="page-title">我的</div></div></div>' +
 
-      '  <div class="card"><div class="section-title">生活模块</div>' +
+      '  <div class="card"><div class="section-title">常用工具</div>' +
       '    <div class="settings-tools">' +
       [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
         '<button class="j-mod" data-r="' + route + '">' + UI.icon(symbol) + label + '</button>').join('') +
@@ -368,14 +388,17 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card"><div class="section-title">账本与预算</div>' +
-      '    <div class="set-row j-books" style="cursor:pointer"><div><div class="sr-lab">账本管理</div><div class="sr-desc">' + Store.books().length + ' 个账本（当前：' + (book ? U.escapeHtml(book.name) : '全部账本') + '）</div></div><span style="color:var(--text-3)">›</span></div>' +
-      '    <div class="set-row j-budget" style="cursor:pointer"><div><div class="sr-lab">预算设置</div><div class="sr-desc">月总预算 + 一级分类预算' + (book ? '（' + U.escapeHtml(book.name) + '）' : '（选具体账本后设置）') + '</div></div><span style="color:var(--text-3)">›</span></div>' +
-      '    <div class="set-row j-accounts" style="cursor:pointer"><div><div class="sr-lab">账户管理</div><div class="sr-desc">资产 ' + Store.accounts(true).filter(a => a.type !== 'liability').length + ' · 负债 ' + Store.accounts(true).filter(a => a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth()) + '</div></div><span style="color:var(--text-3)">›</span></div>' +
-      '    <div class="set-row j-cats" style="cursor:pointer"><div><div class="sr-lab">分类管理</div><div class="sr-desc">一级/二级分类，可增改停用</div></div><span style="color:var(--text-3)">›</span></div>' +
+      [
+        ['j-books','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
+        ['j-budget','预算设置',book ? book.name + ' · 本月总预算与分类预算' : '选择账本设置预算'],
+        ['j-accounts','账户管理',accountDescription()],
+        ['j-cats','分类管理','收入与支出的一级、二级分类']
+      ].map(([cls,title,desc]) => `<button class="set-row settings-nav ${cls}">
+        <span><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
       '  </div>' +
 
       '  <div class="card"><div class="section-title">显示</div>' +
-      '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="chip ' + (s.hideAmount ? 'on' : '') + ' j-hide">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
+      '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
       '    <div class="set-row"><div class="sr-lab">主题</div>' +
       '      <div class="seg" style="width:190px">' +
       '        <button data-t="auto" class="' + (s.theme === 'auto' ? 'on' : '') + '">跟随系统</button>' +
@@ -387,28 +410,21 @@ Views.settings = (() => {
       (Reminders.available() ? '<div class="card"><div class="section-title">手机提醒</div>' +
         '<div class="set-row"><div><div class="sr-lab">待办与备忘通知</div><div class="sr-desc j-notify-status"></div></div><button class="btn btn-ghost j-notify-access">通知设置</button></div>' +
         '<div class="set-row"><div><div class="sr-lab">提醒时间</div><div class="sr-desc j-precise-status"></div></div><button class="btn btn-ghost j-precise">准时提醒</button></div></div>' : '') +
-      '  <div class="card"><div class="section-title">数据</div>' +
+      '  <section class="card settings-more"><details class="settings-data"><summary>数据</summary><div class="settings-fold-body">' +
       (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
-      '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc">' + (Store.lastBackupText() || 'App 内自动把全部数据写到「下载/那年夏天备份/」，卸载 App 也不会丢') + '</div></div></div>' +
-      '    <div class="set-row"><div><div class="sr-lab">导出 CSV 账单</div><div class="sr-desc">含账本/两级分类/账户，Excel 直接打开</div></div><button class="btn btn-ghost j-csv" style="min-width:76px">导出</button></div>' +
-      '    <div class="set-row"><div><div class="sr-lab">导出完整备份</div><div class="sr-desc">JSON，含账单与生活记录，不含 API Key</div></div><button class="btn btn-ghost j-export" style="min-width:76px">导出</button></div>' +
-      '    <div class="set-row"><div><div class="sr-lab">导入备份</div><div class="sr-desc">从备份 JSON 恢复（自动备份文件在「下载/那年夏天备份/」）</div></div><button class="btn btn-ghost j-import" style="min-width:76px">导入</button></div>' +
+      '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc j-local-status" role="status"></div></div></div>' +
+      '    <div class="set-row"><div><div class="sr-lab">导出 CSV 账单</div><div class="sr-desc">可用 Excel 查看账本、分类和账户</div></div><button class="btn btn-ghost j-csv" aria-label="导出 CSV 账单">导出</button></div>' +
+      '    <div class="set-row"><div><div class="sr-lab">导出完整备份</div><div class="sr-desc">JSON，含账单与生活记录，不含 API Key</div></div><button class="btn btn-ghost j-export" aria-label="导出完整备份">导出</button></div>' +
+      '    <div class="set-row"><div><div class="sr-lab">导入备份</div><div class="sr-desc">选择 JSON 文件后可预览记录数量</div></div><button class="btn btn-ghost j-import">导入</button></div>' +
       '    <input type="file" class="j-file" accept=".json,application/json" style="display:none">' +
-      '    <div class="set-row"><div><div class="sr-lab">清空数据</div><div class="sr-desc">删除全部记录，不可恢复</div></div><button class="btn btn-danger j-clear" style="min-width:76px">清空</button></div>' +
-      '  </div>' +
+      '    <div class="set-row clear-device"><div><div class="sr-lab">清空本机数据</div><div class="sr-desc">删除本机记录，重置设置</div></div><button class="btn btn-danger j-clear">清空</button></div>' +
+      '  </div></details>' +
 
-      '  <div class="card"><div class="section-title">应用更新</div>' +
-      '    <div class="set-row"><div><div class="sr-lab">当前版本</div><div class="sr-desc">v' + (window.__APP_VERSION || '1.15') + '</div></div>' +
-      '    <button class="btn btn-primary j-check-update" style="min-width:110px">检查更新</button></div>' +
-      '    <div class="j-update-status" style="font-size:12.5px;color:var(--text-3);padding:4px 0 8px">更新源：GitHub · Dear2You/remember</div>' +
-      '    <button class="btn btn-grad btn-block j-download" style="display:none">⬇️ 下载并安装最新版</button>' +
-      '    <a class="btn btn-ghost btn-block j-update-browser" style="display:none;text-align:center;margin-top:8px;text-decoration:none">在浏览器打开发布页</a>' +
-      '  </div>' +
-      '  <details class="card settings-ai"><summary>AI 助手设置</summary>' +
+      '  <details class="settings-ai"><summary>AI 助手设置</summary><div class="settings-fold-body">' +
       '    <div class="field"><label>接口地址（OpenAI 兼容）</label><input class="j-base" value="' + U.escapeHtml(s.aiBase) + '" placeholder="https://open.bigmodel.cn/api/paas/v4"></div>' +
       '    <div class="field"><label>API Key</label><div class="field-row">' +
       '      <input class="j-key" type="password" style="flex:1" value="' + U.escapeHtml(s.aiKey) + '" placeholder="粘贴你的 API Key">' +
-      '      <button class="chip j-eye">👁</button></div></div>' +
+      '      <button class="chip j-eye" aria-label="显示 API Key" aria-pressed="false">显示</button></div></div>' +
       '    <div class="field"><label>模型</label><input class="j-model" value="' + U.escapeHtml(s.aiModel) + '" placeholder="glm-5.3">' +
       '      <div class="model-chips">' +
       '        <button class="chip ' + (s.aiModel === 'glm-5.3' ? 'on' : '') + '" data-m="glm-5.3">GLM-5.3（推荐）</button>' +
@@ -421,8 +437,15 @@ Views.settings = (() => {
       '      <button class="btn btn-grad j-save-ai" style="flex:1">保存</button>' +
       '    </div>' +
       '    <div class="j-test-result" style="font-size:12.5px;margin-top:8px;color:var(--text-3)"></div>' +
-      '  </details>' +
+      '  </div></details></section>' +
 
+      '  <div class="card"><div class="section-title">应用更新</div>' +
+      '    <div class="set-row"><div><div class="sr-lab">当前版本</div><div class="sr-desc">v' + (window.__APP_VERSION || '1.15') + '</div></div>' +
+      '    <button class="btn btn-primary j-check-update" style="min-width:110px">检查更新</button></div>' +
+      '    <div class="j-update-status" role="status"></div>' +
+      '    <button class="btn btn-grad btn-block j-download" style="display:none">下载并安装新版</button>' +
+      '    <a class="btn btn-ghost btn-block j-update-browser" style="display:none;text-align:center;margin-top:8px;text-decoration:none">在浏览器打开发布页</a>' +
+      '  </div>' +
       '  <div class="card"><div class="section-title">关于</div>' +
       '    <div style="font-size:13px;color:var(--text-2);line-height:1.9">' +
       '      <div><b>那年夏天</b> · 个人生活管理 · v' + (window.__APP_VERSION || '1.15') + '</div>' +
@@ -433,6 +456,10 @@ Views.settings = (() => {
       '</div>';
 
     const aiSettings = root.querySelector('.settings-ai');
+    const dataSettings = root.querySelector('.settings-data');
+    dataSettings.open = dataWasOpen;
+    dataSettings.ontoggle = () => { if (dataSettings.open) { updateLocalBackup(); if (Cloud.available()) Cloud.updateStatus(); } };
+    updateLocalBackup();
     aiSettings.open = showAI || wasOpen;
     if (showAI) { showAI = false; aiSettings.scrollIntoView({block:'start'}); }
     if (Reminders.available()) {
@@ -447,12 +474,18 @@ Views.settings = (() => {
 
     root.querySelectorAll('.j-mod').forEach(b => b.onclick = () => App.go(b.dataset.r));
     root.querySelector('.j-books').onclick = openBooksSheet;
-    root.querySelector('.j-budget').onclick = () => openBudgetSheet(s.currentBookId || (Store.books()[0] || {}).id);
+    root.querySelector('.j-budget').onclick = () => openBudgetSheet(s.currentBookId);
     root.querySelector('.j-accounts').onclick = openAccountsSheet;
     root.querySelector('.j-cats').onclick = openCategoriesSheet;
 
     const base = root.querySelector('.j-base'), key = root.querySelector('.j-key'), model = root.querySelector('.j-model');
-    root.querySelector('.j-eye').onclick = () => { key.type = key.type === 'password' ? 'text' : 'password'; };
+    root.querySelector('.j-eye').onclick = e => {
+      const reveal = key.type === 'password';
+      key.type = reveal ? 'text' : 'password';
+      e.currentTarget.textContent = reveal ? '隐藏' : '显示';
+      e.currentTarget.setAttribute('aria-label', (reveal ? '隐藏' : '显示') + ' API Key');
+      e.currentTarget.setAttribute('aria-pressed',String(reveal));
+    };
     root.querySelectorAll('.model-chips .chip').forEach(c => c.onclick = () => {
       model.value = c.dataset.m;
       root.querySelectorAll('.model-chips .chip').forEach(x => x.classList.toggle('on', x === c));
@@ -478,8 +511,11 @@ Views.settings = (() => {
           throw new Error('HTTP ' + res.status + (t ? ' ' + t.slice(0, 120) : ''));
         }
         await res.json();
-        save(cfg);
-        result.textContent = '✅ 连接成功，耗时 ' + (Date.now() - t0) + 'ms，配置已保存';
+        if (!btn.isConnected) return;
+        const current = getAI();
+        const matches = current.aiBase === cfg.aiBase && current.aiModel === cfg.aiModel && current.aiKey === cfg.aiKey;
+        if (matches) save(cfg);
+        result.textContent = matches ? '连接成功，耗时 ' + (Date.now() - t0) + 'ms，配置已保存' : '原配置连接成功。当前输入已更改，点保存可应用。';
         result.style.color = 'var(--accent)';
       } catch (e) {
         result.textContent = '❌ ' + (e.message || '网络错误');
@@ -489,7 +525,12 @@ Views.settings = (() => {
       }
     };
 
-    root.querySelector('.j-hide').onclick = () => { save({ hideAmount: !Store.settings.hideAmount }); App.refresh(true); };
+    root.querySelector('.j-hide').onclick = e => {
+      save({hideAmount:!s.hideAmount});
+      e.currentTarget.textContent = s.hideAmount ? '已隐藏' : '显示中';
+      e.currentTarget.setAttribute('aria-checked',String(s.hideAmount));
+      root.querySelector('.j-accounts .sr-desc').textContent = accountDescription();
+    };
     root.querySelectorAll('.seg button[data-t]').forEach(b => b.onclick = () => {
       save({ theme: b.dataset.t });
       App.applyTheme();
@@ -497,15 +538,16 @@ Views.settings = (() => {
     });
 
     root.querySelector('.j-csv').onclick = () => {
+      const csv = Store.exportCSV();
       UI.sheet({
         title: 'CSV 账单导出',
         content(body) {
           body.innerHTML =
             '<div style="font-size:13px;color:var(--text-2);margin-bottom:10px">共 ' + Store.data.transactions.length + ' 条交易（含账本/两级分类/账户列）。</div>' +
             '<button class="btn btn-primary btn-block j-dl" style="margin-bottom:12px">下载 CSV 文件</button>' +
-            '<textarea class="j-csvtext" rows="9" readonly style="font-size:11px;font-family:monospace">' + U.escapeHtml(Store.exportCSV()) + '</textarea>';
+            '<textarea class="j-csvtext" rows="9" readonly style="font-size:11px;font-family:monospace">' + U.escapeHtml(csv) + '</textarea>';
           body.querySelector('.j-csvtext').onclick = e => e.target.select();
-          body.querySelector('.j-dl').onclick = () => download('那年夏天账单_' + U.todayStr() + '.csv', Store.exportCSV(), 'text/csv;charset=utf-8');
+          body.querySelector('.j-dl').onclick = () => download('那年夏天账单_' + U.todayStr() + '.csv', csv, 'text/csv;charset=utf-8');
         }
       });
     };
@@ -525,12 +567,14 @@ Views.settings = (() => {
         }
       });
     };
-    const file = root.querySelector('.j-file');
-    root.querySelector('.j-import').onclick = () => file.click();
+    const file = root.querySelector('.j-file'), importButton = root.querySelector('.j-import');
+    importButton.onclick = () => file.click();
     file.onchange = async () => {
       const f = file.files && file.files[0];
-      if (!f) return;
-      if (!(await UI.confirm({ title: '导入备份', msg: '备份将覆盖现有全部数据（账本/账单/账户/预算/工时/备忘/打卡），确定继续？', danger: true, okText: '覆盖导入' }))) { file.value = ''; return; }
+      if (!f || importButton.disabled) return;
+      file.value = '';
+      importButton.disabled = true;
+      importButton.textContent = '读取中…';
       try {
         const text = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -538,20 +582,26 @@ Views.settings = (() => {
           reader.onerror = () => reject(reader.error);
           reader.readAsText(f);
         });
+        if (!file.isConnected) return;
+        const preview = Store.inspectBackup(text);
+        if (!preview.ok) { UI.toast(preview.msg,'err'); return; }
+        const confirmed = await UI.confirm({title:'恢复这份备份？',msg:f.name + '\n' + preview.summary +
+          '\n\n恢复将替换本机全部记录和设置。',danger:true,okText:'覆盖恢复'});
+        if (!confirmed || !file.isConnected) return;
         const r = Store.importData(text);
         UI.toast(r.msg, r.ok ? '' : 'err');
       } catch (e) { UI.toast('无法读取文件，请重新选择备份', 'err'); }
-      file.value = '';
+      finally { importButton.disabled = false; importButton.textContent = '导入'; }
     };
     root.querySelector('.j-clear').onclick = async () => {
-      if (!(await UI.confirm({ title: '清空数据', msg: '将删除全部记账/工时/备忘/打卡记录！', danger: true, okText: '继续' }))) return;
+      if (!(await UI.confirm({ title: '清空本机数据？', msg: '将删除本机全部记录并重置设置。已有备份文件仍可用于恢复。', danger: true, okText: '继续' }))) return;
       if (!(await UI.confirm({ title: '再次确认', msg: '真的要清空全部数据吗？此操作不可恢复。', danger: true, okText: '清空' }))) return;
-      Store.clearAll();
-      UI.toast('已清空');
+      if (Store.clearAll()) UI.toast('本机数据已清空');
+      else UI.toast('本机数据未清空，请检查存储空间和备份状态','err');
     };
 
     Updates.bind(root);
   }
 
-  return { mount, openAI, openBooksSheet, openAccountsSheet, openCategoriesSheet, openBudgetSheet };
+  return { mount, openAI, updateLocalBackup, openBooksSheet, openAccountsSheet, openCategoriesSheet, openBudgetSheet };
 })();

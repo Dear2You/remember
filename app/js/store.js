@@ -206,21 +206,27 @@ const Store = {
     if (typeof window === 'undefined' || !window.AndroidBridge || !window.AndroidBridge.writeBackup) return;
     if (this._backupTimer) clearTimeout(this._backupTimer);
     this._backupTimer = setTimeout(() => {
+      this._backupTimer = null;
       try {
         window.AndroidBridge.writeBackup(this.exportData());
-      } catch (e) { /* 静默，不影响使用 */ }
+      } catch (e) { this.noteBackupResult('error','请稍后重试，或手动导出备份'); }
     }, 8000);   // 停止操作 8 秒后写盘，避免频繁 IO
   },
   _lastBackupStatus: null,
   noteBackupResult(status, msg) {
     this._lastBackupStatus = { status, msg, ts: Date.now() };
+    try { localStorage.setItem(this.KEY + '.localBackup', JSON.stringify(this._lastBackupStatus)); } catch (e) { /* Keep the in-memory result. */ }
+    this.emit('localBackup');
   },
   lastBackupText() {
+    if (!this._lastBackupStatus) {
+      try { this._lastBackupStatus = JSON.parse(localStorage.getItem(this.KEY + '.localBackup')); } catch (e) { /* No saved result. */ }
+    }
     const s = this._lastBackupStatus;
-    if (!s) return null;
-    if (s.status === 'ok') return '✅ ' + U.fmtRel(s.ts) + '已自动备份（下载/那年夏天备份/）';
-    if (s.status === 'skip') return '⚠️ ' + s.msg;
-    return '❌ 自动备份失败：' + s.msg;
+    if (!s || !Number.isFinite(s.ts)) return null;
+    if (s.status === 'ok') return '上次保存于 ' + new Date(s.ts).toLocaleString('zh-CN',{hour12:false}) + ' · 下载/那年夏天备份/';
+    if (s.status === 'skip') return s.msg;
+    return '自动备份失败：' + s.msg;
   },
   on(evt, fn) { (this._listeners[evt] = this._listeners[evt] || []).push(fn); },
   emit(evt) { (this._listeners[evt] || []).forEach(f => { try { f(); } catch (e) { console.error(e); } }); },
@@ -1000,9 +1006,10 @@ const Store = {
     });
     return '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
   },
-  importData(str) {
+  inspectBackup(str) {
     let obj;
-    try { obj = JSON.parse(str); } catch (e) { return { ok: false, msg: '文件不是有效的 JSON' }; }
+    try { obj = JSON.parse(str.replace(/^\uFEFF/,'')); } catch (e) { return { ok: false, msg: '文件不是有效的 JSON' }; }
+    if (obj && obj.app && obj.app !== 'nianxiatian') return {ok:false,msg:'请选择那年夏天导出的备份文件'};
     const d = obj && obj.data ? obj.data : obj;
     if (!d || typeof d !== 'object' || !Array.isArray(d.transactions) || !Array.isArray(d.accounts) || !Array.isArray(d.books)) {
       return { ok: false, msg: '文件格式不匹配，请选择那年夏天导出的备份' };
@@ -1033,6 +1040,16 @@ const Store = {
       (d.tasks || []).every(t => !t.doneDates || Array.isArray(t.doneDates)) &&
       (d.habits || []).every(h => !h.freq || h.freq.type !== 'weekly' || Array.isArray(h.freq.days));
     if (!validRecords) return { ok: false, msg: '备份内有日期或记录格式错误，已中止导入' };
+    const counts = [d.transactions.length + ' 笔账单', (d.worktimes || []).length + ' 条工时',
+      (d.tasks || []).length + ' 条待办', (d.memos || []).length + ' 条备忘'];
+    const ts = obj.exportedAt && new Date(obj.exportedAt);
+    const when = ts && Number.isFinite(ts.getTime()) ? ts.toLocaleString('zh-CN',{hour12:false}) : '未记录';
+    return {ok:true, data:d, app:obj.app, summary:'备份时间：' + when + '\n' + counts.join(' · ')};
+  },
+  importData(str) {
+    const preview = this.inspectBackup(str);
+    if (!preview.ok) return preview;
+    const d = preview.data;
     let next;
     try {
       next = this.normalizeData(d);
@@ -1047,7 +1064,19 @@ const Store = {
     this.emit('change');
     return { ok: true, msg: '导入成功' };
   },
-  clearAll() { if (window.Cloud) Cloud.pause(); this.data = this.defaults(); this.save(); this.emit('replace'); this.emit('change'); }
+  clearAll() {
+    const next = this.defaults();
+    try {
+      if (window.Cloud) window.Cloud.pause();
+      localStorage.setItem(this.KEY, JSON.stringify(next));
+    }
+    catch (e) { return false; }
+    if (this._backupTimer !== null) { clearTimeout(this._backupTimer); this._backupTimer = null; }
+    this.data = next;
+    this.emit('replace');
+    this.emit('change');
+    return true;
+  }
 };
 
 window.Store = Store;

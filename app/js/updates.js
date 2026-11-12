@@ -86,55 +86,65 @@ const Updates = (() => {
     }
   }
 
-  function bind(root) {
+  // Transfers survive page refreshes. Only the currently mounted settings page paints progress.
+  const state = {busy:false, latest:null, message:'', error:false, showBrowser:false};
+  function paint() {
+    const root = document.querySelector('.settings-page');
+    if (!root) return;
     const status = root.querySelector('.j-update-status');
-    const checkButton = root.querySelector('.j-check-update');
-    const download = root.querySelector('.j-download');
-    const browser = root.querySelector('.j-update-browser');
-    browser.href = releases;
-    let latest = null;
-    const show = (message, error = false) => {
-      status.textContent = message;
-      status.style.color = error ? 'var(--danger)' : 'var(--text-2)';
-    };
+    const download = root.querySelector('.j-download'), browser = root.querySelector('.j-update-browser');
+    root.querySelector('.j-check-update').disabled = state.busy;
+    status.textContent = state.message;
+    status.style.color = state.error ? 'var(--danger)' : 'var(--text-2)';
+    download.disabled = state.busy;
+    download.style.display = state.latest && window.AndroidBridge && AndroidBridge.installVerifiedUpdate ? 'block' : 'none';
+    browser.href = state.latest ? (state.latest.apkUrl.startsWith(repo + '/releases/download/')
+      ? repo + '/releases/tag/v' + encodeURIComponent(state.latest.versionName) : state.latest.apkUrl) : releases;
+    browser.style.display = state.showBrowser ? 'block' : 'none';
+  }
+  function show(message, error = false) {
+    state.message = message;
+    state.error = error;
+    paint();
+  }
+  function bind(root) {
     window.__apkProgress = message => {
       if (message === 'install') show('安装包已校验，请按系统提示覆盖安装。');
-      else if (message.startsWith('error:')) show(message.slice(6), true);
+      else if (message.startsWith('error:')) show(message.slice(6),true);
     };
-    checkButton.onclick = async () => {
-      latest = null;
-      browser.href = releases;
-      checkButton.disabled = true;
-      download.style.display = 'none';
-      browser.style.display = 'none';
+    root.querySelector('.j-check-update').onclick = async () => {
+      if (state.busy) return;
+      state.busy = true;
+      state.latest = null;
+      state.showBrowser = false;
       show('正在检查更新…');
       try {
         const m = await check(window.__APP_CODE, () => show('主线路未响应，正在用备用线路检查…'));
         if (m.versionCode > window.__APP_CODE) {
-          latest = m;
-          browser.href = m.apkUrl.startsWith(repo + '/releases/download/')
-            ? repo + '/releases/tag/v' + encodeURIComponent(m.versionName) : m.apkUrl;
+          state.latest = m;
+          state.showBrowser = true;
           show('发现 v' + m.versionName + (m.note ? ' · ' + m.note : ''));
-          if (window.AndroidBridge && AndroidBridge.installVerifiedUpdate) download.style.display = 'block';
-          browser.style.display = 'block';
         } else show('当前已是最新版 v' + window.__APP_VERSION);
       } catch (e) {
-        show(e.message, true);
-        browser.style.display = 'block';
-      } finally { checkButton.disabled = false; }
+        state.showBrowser = true; show(e.message,true);
+      } finally { state.busy=false; paint(); }
     };
-    download.onclick = async () => {
-      if (!latest || download.disabled) return;
-      download.disabled = checkButton.disabled = true;
+    root.querySelector('.j-download').onclick = async () => {
+      if (!state.latest || state.busy) return;
+      state.busy = true;
       show('正在下载安装包…');
       try {
-        await fetchAndInstall(latest, () => show('主线路下载失败，正在用备用线路下载…'), (bytes, code, hash) => {
-          if (!download.isConnected) return '';
-          return AndroidBridge.installVerifiedUpdate(bytes, code, hash);
+        await fetchAndInstall(state.latest, () => show('主线路下载失败，正在用备用线路下载…'), (bytes,code,hash) => {
+          if (!document.querySelector('.settings-page')) {
+            show('已离开更新页，可重新下载并安装。');
+            return '';
+          }
+          return AndroidBridge.installVerifiedUpdate(bytes,code,hash);
         });
-      } catch (e) { show(e.message, true); }
-      finally { download.disabled = checkButton.disabled = false; }
+      } catch (e) { show(e.message,true); }
+      finally { state.busy=false; paint(); }
     };
+    paint();
   }
   return { bind, check, fetchAndInstall };
 })();

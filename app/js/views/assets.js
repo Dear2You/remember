@@ -138,7 +138,7 @@ Views.assets = (() => {
     if (toggleDebt) toggleDebt.onclick = () => { showDebts = !showDebts; App.refresh(true); };
     root.querySelector('.j-transfer').onclick = () => Views.expense.openEntrySheet(null, 'transfer');
     root.querySelector('.j-subscribe').onclick = () => App.go('subs');
-    root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId || (Store.books()[0] || {}).id));
+    root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId));
   }
 
   return { mount };

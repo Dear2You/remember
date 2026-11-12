@@ -6,13 +6,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function fixture() {
+function fixture(overrides = {}) {
   const values = new Map();
   const storage = {
     getItem: key => values.get(key) || null,
     setItem: (key, value) => values.set(key, value)
   };
-  const context = vm.createContext({ window: {}, console, localStorage: storage });
+  const context = vm.createContext({ window: {}, console, localStorage: storage, ...overrides });
   for (const file of ['utils', 'store']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/js', file + '.js'), 'utf8'), context);
   }
@@ -82,6 +82,41 @@ test('备份往返、交易全量校验与写入失败回滚', () => {
   storage.setItem = () => { throw new Error('quota'); };
   assert(!store.importData(snapshot).ok);
   assert.equal(store.data, old);
+});
+
+test('预览备份只读，能识别文件来源、旧版裸数据与记录数量', () => {
+  const {store,storage} = fixture();
+  store.addMemo({title:'测试备忘'}); store.addWork({hours:2,rate:30});
+  const saved = storage.getItem(store.KEY), current = store.data;
+  const backup = JSON.parse(store.exportData());
+  const preview = store.inspectBackup('\uFEFF' + JSON.stringify(backup));
+  assert.equal(preview.ok,true);
+  assert.match(preview.summary,/1 条工时/); assert.match(preview.summary,/1 条备忘/);
+  assert.match(store.inspectBackup(JSON.stringify(backup.data)).summary,/备份时间：未记录/);
+  assert.equal(store.inspectBackup(JSON.stringify({...backup,app:'other'})).ok,false);
+  assert.equal(store.inspectBackup('{').ok,false);
+  assert.equal(store.data,current); assert.equal(storage.getItem(store.KEY),saved);
+});
+
+test('清空取消待执行的本地备份，保留已成功的副本', () => {
+  let task = null;
+  const writes = [];
+  const {store} = fixture({window:{AndroidBridge:{writeBackup:s=>writes.push(JSON.parse(s))}},
+    setTimeout:fn=>{task=fn;return 1;}, clearTimeout:()=>{task=null;}});
+  store.addMemo({title:'保留的备份'}); task(); task=null;
+  store.addMemo({title:'刚录入'});assert.ok(task);
+  assert.equal(store.clearAll(),true);
+  assert.equal(task,null);assert.equal(store.data.memos.length,0);
+  assert.equal(writes.length,1);assert.equal(writes[0].data.memos[0].title,'保留的备份');
+});
+
+test('本地备份结果独立于导出数据，可在重启后读取', () => {
+  const {store} = fixture();
+  store.noteBackupResult('error','磁盘写入失败');
+  assert.match(store.lastBackupText(),/磁盘写入失败/);
+  assert.doesNotMatch(store.exportData(),/磁盘写入失败/);
+  store.noteBackupResult('ok','');store._lastBackupStatus=null;
+  assert.match(store.lastBackupText(),/上次保存于/);
 });
 
 test('小数工时录入和编辑精度一致，拒绝无效金额和工时', () => {
