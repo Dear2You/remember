@@ -1,6 +1,6 @@
 {
   "versionCode": 21100,
   "versionName": "2.11",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21100",
-  "note": "新增坚果云自动备份，支持后台联网重试、按日期查看副本和换机恢复。"
+  "apkUrl": "https://cdn.jsdelivr.net/gh/Dear2You/remember@b8a00359db37489816320a07297905cc4181feb2/apk/nianxiatian.apk",
+  "note": "已切换下载线路。新增坚果云自动备份，支持后台联网重试、按日期查看副本和换机恢复。"
 }
