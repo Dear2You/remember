@@ -44,11 +44,9 @@ Views.assets = (() => {
       }
     }
 
+    const accountFlows = new Map(Store.accountBreakdown(bookId,stat.list).map(row=>[row.id,row]));
     const accRow = a => {
-      let out = 0, inc = 0;
-      Store.monthTransactions('', ym).forEach(t => {
-        if (t.type !== 'transfer' && t.accountId === a.id) { if (t.type === 'out') out += t.amountMinor; else inc += t.amountMinor; }
-      });
+      const {out,inc} = accountFlows.get(a.id) || {out:0,inc:0};
       const bal = Store.accountBalance(a.id);
       return '<div class="cell">' +
         '  <div class="c-ico">' + a.icon + '</div>' +
@@ -70,7 +68,7 @@ Views.assets = (() => {
     root.innerHTML =
       '<div class="page">' +
       '  <div class="page-head">' +
-      '    <div><div class="page-title">资产</div><div class="page-sub">财务中心 · ' + (book ? book.icon + ' ' + U.escapeHtml(book.name) : '全部账本') + '</div></div>' +
+      '    <div><div class="page-title">资产</div><div class="page-sub">' + (book ? book.icon + ' ' + U.escapeHtml(book.name) : '全部账本') + '</div></div>' +
       '    <button class="head-btn j-eye">' + (hide
         ? '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><path d="M3 3l18 18"/></svg>'
         : '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>') + '</button>' +
@@ -85,7 +83,7 @@ Views.assets = (() => {
 
       // 月概览（原首页内容并入）
       '  <div class="card">' +
-      '    <div class="section-title">' + U.ymLabel(ym) + '概况</div>' +
+      '    <div class="section-title">' + U.ymLabel(ym) + '概况 <button class="link j-analysis">收支分析 ›</button></div>' +
       '    <div class="stat-grid">' +
       '      <div><div class="lab">支出</div><div class="val money-out">' + amt(stat.out) + '</div></div>' +
       '      <div><div class="lab">收入</div><div class="val money-in">' + amt(stat.inc) + '</div></div>' +
@@ -101,7 +99,7 @@ Views.assets = (() => {
       '  <div class="card">' +
       '    <div class="section-title">净资产 <span class="link j-mgr">管理账户 ›</span></div>' +
       '    <div style="font-size:28px;font-weight:800;color:' + (totalA - totalL >= 0 ? 'var(--accent)' : 'var(--danger)') + ';margin-bottom:6px" class="num">' + amt(totalA - totalL) + '</div>' +
-      '    <div style="font-size:11.5px;color:var(--text-3)">总资产 ' + amt(totalA) + (showDebts ? ' − 负债 ' + amt(totalL) : ' − 隐藏资产') + '</div>' +
+      '    <div style="font-size:11.5px;color:var(--text-3)">总资产 ' + amt(totalA) + (showDebts ? ' − 负债 ' + amt(totalL) : '') + '</div>' +
       (showDebts && debts.length
         ? '<div style="margin-top:8px">' + debts.map(debtRow).join('') + '</div>'
         : '') +
@@ -110,7 +108,7 @@ Views.assets = (() => {
       // 隐藏资产（负债）开关
       (debts.length
         ? '<button class="hidden-assets-btn j-toggle-debt" style="margin-bottom:12px">' +
-          (showDebts ? '🔒 收起隐藏资产（负债）' : '🔒 隐藏资产') + '</button>'
+          (showDebts ? '收起负债账户' : '查看负债账户') + '</button>'
         : '') +
 
       '  <div class="field-row" style="margin-bottom:14px">' +
@@ -124,9 +122,10 @@ Views.assets = (() => {
         ? '<div class="cell-list" style="margin-bottom:14px">' + assets.map(accRow).join('') + '</div>'
         : '<div class="empty" style="padding:12px 0"><div class="tip">暂无资产账户</div></div>') +
 
-      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">💡 负债账户（信用卡等）已收纳进「🔒 隐藏资产」，点开才显示明细；刷卡＝欠款增加只计一次支出，转账到负债＝还款。</div>' +
+      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">信用卡消费计入支出，还款记为转账。</div>' +
       '</div>';
 
+    root.querySelector('.j-analysis').onclick = () => Views.bills.openMonth();
     root.querySelector('.j-eye').onclick = () => { Store.settings.hideAmount = !Store.settings.hideAmount; Store.save(); App.refresh(true); };
     root.querySelectorAll('.book-bar button[data-b]').forEach(b => b.onclick = () => {
       Store.settings.currentBookId = b.dataset.b;

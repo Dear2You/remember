@@ -561,3 +561,114 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 @media (max-width: 679px) {
   .lake-cover { background-position: 30% center; }
 }
+:root {
+  --report-in: #438675;
+  --report-out: #ac6549;
+  --report-out-line: #bd795d;
+}
+html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-out-line:#dfa58b; }
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] { --report-in:#9ccab8; --report-out:#edab90; --report-out-line:#dfa58b; }
+}
+.bill-report { max-width: 980px; }
+.bill-report .page-title { margin: 0; }
+.report-actions, .report-period, .report-tabs, .report-card header, .report-switch,
+.balance-panel header, .flow-label, .flow-key, .flow-key span, .trend-control, .report-filter {
+  display: flex; align-items: center;
+}
+.report-actions { min-width:0; gap:7px; }
+.report-actions select { width:auto; max-width:clamp(92px,32vw,230px); padding:8px; color:var(--text-2); font-size:13px; }
+.report-actions .head-btn { background:transparent; box-shadow:none; }
+.report-tabs { gap:24px; border-bottom:1px solid var(--hairline); }
+.report-tabs button { color:var(--text-2); font-size:14px; padding:9px 2px; border-bottom:2px solid transparent; }
+.report-tabs button[aria-pressed="true"] { color:var(--accent); font-weight:700; border-color:var(--accent); }
+.report-period { gap:9px; margin:12px 0; }
+.report-period strong { font-family:var(--title-font); font-size:19px; }
+.report-period .chip { font-size:12px; }
+.report-period .mn-btn { width:34px; height:34px; border:1px solid var(--hairline); border-radius:7px; color:var(--text-2); font-size:18px; }
+.report-period .j-prev { margin-left:auto; }
+.report-filter { justify-content:space-between; gap:10px; margin:8px 0; font-size:12px; color:var(--text-2); }
+.report-filter span { min-width:0; overflow-wrap:anywhere; }
+.report-filter button { flex:none; color:var(--accent); }
+.balance-panel { margin-bottom:14px; padding:16px 20px; border:1px solid var(--hairline); border-radius:10px; background:var(--tint-surface); }
+.balance-panel header { justify-content:space-between; color:var(--text-2); font-size:13px; }
+.record-count { font-size:12px; }
+.balance-value { display:block; font:36px/1.2 Georgia,serif; margin:3px 0 12px; }
+.balance-value, .balance-pair b { font-variant-numeric:lining-nums tabular-nums; overflow-wrap:anywhere; }
+.balance-pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; border-top:1px solid var(--hairline); padding-top:10px; }
+.balance-pair > div { min-width:0; }
+.balance-pair b { display:block; font:23px/1.25 Georgia,serif; }
+.balance-pair small, .flow-label, .flow-key, .category-heading small { color:var(--text-2); font-size:12px; }
+.flow-label, .flow-key span { gap:6px; }
+.flow-dot { width:9px; height:9px; display:inline-block; flex:none; }
+.flow-dot.inc { border-radius:50%; background:var(--report-in); }
+.flow-dot.out { border-radius:2px; background:var(--report-out-line); }
+.report-card { min-width:0; padding:15px 16px; }
+.report-card header { gap:8px; justify-content:space-between; margin-bottom:12px; }
+.report-card h2, .report-blank h2, .account-details summary { margin:0; font:700 19px/1.35 var(--title-font); }
+.report-switch { border:1px solid var(--hairline); border-radius:7px; overflow:hidden; }
+.report-switch button { padding:6px 10px; font-size:12px; color:var(--text-2); }
+.report-switch button[aria-pressed="true"] { background:var(--accent-weak); color:var(--accent); font-weight:700; }
+.flow-key { gap:14px; margin:3px 0 8px; }
+.flow-plot { width:100%; cursor:crosshair; }
+.flow-plot svg { width:100%; height:auto; display:block; overflow:visible; }
+.flow-plot text { fill:var(--text-2); font:11px sans-serif; }
+.plot-rule { stroke:var(--hairline); stroke-dasharray:3 4; }
+.plot-cursor { stroke:var(--text-3); stroke-dasharray:2 3; opacity:.7; }
+.plot-line { fill:none; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+.plot-line.inc { stroke:var(--report-in); }
+.plot-line.out { stroke:var(--report-out-line); stroke-dasharray:5 3; }
+.plot-point { stroke:var(--card); stroke-width:1.5; }
+.plot-point.inc, .plot-bar.inc { fill:var(--report-in); }
+.plot-point.out, .plot-bar.out { fill:var(--report-out-line); }
+.trend-inspect { margin-top:6px; border-top:1px solid var(--hairline); padding-top:7px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:2px 10px; }
+.trend-control { gap:1px; }
+.trend-control button { font-size:12px; min-height:34px; color:var(--accent); }
+.trend-control .j-earlier,.trend-control .j-later { font-size:16px; min-width:25px; }
+.trend-control button:disabled { opacity:.35; }
+.trend-values { font-variant-numeric:tabular-nums; font-size:12px; color:var(--text-2); overflow-wrap:anywhere; }
+.category-heading { display:flex; align-items:center; gap:21px; margin:8px 0 14px; }
+.category-heading .j-donut { width:108px; height:108px; flex:none; }
+.category-heading strong,.category-heading span { display:block; overflow-wrap:anywhere; }
+.category-heading strong { font-size:18px; margin:3px 0; }
+.category-heading span { color:var(--text-2); font-size:14px; }
+.category-row { display:grid; grid-template-columns:9px minmax(0,1fr) minmax(0,auto) 47px; align-items:center; gap:8px; padding:9px 0; border-top:1px solid var(--hairline); font-size:13px; }
+.category-dot { width:8px; height:8px; border-radius:2px; }
+.category-row strong, .category-row small { text-align:right; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.cat-name { overflow-wrap:anywhere; }
+.category-row small,.category-more { color:var(--text-2); font-size:12px; }
+.cat-detail > summary { list-style:none; cursor:pointer; }
+.cat-detail > summary::-webkit-details-marker { display:none; }
+.cat-detail .cat-name::after { content:' ›'; color:var(--text-3); }
+.cat-detail[open] .cat-name::after { content:' ﹀'; }
+.subcategories { background:var(--input-bg); padding:6px 10px; border-radius:6px; }
+.subcategories > div { display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--text-2); padding:4px; }
+.category-more, .account-details summary { cursor:pointer; padding:7px 0; }
+.account-table { margin-top:10px; }
+.account-row { display:grid; width:100%; grid-template-columns:1.2fr 1fr 1fr; gap:8px; padding:9px 0; text-align:right; border-bottom:1px solid var(--hairline); font-size:13px; font-variant-numeric:tabular-nums; }
+.account-row span { overflow-wrap:anywhere; }
+.account-row span:first-child { text-align:left; }
+.account-row.table-labels,.report-empty { font-size:12px; color:var(--text-2); }
+.report-blank { text-align:center; padding:24px 14px; }
+.report-blank h2 { font-size:17px; margin-bottom:12px; }
+.report-search { margin:12px 0; }
+.settings-ai > summary { cursor:pointer; font-size:14px; font-weight:600; color:var(--text-2); }
+.settings-ai[open] > summary { margin-bottom:12px; }
+@media (min-width: 760px) {
+  .report-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:16px; align-items:start; }
+  .balance-panel { display:grid; grid-template-columns:1fr 1.5fr; grid-template-rows:auto auto; gap:0 28px; padding:20px 24px; }
+  .balance-panel header { grid-column:1; }
+  .balance-value { grid-column:1; margin-bottom:0; }
+  .balance-pair { grid-column:2; grid-row:1/3; padding:0 0 0 24px; border-top:none; border-left:1px solid var(--hairline); align-items:center; }
+}
+
+
+.flow-key button { display:inline-flex; align-items:center; gap:6px; padding:4px 3px; font-size:12px; color:var(--text-2); }
+.flow-key button[aria-pressed="false"] { text-decoration:line-through; opacity:.65; }
+.flow-key small { margin-left:auto; font-size:11px; }
+.donut-wrap { position:relative; width:108px; height:108px; flex:none; }
+.donut-caption { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center; pointer-events:none; }
+.donut-caption b { font-size:16px; }
+.subcategories .j-category-ledger { min-height:34px; padding:4px; color:var(--accent); font-size:12px; }
+.bill-report .money-out, .bill-report .balance-pair > div:nth-child(2) b { color:var(--report-out); }
+.bill-report .balance-pair > div:first-child b { color:var(--accent); }

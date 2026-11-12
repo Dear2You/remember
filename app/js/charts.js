@@ -33,11 +33,11 @@ const Charts = {
       ctx.stroke();
     } else {
       let start = -Math.PI / 2;
-      const gap = items.length > 1 ? 0.03 : 0;
+      const gap = items.length > 1 ? 0.035 : 0;
       items.forEach(it => {
         const ang = it.value / total * Math.PI * 2;
         ctx.beginPath();
-        ctx.arc(cx, cy, R - LW / 2, start + gap / 2, start + ang - gap / 2);
+        ctx.arc(cx, cy, R - LW / 2, start + Math.min(gap, ang * .16) / 2, start + ang - Math.min(gap, ang * .16) / 2);
         ctx.strokeStyle = it.color;
         ctx.lineWidth = LW;
         ctx.lineCap = 'butt';

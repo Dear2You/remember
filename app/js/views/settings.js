@@ -350,7 +350,10 @@ Views.settings = (() => {
   }
 
   /* ---------- 页面 ---------- */
+  let showAI = false;
+  function openAI() { showAI = true; App.go('settings'); }
   function mount(root) {
+    const wasOpen = !!root.querySelector('.settings-ai[open]');
     const s = Store.settings;
     const book = Store.currentBook();
     root.innerHTML =
@@ -369,25 +372,6 @@ Views.settings = (() => {
       '    <div class="set-row j-budget" style="cursor:pointer"><div><div class="sr-lab">预算设置</div><div class="sr-desc">月总预算 + 一级分类预算' + (book ? '（' + U.escapeHtml(book.name) + '）' : '（选具体账本后设置）') + '</div></div><span style="color:var(--text-3)">›</span></div>' +
       '    <div class="set-row j-accounts" style="cursor:pointer"><div><div class="sr-lab">账户管理</div><div class="sr-desc">资产 ' + Store.accounts(true).filter(a => a.type !== 'liability').length + ' · 负债 ' + Store.accounts(true).filter(a => a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth()) + '</div></div><span style="color:var(--text-3)">›</span></div>' +
       '    <div class="set-row j-cats" style="cursor:pointer"><div><div class="sr-lab">分类管理</div><div class="sr-desc">一级/二级分类，可增改停用</div></div><span style="color:var(--text-3)">›</span></div>' +
-      '  </div>' +
-
-      '  <div class="card"><div class="section-title">AI 助手</div>' +
-      '    <div class="field"><label>接口地址（OpenAI 兼容）</label><input class="j-base" value="' + U.escapeHtml(s.aiBase) + '" placeholder="https://open.bigmodel.cn/api/paas/v4"></div>' +
-      '    <div class="field"><label>API Key</label><div class="field-row">' +
-      '      <input class="j-key" type="password" style="flex:1" value="' + U.escapeHtml(s.aiKey) + '" placeholder="粘贴你的 API Key">' +
-      '      <button class="chip j-eye">👁</button></div></div>' +
-      '    <div class="field"><label>模型</label><input class="j-model" value="' + U.escapeHtml(s.aiModel) + '" placeholder="glm-5.3">' +
-      '      <div class="model-chips">' +
-      '        <button class="chip ' + (s.aiModel === 'glm-5.3' ? 'on' : '') + '" data-m="glm-5.3">GLM-5.3（推荐）</button>' +
-      '        <button class="chip ' + (s.aiModel === 'glm-4.6' ? 'on' : '') + '" data-m="glm-4.6">glm-4.6</button>' +
-      '        <button class="chip ' + (s.aiModel === 'glm-4-flash' ? 'on' : '') + '" data-m="glm-4-flash">glm-4-flash（免费）</button>' +
-      '        <button class="chip ' + (s.aiModel === 'glm-4.5-air' ? 'on' : '') + '" data-m="glm-4.5-air">glm-4.5-air</button>' +
-      '      </div></div>' +
-      '    <div class="field-row">' +
-      '      <button class="btn btn-primary j-test" style="flex:2">测试连接</button>' +
-      '      <button class="btn btn-grad j-save-ai" style="flex:1">保存</button>' +
-      '    </div>' +
-      '    <div class="j-test-result" style="font-size:12.5px;margin-top:8px;color:var(--text-3)"></div>' +
       '  </div>' +
 
       '  <div class="card"><div class="section-title">显示</div>' +
@@ -417,6 +401,25 @@ Views.settings = (() => {
       '    <button class="btn btn-grad btn-block j-download" style="display:none">⬇️ 下载并安装最新版</button>' +
       '    <a class="btn btn-ghost btn-block j-update-browser" style="display:none;text-align:center;margin-top:8px;text-decoration:none">在浏览器打开发布页</a>' +
       '  </div>' +
+      '  <details class="card settings-ai"><summary>AI 助手设置</summary>' +
+      '    <div class="field"><label>接口地址（OpenAI 兼容）</label><input class="j-base" value="' + U.escapeHtml(s.aiBase) + '" placeholder="https://open.bigmodel.cn/api/paas/v4"></div>' +
+      '    <div class="field"><label>API Key</label><div class="field-row">' +
+      '      <input class="j-key" type="password" style="flex:1" value="' + U.escapeHtml(s.aiKey) + '" placeholder="粘贴你的 API Key">' +
+      '      <button class="chip j-eye">👁</button></div></div>' +
+      '    <div class="field"><label>模型</label><input class="j-model" value="' + U.escapeHtml(s.aiModel) + '" placeholder="glm-5.3">' +
+      '      <div class="model-chips">' +
+      '        <button class="chip ' + (s.aiModel === 'glm-5.3' ? 'on' : '') + '" data-m="glm-5.3">GLM-5.3（推荐）</button>' +
+      '        <button class="chip ' + (s.aiModel === 'glm-4.6' ? 'on' : '') + '" data-m="glm-4.6">glm-4.6</button>' +
+      '        <button class="chip ' + (s.aiModel === 'glm-4-flash' ? 'on' : '') + '" data-m="glm-4-flash">glm-4-flash（免费）</button>' +
+      '        <button class="chip ' + (s.aiModel === 'glm-4.5-air' ? 'on' : '') + '" data-m="glm-4.5-air">glm-4.5-air</button>' +
+      '      </div></div>' +
+      '    <div class="field-row">' +
+      '      <button class="btn btn-primary j-test" style="flex:2">测试连接</button>' +
+      '      <button class="btn btn-grad j-save-ai" style="flex:1">保存</button>' +
+      '    </div>' +
+      '    <div class="j-test-result" style="font-size:12.5px;margin-top:8px;color:var(--text-3)"></div>' +
+      '  </details>' +
+
       '  <div class="card"><div class="section-title">关于</div>' +
       '    <div style="font-size:13px;color:var(--text-2);line-height:1.9">' +
       '      <div><b>那年夏天</b> · 个人生活管理 · v' + (window.__APP_VERSION || '1.15') + '</div>' +
@@ -426,6 +429,9 @@ Views.settings = (() => {
       '  </div>' +
       '</div>';
 
+    const aiSettings = root.querySelector('.settings-ai');
+    aiSettings.open = showAI || wasOpen;
+    if (showAI) { showAI = false; aiSettings.scrollIntoView({block:'start'}); }
     const cloudButton = root.querySelector('.j-cloud');
     if (cloudButton) { Cloud.updateStatus(); cloudButton.onclick = Cloud.open; }
 
@@ -539,5 +545,5 @@ Views.settings = (() => {
     Updates.bind(root);
   }
 
-  return { mount, openBooksSheet, openAccountsSheet, openCategoriesSheet, openBudgetSheet };
+  return { mount, openAI, openBooksSheet, openAccountsSheet, openCategoriesSheet, openBudgetSheet };
 })();

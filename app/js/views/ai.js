@@ -308,7 +308,7 @@ Views.ai = (() => {
     const cfg = Store.settings;
     if (!cfg.aiKey) {
       UI.toast('请先在设置中填写 API Key', 'err');
-      setTimeout(() => App.go('settings'), 600);
+      setTimeout(() => Views.settings.openAI(), 600);
       return;
     }
     const box = document.getElementById('chatBox');
@@ -477,7 +477,7 @@ Views.ai = (() => {
     setSendBtn(sending);
 
     const settingsButton = root.querySelector('.j-goset');
-    if (settingsButton) settingsButton.onclick = () => App.go('settings');
+    if (settingsButton) settingsButton.onclick = () => Views.settings.openAI();
     root.querySelector('.j-sessions').onclick = openSessionsSheet;
     root.querySelector('.j-new').onclick = () => {
       Store.aiNewSession();

@@ -262,7 +262,7 @@ Views.expense = (() => {
     return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + U.escapeHtml((Store.book(t.bookId) || {}).name || '')) };
   }
   function tAmountHtml(t) {
-    const sign = t.type === 'out' ? '-' : '+';
+    const sign = t.type === 'out' ? '−' : t.type === 'in' ? '+' : '';
     const cls = t.type === 'out' ? 'money-out' : (t.type === 'in' ? 'money-in' : '');
     const color = t.type === 'transfer' ? 'style="color:var(--text-2)"' : '';
     return '<span class="num ' + cls + '" ' + color + '>' + sign + '¥' + UI.amount(t.amountMinor) + '</span>';

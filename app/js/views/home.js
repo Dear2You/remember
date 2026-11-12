@@ -43,11 +43,11 @@ Views.home = (() => {
           <section class="ledger-panel">
             <header><h2>${UI.icon('book')}本月账本</h2>
               <button class="visibility-toggle" aria-label="${hidden ? '显示金额' : '隐藏金额'}">${UI.icon(hidden ? 'off' : 'eye')}</button></header>
-            <button class="ledger-detail" data-dest="assets" aria-label="查看资产概况">
+            <button class="ledger-detail" data-dest="month" aria-label="查看本月收支分析">
               <span><span class="ledger-label">支出</span><strong>${amount(stats.out)}</strong></span>
               <span><span class="ledger-label">收入</span><strong>${amount(stats.inc)}</strong></span>
             </button>
-            <button class="ledger-footer" data-dest="assets"><span>${U.escapeHtml(book ? book.name : '全部账本')}</span>${UI.icon('arrow')}</button>
+            <button class="ledger-footer" data-dest="assets"><span>${U.escapeHtml(book ? book.name : '全部账本')} · 资产概况</span>${UI.icon('arrow')}</button>
           </section>
         </div>
         <section class="tool-section"><h2>生活工具</h2>
@@ -62,7 +62,8 @@ Views.home = (() => {
     root.querySelectorAll('[data-dest]').forEach(button => {
       const dest = button.dataset.dest;
       button.onclick = () => {
-        if (dest === 'tasks' || dest === 'overdue') Views.lifetasks.openList(dest === 'tasks' ? 'today' : 'overdue');
+        if (dest === 'month') Views.bills.openMonth();
+        else if (dest === 'tasks' || dest === 'overdue') Views.lifetasks.openList(dest === 'tasks' ? 'today' : 'overdue');
         else if (dest === 'today') Views.life.go(dest);
         else if (dest === 'life') Views.life.go('cal');
         else App.go(dest);

@@ -1,8 +1,8 @@
 {
-  "versionCode": 21200,
-  "versionName": "2.12",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.12/nianxiatian.apk",
-  "sha256": "9b86543205f8eef43f2e4c1b7a62760df7e369a7dc1e517e043d522fd0155122",
-  "apkBlob": "0eb656fa993dc49e71839d0e3de315ad3a12eefe",
-  "note": "修复更新器单一线路失败后无法继续的问题；检查与下载都支持自动切换备用线路，可使用浏览器覆盖安装。"
+  "versionCode": 21300,
+  "versionName": "2.13",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.13/nianxiatian.apk",
+  "sha256": "9ccd72df3beb03aacb76084791130e0400305e6c785ed743e4346c6260a8e941",
+  "apkBlob": "aa14e172ebf268d8e3606870a62091546f76ab43",
+  "note": "账单新增收支双线、并排柱图和可展开的分类占比，支持从图表查看流水；整理首页与设置入口并修正年度筛选统计。"
 }
