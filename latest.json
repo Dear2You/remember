@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "2.5",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=25",
-  "note": "日历方块化升级：格子方正饱满、事项叠条（一条一个彩色长条）、账单日历整格变色、今天方形绿块"
+  "versionCode": 26,
+  "versionName": "2.6",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=26",
+  "note": "日历改为色块卡片风（参考图样式）：有记录整格染色+白字，无记录灰字裸格，卡片间隙无边框"
 }

@@ -206,12 +206,13 @@ Views.bills = (() => {
           rows.map(week => '<tr>' + week.map(c => {
             const d = dayMap[c.date];
             const intensity = d ? (d.out + d.inc) / maxDayTotal : 0;
-            const bg = d && c.inMonth ? 'background:rgba(0,178,122,' + (0.14 + intensity * 0.55).toFixed(3) + ')' : '';
-            return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '" style="' + bg + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
+            const bg = d && c.inMonth ? 'rgba(0,178,122,' + (0.2 + intensity * 0.55).toFixed(3) + ')' : '';
+            const hasBill = d && c.inMonth;
+              return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + (hasBill ? ' fill' : '') + '" data-date="' + c.date + '" style="' + (hasBill ? '--fill-color:' + bg : '') + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
               '<span class="cal-num">' + c.day + '</span>' +
-              (d && c.inMonth
-                ? (d.out ? '<span class="cal-sub num" style="color:#e5484d">-' + Store.fmtMinor(d.out) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>') +
-                  (d.inc ? '<span class="cal-sub num" style="color:var(--accent);font-weight:700">+' + Store.fmtMinor(d.inc) + '</span>' : '')
+              (hasBill
+                ? (d.out ? '<span class="cal-sub num" style="color:#fff">-' + Store.fmtMinor(d.out) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>') +
+                  (d.inc ? '<span class="cal-sub num" style="color:#fff;font-weight:700">+' + Store.fmtMinor(d.inc) + '</span>' : '')
                 : '<span class="cal-sub" style="visibility:hidden">·</span><span class="cal-sub" style="visibility:hidden">·</span>') +
               '</div></td>';
           }).join('') + '</tr>').join('') +

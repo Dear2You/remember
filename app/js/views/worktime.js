@@ -175,13 +175,15 @@ Views.worktime = (() => {
       rows.map(week =>
         '<tr>' + week.map(c => {
           const h = dayH[c.date], pay = dayPay[c.date];
-          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '">' +
+          let fillColor = '';
+          if (h) {
+            const dayItems = Store.dayWorktimes(c.date).slice().sort((a2, b2) => b2.hours - a2.hours);
+            fillColor = dayItems.length ? U.colorFor(dayItems[0].project) : 'var(--accent)';
+          }
+          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + (h ? ' fill' : '') + '" data-date="' + c.date + '"' +
+            (fillColor ? ' style="--fill-color:' + fillColor + '"' : '') + '>' +
             '<span class="cal-num">' + c.day + '</span>' +
-            '<span class="cal-bars">' +
-              (h ? Store.dayWorktimes(c.date).slice(0, 3).map(w2 => '<i class="cal-bar" style="background:' + U.colorFor(w2.project) + '"></i>').join('') +
-                (Store.dayWorktimes(c.date).length > 3 ? '<span class="cal-more">+' + (Store.dayWorktimes(c.date).length - 3) + '</span>' : '') : '') +
-            '</span>' +
-            (h ? '<span class="cal-tail">' + U.fmtHours(h).replace('h', '') + 'h' + (pay ? ' ¥' + Store.fmtMinor(pay) : '') + '</span>' : '') +
+            (h ? '<span class="cal-tail">' + U.fmtHours(h).replace('h', '') + 'h' + (pay ? ' ·' + Store.fmtMinor(pay) + '' : '') + '</span>' : '') +
             '</div></td>';
         }).join('') + '</tr>'
       ).join('') +

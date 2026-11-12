@@ -139,13 +139,11 @@ Views.lifecal = (() => {
           const habDue = Store.activeHabits().filter(h => Store.habitDueOn(h, U.parseDate(c.date)));
           const habDone = habDue.filter(h => Store.habitDone(h.id, c.date));
           const habAllDone = habDue.length && habDue.length === habDone.length;
-          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '">' +
+          const fillColor = evs.length ? evs[0].color : (tasks.length ? '#ff9f43' : (habDone.length ? '#00b27a' : ''));
+          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + ' ' + (fillColor ? 'fill' : '') + '" data-date="' + c.date + '"' +
+            (fillColor ? ' style="--fill-color:' + fillColor + '"' : '') + '>' +
             '<span class="cal-num">' + c.day + '</span>' +
-            '<span class="cal-bars">' +
-              evs.slice(0, 3).map(e2 => '<i class="cal-bar" style="background:' + e2.color + '"></i>').join('') +
-              (tasks.length ? '<i class="cal-bar" style="background:#ff9f43"></i>' : '') +
-              (habDone.length ? '<i class="cal-bar" style="background:var(--accent)"></i>' : '') +
-            '</span>' +
+            (evs.length ? '<span class="cal-tail">' + U.escapeHtml(evs[0].title.slice(0, 5)) + '</span>' : '') +
             '</div></td>';
         }).join('') + '</tr>'
       ).join('') +
