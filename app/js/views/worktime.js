@@ -175,12 +175,13 @@ Views.worktime = (() => {
       rows.map(week =>
         '<tr>' + week.map(c => {
           const h = dayH[c.date], pay = dayPay[c.date];
-          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '" style="min-height:60px">' +
+          return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '">' +
             '<span class="cal-num">' + c.day + '</span>' +
-            (h
-              ? '<span class="cal-sub num" style="color:var(--accent);font-weight:700">' + U.fmtHours(h).replace('h', '') + 'h</span>' +
-                (pay ? '<span class="cal-sub num" style="color:#e8a33d">¥' + Store.fmtMinor(pay) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>')
-              : '<span class="cal-sub" style="visibility:hidden">·</span><span class="cal-sub" style="visibility:hidden">·</span>') +
+            '<span class="cal-bars">' +
+              (h ? Store.dayWorktimes(c.date).slice(0, 3).map(w2 => '<i class="cal-bar" style="background:' + U.colorFor(w2.project) + '"></i>').join('') +
+                (Store.dayWorktimes(c.date).length > 3 ? '<span class="cal-more">+' + (Store.dayWorktimes(c.date).length - 3) + '</span>' : '') : '') +
+            '</span>' +
+            (h ? '<span class="cal-tail">' + U.fmtHours(h).replace('h', '') + 'h' + (pay ? ' ¥' + Store.fmtMinor(pay) : '') + '</span>' : '') +
             '</div></td>';
         }).join('') + '</tr>'
       ).join('') +

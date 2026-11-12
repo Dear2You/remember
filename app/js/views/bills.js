@@ -206,7 +206,7 @@ Views.bills = (() => {
           rows.map(week => '<tr>' + week.map(c => {
             const d = dayMap[c.date];
             const intensity = d ? (d.out + d.inc) / maxDayTotal : 0;
-            const bg = d && c.inMonth ? 'background:rgba(0,178,122,' + (0.09 + intensity * 0.30).toFixed(3) + ')' : '';
+            const bg = d && c.inMonth ? 'background:rgba(0,178,122,' + (0.14 + intensity * 0.55).toFixed(3) + ')' : '';
             return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + '" data-date="' + c.date + '" style="' + bg + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
               '<span class="cal-num">' + c.day + '</span>' +
               (d && c.inMonth

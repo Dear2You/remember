@@ -1,6 +1,6 @@
 {
-  "versionCode": 24,
-  "versionName": "2.4",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=24",
-  "note": "修复返回键不关弹层导致的点按失灵；日历全面改方形格子UI；AI对话入口加大"
+  "versionCode": 25,
+  "versionName": "2.5",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=25",
+  "note": "日历方块化升级：格子方正饱满、事项叠条（一条一个彩色长条）、账单日历整格变色、今天方形绿块"
 }

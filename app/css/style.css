@@ -325,34 +325,39 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .legend-row .val { font-weight: 600; }
 .legend-row .pct { color: var(--text-3); width: 42px; text-align: right; font-size: 12px; }
 
-/* ---------- 日历（方形格子风格） ---------- */
+/* ---------- 日历（方块饱满 + 事项叠条） ---------- */
 .cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.cal th { font-size: 12px; color: var(--text-3); font-weight: 500; padding: 5px 0; }
-.cal td { padding: 2px; vertical-align: top; }
+.cal th { font-size: 11.5px; color: var(--text-3); font-weight: 500; padding: 4px 0; }
+.cal td { padding: 1px; vertical-align: stretch; }
 .cal-cell {
   border: 1px solid var(--hairline); border-radius: 5px;
-  min-height: 54px; padding: 5px 3px; background: var(--card);
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 13px;
+  height: 50px; padding: 2.5px 2px; background: var(--card);
+  display: flex; flex-direction: column; align-items: center; gap: 1.5px;
+  font-size: 12.5px; overflow: hidden;
 }
 .cal-cell:active { background: var(--input-bg); }
-.cal-cell.dim { opacity: .32; }
-.cal-cell.today { border: 1.5px solid var(--accent); }
+.cal-cell.dim { opacity: .3; }
+.cal-cell.today { border: 1.5px solid var(--accent); background: var(--accent-weak); }
 .cal-cell.today .cal-num {
-  background: var(--accent); color: #fff; border-radius: 50%;
-  width: 21px; height: 21px; line-height: 21px; text-align: center;
+  background: var(--accent); color: #fff; border-radius: 4px; /* 方形高亮 */
+  width: 20px; height: 18px; line-height: 18px; text-align: center;
 }
-.cal-num { font-weight: 600; }
-.cal-sub { font-size: 10.5px; color: var(--accent); font-weight: 700; }
+.cal-num { font-weight: 600; font-size: 12px; line-height: 18px; }
+/* 事项叠条：一条事项 = 一根小长条 */
+.cal-bars { display: flex; flex-direction: column; gap: 1.5px; width: 100%; padding: 0 2.5px; flex: 1; justify-content: flex-start; }
+.cal-bar { height: 4.5px; border-radius: 1.5px; width: 100%; }
+.cal-more { font-size: 8.5px; color: var(--text-3); line-height: 9px; }
+.cal-tail { font-size: 9.5px; font-weight: 700; color: var(--accent); line-height: 11px; }
+.cal-sub { font-size: 10px; color: var(--accent); font-weight: 700; }
 .cal-sub.rest { color: var(--text-3); font-weight: 500; }
 .cal-dots { display: flex; gap: 3px; height: 5px; }
 .cal-dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
 
-.mini-cal td { padding: 2px; }
-.mini-cal .cal-cell { min-height: 36px; }
-.mini-cal .cal-dot-big { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.mini-cal td { padding: 1.5px; }
+.mini-cal .cal-cell { height: 36px; }
+.mini-cal .cal-dot-big { width: 22px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 .mini-cal .cal-dot-big.done { background: var(--accent); color: #fff; }
-.mini-cal .cal-dot-big.miss { border: 1.5px dashed var(--text-3); color: var(--text-3); border-radius: 5px; }
+.mini-cal .cal-dot-big.miss { border: 1.5px dashed var(--text-3); color: var(--text-3); border-radius: 4px; }
 
 /* 横向条形 */
 .hbar-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
