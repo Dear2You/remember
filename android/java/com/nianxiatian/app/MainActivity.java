@@ -12,9 +12,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import java.security.MessageDigest;
+import java.util.Arrays;
 
 public class MainActivity extends Activity {
 
@@ -283,68 +284,45 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** 下载 APK 到应用缓存目录，完成后自动弹出系统安装器 */
         @JavascriptInterface
-        public void downloadApk(final String urlStr) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    webView.loadUrl("javascript:window.__apkProgress && window.__apkProgress('start')");
-                }
-            });
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    File out = null;
-                    try {
-                        URL url = new URL(urlStr);
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setConnectTimeout(15000);
-                        conn.setReadTimeout(30000);
-                        conn.setInstanceFollowRedirects(true);
-                        if (conn.getResponseCode() != 200) throw new Exception("HTTP " + conn.getResponseCode());
-                        out = new File(getCacheDir(), "nxt-update.apk");
-                        InputStream in = conn.getInputStream();
-                        FileOutputStream fos = new FileOutputStream(out);
-                        byte[] buf = new byte[16384];
-                        int n;
-                        while ((n = in.read(buf)) > 0) fos.write(buf, 0, n);
-                        fos.close();
-                        in.close();
-                        // 弹出安装
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    Uri uri = new Uri.Builder().scheme("content")
-                                            .authority(getPackageName() + ".apkprovider").build();
-                                    Intent it = new Intent(Intent.ACTION_VIEW);
-                                    it.setDataAndType(uri, "application/vnd.android.package-archive");
-                                    it.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                    it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    it.setClipData(android.content.ClipData.newRawUri("apk", uri));
-                                    startActivity(it);
-                                    webView.loadUrl("javascript:window.__apkProgress && window.__apkProgress('install')");
-                                } catch (Exception e) {
-                                    toast("打开安装器失败：" + e.getMessage());
-                                }
-                            }
-                        });
-                    } catch (final Exception e) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                toast(e.toString());
-                            }
-                        });
-                    }
-                }
-            }).start();
+        @SuppressWarnings("deprecation")
+        public synchronized String installVerifiedUpdate(String encoded, int version, String expectedHash) {
+            File temp = null;
+            try {
+                if (encoded == null || encoded.length() > 24 * 1024 * 1024) return "安装包过大，请从发布页下载。";
+                byte[] apk = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT);
+                byte[] digest = MessageDigest.getInstance("SHA-256").digest(apk);
+                StringBuilder hex = new StringBuilder(64);
+                for (byte value : digest) hex.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+                if (!hex.toString().equals(expectedHash)) return "安装包校验不一致，请重新检查更新。";
+                temp = File.createTempFile("update-", ".apk", getCacheDir());
+                try (FileOutputStream out = new FileOutputStream(temp)) { out.write(apk); }
+                PackageManager pm = getPackageManager();
+                PackageInfo update = pm.getPackageArchiveInfo(temp.getAbsolutePath(), PackageManager.GET_SIGNATURES);
+                PackageInfo installed = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
+                if (update == null || !getPackageName().equals(update.packageName) || update.versionCode != version ||
+                    version <= installed.versionCode || installed.signatures == null || installed.signatures.length == 0 ||
+                    !Arrays.equals(installed.signatures, update.signatures)) return "安装包版本或签名不匹配。";
+                android.system.Os.rename(temp.getAbsolutePath(), new File(getCacheDir(), ApkProvider.FILE_NAME).getAbsolutePath());
+                runOnUiThread(() -> openUpdateInstaller());
+                return "";
+            } catch (Exception e) { return "未能校验并保存安装包，请检查可用空间或从发布页下载。"; }
+            finally { if (temp != null && temp.exists()) temp.delete(); }
         }
     }
 
-    private void toast(final String msg) {
-        webView.evaluateJavascript("window.__apkProgress && window.__apkProgress(" + org.json.JSONObject.quote("error:" + msg) + ")", null);
+    private void openUpdateInstaller() {
+        Uri uri = new Uri.Builder().scheme("content").authority(getPackageName() + ".apkprovider").build();
+        Intent install = new Intent(Intent.ACTION_VIEW);
+        install.setDataAndType(uri, "application/vnd.android.package-archive");
+        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        install.setClipData(android.content.ClipData.newRawUri("apk", uri));
+        String message;
+        try {
+            startActivity(install);
+            message = "install";
+        } catch (Exception e) { message = "error:系统安装器未能打开，请从发布页下载后在文件管理器中安装。"; }
+        webView.evaluateJavascript("window.__apkProgress && window.__apkProgress(" + org.json.JSONObject.quote(message) + ")", null);
     }
 
     @Override

@@ -53,23 +53,7 @@ fs.writeFileSync(f, fs.readFileSync(f, 'utf8')
   .replace(/window\.__APP_VERSION = '[^']*'/, \"window.__APP_VERSION = '$VERSION_NAME'\")
   .replace(/window\.__APP_CODE = \d+/, 'window.__APP_CODE = $VERSION_CODE'));
 " "$WORK_W"
-# 生成 latest.json（应用内检查更新的清单）+ 固定路径 apk 副本
-# note 经临时文件传 UTF-8，避免 Windows 环境变量 GBK 乱码
 printf '%s' "${UPDATE_NOTE:-例行更新}" > "$WORK/note.txt"
-node -e "
-const fs = require('fs');
-const root = process.argv[1], work = process.argv[2];
-fs.mkdirSync(root + '\\\\apk', { recursive: true });
-let note = '例行更新';
-try { note = fs.readFileSync(work + '\\\\note.txt', 'utf8') || note; } catch (e) {}
-const cfg = {
-  versionCode: $VERSION_CODE, versionName: '$VERSION_NAME',
-  apkUrl: 'https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=$VERSION_CODE',
-  note: note
-};
-fs.writeFileSync(root + '\\\\latest.json', JSON.stringify(cfg, null, 2));
-console.log('   latest.json -> v' + cfg.versionName);
-" "$ROOT_W" "$WORK_W"
 ls "$WORK/assets/www" > /dev/null && echo "   前端资源 $(find "$WORK/assets/www" -type f | wc -l) 个文件"
 
 echo "== 3/7 编译 Java =="
@@ -127,5 +111,7 @@ fi
 "$JAVA" -cp "$APKSIGNER_CP" com.android.apksigner.ApkSignerTool verify --print-certs "$OUT_APK" | head -4
 
 echo ""
+mkdir -p "$ROOT/apk"
 cp -f "$OUT_APK" "$ROOT/apk/nianxiatian.apk"
+node "$ROOT/tools/update-manifest.js" "$VERSION_NAME" "$VERSION_CODE" "$WORK_W/note.txt"
 echo "✅ 构建完成: $OUT_APK ($(du -h "$OUT_APK" | cut -f1)) | 更新包: apk/nianxiatian.apk + latest.json（记得 git push 发布更新）"

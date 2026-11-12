@@ -415,6 +415,7 @@ Views.settings = (() => {
       '    <button class="btn btn-primary j-check-update" style="min-width:110px">检查更新</button></div>' +
       '    <div class="j-update-status" style="font-size:12.5px;color:var(--text-3);padding:4px 0 8px">更新源：GitHub · Dear2You/remember</div>' +
       '    <button class="btn btn-grad btn-block j-download" style="display:none">⬇️ 下载并安装最新版</button>' +
+      '    <a class="btn btn-ghost btn-block j-update-browser" style="display:none;text-align:center;margin-top:8px;text-decoration:none">在浏览器打开发布页</a>' +
       '  </div>' +
       '  <div class="card"><div class="section-title">关于</div>' +
       '    <div style="font-size:13px;color:var(--text-2);line-height:1.9">' +
@@ -535,49 +536,7 @@ Views.settings = (() => {
       UI.toast('已清空');
     };
 
-    /* 应用更新 */
-    const UPDATE_JSON = 'https://raw.githubusercontent.com/Dear2You/remember/main/latest.json';
-    let latestApkUrl = '';
-    const updateStatus = root.querySelector('.j-update-status');
-    const dlBtn = root.querySelector('.j-download');
-    window.__apkProgress = msg => {
-      if (msg === 'start') { updateStatus.textContent = '⬇️ 正在下载新版本…（下载完成会自动弹出安装，请允许"安装未知应用"）'; updateStatus.style.color = 'var(--accent)'; }
-      else if (msg === 'install') { updateStatus.textContent = '✅ 下载完成，已弹出安装界面'; updateStatus.style.color = 'var(--accent)'; }
-      else if (msg.startsWith && msg.startsWith('error')) { updateStatus.textContent = '❌ ' + msg.slice(6); updateStatus.style.color = 'var(--danger)'; }
-    };
-    root.querySelector('.j-check-update').onclick = async () => {
-      updateStatus.style.color = 'var(--text-3)';
-      updateStatus.textContent = '🔄 正在检查更新…';
-      try {
-        const res = await fetch(UPDATE_JSON + '?t=' + Date.now(), { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const j = await res.json();
-        const curCode = window.__APP_CODE || 0;
-        if (j.versionCode > curCode) {
-          latestApkUrl = j.apkUrl;
-          updateStatus.innerHTML = '🎉 发现新版本 <b>v' + U.escapeHtml(j.versionName) + '</b>' + (j.note ? '：' + U.escapeHtml(j.note) : '') + '（当前 v' + (window.__APP_VERSION || '?') + '）';
-          updateStatus.style.color = 'var(--accent)';
-          dlBtn.style.display = 'flex';
-        } else {
-          updateStatus.textContent = '✅ 已是最新版本 v' + (window.__APP_VERSION || j.versionName);
-          updateStatus.style.color = 'var(--accent)';
-          dlBtn.style.display = 'none';
-        }
-      } catch (e) {
-        updateStatus.textContent = '❌ 检查失败：' + (e.message || '网络错误') + '（需联网，仓库需为公开）';
-        updateStatus.style.color = 'var(--danger)';
-      }
-    };
-    dlBtn.onclick = () => {
-      if (!latestApkUrl) return;
-      if (window.AndroidBridge && window.AndroidBridge.downloadApk) {
-        window.AndroidBridge.downloadApk(latestApkUrl);
-      } else {
-        // 网页环境：直接打开下载链接
-        updateStatus.textContent = '🌐 已在新窗口打开下载链接（App 内会自动下载并弹出安装）';
-        window.open(latestApkUrl, '_blank');
-      }
-    };
+    Updates.bind(root);
   }
 
   return { mount, openBooksSheet, openAccountsSheet, openCategoriesSheet, openBudgetSheet };

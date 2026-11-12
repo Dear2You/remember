@@ -43,6 +43,7 @@ git add -A && git commit -m "v2.1" && git push       # 发布（App 内即可检
 ```
 
 - 构建产物：`那年夏天-v2.1.apk`（本地安装）+ `apk/nianxiatian.apk`（更新包）+ `latest.json`（版本清单）
+- 应用内检查更新会在 GitHub Raw 与 GitHub API 之间回退。下载时会校验成品 APK 的 SHA-256、包名、签名与版本。若使用 GitHub Release 分发，构建时设置 `USE_RELEASE_ASSET=1`，并在更新 main 分支清单前，将同一份签名 APK 以 `nianxiatian.apk` 上传到对应的 `v版本号` Release。
 - 工具链在 `build/toolchain/`（JDK17 + Android SDK 35，不入库）
 - ⚠️ `android/keystore.jks` 已被 .gitignore 排除——**绝不能上传，请异地备份**（丢失后无法覆盖升级）
 - 仓库需保持 Public（App 匿名读取更新包）

@@ -1,6 +1,8 @@
 {
-  "versionCode": 21100,
-  "versionName": "2.11",
-  "apkUrl": "https://cdn.jsdelivr.net/gh/Dear2You/remember@b8a00359db37489816320a07297905cc4181feb2/apk/nianxiatian.apk",
-  "note": "已切换下载线路。新增坚果云自动备份，支持后台联网重试、按日期查看副本和换机恢复。"
+  "versionCode": 21200,
+  "versionName": "2.12",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.12/nianxiatian.apk",
+  "sha256": "9b86543205f8eef43f2e4c1b7a62760df7e369a7dc1e517e043d522fd0155122",
+  "apkBlob": "0eb656fa993dc49e71839d0e3de315ad3a12eefe",
+  "note": "修复更新器单一线路失败后无法继续的问题；检查与下载都支持自动切换备用线路，可使用浏览器覆盖安装。"
 }
