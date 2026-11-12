@@ -31,6 +31,22 @@ const App = {
     });
     // 自动备份结果回传（来自 Android 原生桥）
     window.__backupDone = (status, msg) => Store.noteBackupResult(status, msg);
+    // Android 返回键：先关弹层/对话框，都关了才后退页面（由原生 onBackPressed 调用）
+    window.__tryCloseOverlays = () => {
+      const sheet = document.getElementById('sheetRoot');
+      if (sheet.classList.contains('show') && !sheet.dataset.closing) {
+        const btn = sheet.querySelector('.sheet-close');
+        if (btn) btn.click();
+        return true;
+      }
+      const dlg = document.getElementById('dialogRoot');
+      if (dlg.classList.contains('show')) {
+        const cancel = dlg.querySelector('.j-cancel');
+        if (cancel) cancel.click();
+        return true;
+      }
+      return false;
+    };
     this.render(location.hash);
   },
 

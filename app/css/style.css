@@ -325,20 +325,22 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .legend-row .val { font-weight: 600; }
 .legend-row .pct { color: var(--text-3); width: 42px; text-align: right; font-size: 12px; }
 
-/* ---------- 日历（工时/打卡） ---------- */
+/* ---------- 日历（方形格子风格） ---------- */
 .cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.cal th { font-size: 12px; color: var(--text-3); font-weight: 500; padding: 6px 0; }
-.cal td { padding: 3px 2px; vertical-align: top; }
+.cal th { font-size: 12px; color: var(--text-3); font-weight: 500; padding: 5px 0; }
+.cal td { padding: 2px; vertical-align: top; }
 .cal-cell {
-  border-radius: 10px; min-height: 52px; padding: 5px 3px;
+  border: 1px solid var(--hairline); border-radius: 5px;
+  min-height: 54px; padding: 5px 3px; background: var(--card);
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   font-size: 13px;
 }
 .cal-cell:active { background: var(--input-bg); }
 .cal-cell.dim { opacity: .32; }
+.cal-cell.today { border: 1.5px solid var(--accent); }
 .cal-cell.today .cal-num {
   background: var(--accent); color: #fff; border-radius: 50%;
-  width: 22px; height: 22px; line-height: 22px; text-align: center;
+  width: 21px; height: 21px; line-height: 21px; text-align: center;
 }
 .cal-num { font-weight: 600; }
 .cal-sub { font-size: 10.5px; color: var(--accent); font-weight: 700; }
@@ -346,11 +348,11 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .cal-dots { display: flex; gap: 3px; height: 5px; }
 .cal-dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
 
-.mini-cal td { padding: 2px 1px; }
-.mini-cal .cal-cell { min-height: 34px; border-radius: 8px; }
-.mini-cal .cal-dot-big { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.mini-cal td { padding: 2px; }
+.mini-cal .cal-cell { min-height: 36px; }
+.mini-cal .cal-dot-big { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 .mini-cal .cal-dot-big.done { background: var(--accent); color: #fff; }
-.mini-cal .cal-dot-big.miss { border: 1.5px dashed var(--text-3); color: var(--text-3); }
+.mini-cal .cal-dot-big.miss { border: 1.5px dashed var(--text-3); color: var(--text-3); border-radius: 5px; }
 
 /* 横向条形 */
 .hbar-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }

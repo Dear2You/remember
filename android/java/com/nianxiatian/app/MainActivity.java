@@ -234,8 +234,21 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        // 先尝试关闭网页里的弹层/对话框（JS 返回 true 表示已处理），都关了才后退/退出
+        webView.evaluateJavascript("(window.__tryCloseOverlays ? window.__tryCloseOverlays() : false)", new android.webkit.ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                final boolean closed = "true".equals(value == null ? "" : value.trim());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (closed) return;
+                        if (webView != null && webView.canGoBack()) webView.goBack();
+                        else finish();
+                    }
+                });
+            }
+        });
     }
 
     @Override

@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "2.3",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=23",
-  "note": "AI 对话入口加大加醒目：顶部带文字按钮 + 欢迎页大按钮（新建/历史对话）"
+  "versionCode": 24,
+  "versionName": "2.4",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=24",
+  "note": "修复返回键不关弹层导致的点按失灵；日历全面改方形格子UI；AI对话入口加大"
 }
