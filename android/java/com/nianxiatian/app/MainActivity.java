@@ -97,7 +97,9 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url != null && url.startsWith("file://")) return false;
+                if (url != null && (url.equals("file:///android_asset/www/index.html") ||
+                        url.startsWith("file:///android_asset/www/index.html#"))) return false;
+                if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) return true;
                 try {
                     android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW,
                             android.net.Uri.parse(url));
@@ -149,6 +151,49 @@ public class MainActivity extends Activity {
     }
 
     class NativeBridge {
+        @JavascriptInterface
+        public String cloudStatus() {
+            try { return CloudBackup.get(MainActivity.this).status().toString(); }
+            catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void queueCloudBackup(String data) {
+            CloudBackup cloud = CloudBackup.get(MainActivity.this);
+            try { cloud.enqueue(data); } catch (Exception e) { cloud.recordError(e); }
+        }
+
+        @JavascriptInterface
+        public void pauseCloudBackup() { CloudBackup.get(MainActivity.this).pause(); }
+
+        @JavascriptInterface
+        public void cloudRequest(int id, String action, String params) {
+            CloudBackup cloud = CloudBackup.get(MainActivity.this);
+            cloud.worker.execute(() -> {
+                org.json.JSONObject reply = new org.json.JSONObject();
+                try {
+                    org.json.JSONObject args = new org.json.JSONObject(params);
+                    switch (action) {
+                        case "connect":
+                            reply.put("files", cloud.connect(args.getString("email").trim(), args.getString("password")));
+                            break;
+                        case "list": reply.put("files", cloud.list()); break;
+                        case "get": reply.put("backup", cloud.download(args.getString("name"))); break;
+                        case "enable": cloud.enable(); break;
+                        case "upload": cloud.upload(); break;
+                        case "disconnect": cloud.disconnect(); break;
+                        default: throw new IllegalArgumentException("未知操作");
+                    }
+                } catch (Exception e) {
+                    try { reply.put("error", CloudBackup.errorText(e)); } catch (org.json.JSONException ignored) { }
+                }
+                runOnUiThread(() -> {
+                    if (!isDestroyed()) webView.evaluateJavascript("window.Cloud && Cloud.reply(" + id + ","
+                        + org.json.JSONObject.quote(reply.toString()) + ")", null);
+                });
+            });
+        }
+
         @JavascriptInterface
         public void saveDocument(String name, String content, boolean csv) {
             runOnUiThread(() -> {

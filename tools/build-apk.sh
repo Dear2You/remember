@@ -73,12 +73,12 @@ console.log('   latest.json -> v' + cfg.versionName);
 ls "$WORK/assets/www" > /dev/null && echo "   前端资源 $(find "$WORK/assets/www" -type f | wc -l) 个文件"
 
 echo "== 3/7 编译 Java =="
-"$JDK/bin/javac.exe" --release 8 -encoding UTF-8 -cp "$PLATFORM" -d "$WORK/classes" "$ROOT"/android/java/com/nianxiatian/app/*.java
+"$JDK/bin/javac.exe" --release 8 -encoding UTF-8 -cp "$(cygpath -w "$PLATFORM");$(cygpath -w "$SDK/platforms/android-35/optional/org.apache.http.legacy.jar")" -d "$WORK/classes" "$ROOT"/android/java/com/nianxiatian/app/*.java
 [ -f "$WORK/classes/com/nianxiatian/app/MainActivity.class" ] || { echo "❌ javac 编译失败"; exit 1; }
 echo "   MainActivity.class OK"
 
 echo "== 4/7 打包 DEX =="
-"$JAVA" -cp "$D8_CP" com.android.tools.r8.D8 --release --lib "$PLATFORM" --min-api 24 \
+"$JAVA" -cp "$D8_CP" com.android.tools.r8.D8 --release --lib "$PLATFORM" --classpath "$SDK/platforms/android-35/optional/org.apache.http.legacy.jar" --min-api 24 \
   --output "$WORK/dex" $(find "$WORK/classes" -name "*.class")
 [ -f "$WORK/dex/classes.dex" ] || { echo "❌ D8 失败"; exit 1; }
 echo "   classes.dex OK"

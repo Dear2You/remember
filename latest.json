@@ -1,6 +1,6 @@
 {
-  "versionCode": 21000,
-  "versionName": "2.10",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21000",
-  "note": "修复还款编辑、账本与分类、重复待办和工时精度；专注可恢复，安卓支持备份文件导入导出，修复 AI 对话。"
+  "versionCode": 21100,
+  "versionName": "2.11",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21100",
+  "note": "新增坚果云自动备份，支持后台联网重试、按日期查看副本和换机恢复。"
 }

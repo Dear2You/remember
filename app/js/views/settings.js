@@ -401,7 +401,8 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card"><div class="section-title">数据</div>' +
-      '    <div class="set-row"><div><div class="sr-lab">🛡️ 自动备份</div><div class="sr-desc">' + (Store.lastBackupText() || 'App 内自动把全部数据写到「下载/那年夏天备份/」，卸载 App 也不会丢') + '</div></div></div>' +
+      (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
+      '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc">' + (Store.lastBackupText() || 'App 内自动把全部数据写到「下载/那年夏天备份/」，卸载 App 也不会丢') + '</div></div></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导出 CSV 账单</div><div class="sr-desc">含账本/两级分类/账户，Excel 直接打开</div></div><button class="btn btn-ghost j-csv" style="min-width:76px">导出</button></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导出完整备份</div><div class="sr-desc">JSON，含账单与生活记录，不含 API Key</div></div><button class="btn btn-ghost j-export" style="min-width:76px">导出</button></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导入备份</div><div class="sr-desc">从备份 JSON 恢复（自动备份文件在「下载/那年夏天备份/」）</div></div><button class="btn btn-ghost j-import" style="min-width:76px">导入</button></div>' +
@@ -423,6 +424,9 @@ Views.settings = (() => {
       '    </div>' +
       '  </div>' +
       '</div>';
+
+    const cloudButton = root.querySelector('.j-cloud');
+    if (cloudButton) { Cloud.updateStatus(); cloudButton.onclick = Cloud.open; }
 
     const save = patch => { Object.assign(Store.settings, patch); Store.save(); };
 

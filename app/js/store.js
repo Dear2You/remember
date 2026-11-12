@@ -101,6 +101,7 @@ const Store = {
     if (legacy && !v3) this._migrateLegacy(legacy);
     // 打开应用本身不触发外部自动备份，避免空安装覆盖已有备份。
     if (v3 || legacy) this.save(false);
+    return !!(v3 || legacy);
   },
 
   normalizeData(saved) {
@@ -201,6 +202,7 @@ const Store = {
   /* ---------- 自动备份到手机下载目录（卸载 App 不丢） ---------- */
   _backupTimer: null,
   _scheduleAutoBackup() {
+    if (window.Cloud) Cloud.queue();
     if (typeof window === 'undefined' || !window.AndroidBridge || !window.AndroidBridge.writeBackup) return;
     if (this._backupTimer) clearTimeout(this._backupTimer);
     this._backupTimer = setTimeout(() => {
@@ -923,10 +925,13 @@ const Store = {
   },
 
   /* ---------- 备份 ---------- */
-  exportData() {
+  backupData() {
     const settings = Object.assign({}, this.settings);
     delete settings.aiKey;
-    return JSON.stringify({ app: 'nianxiatian', version: this.data.version, exportedAt: new Date().toISOString(), data: { ...this.data, settings } }, null, 2);
+    return { ...this.data, settings };
+  },
+  exportData() {
+    return JSON.stringify({ app: 'nianxiatian', version: this.data.version, exportedAt: new Date().toISOString(), data: this.backupData() }, null, 2);
   },
   exportCSV() {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
@@ -996,7 +1001,7 @@ const Store = {
     this.emit('change');
     return { ok: true, msg: '导入成功' };
   },
-  clearAll() { this.data = this.defaults(); this.save(); this.emit('replace'); this.emit('change'); }
+  clearAll() { if (window.Cloud) Cloud.pause(); this.data = this.defaults(); this.save(); this.emit('replace'); this.emit('change'); }
 };
 
 window.Store = Store;

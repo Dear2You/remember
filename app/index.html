@@ -2,6 +2,7 @@
 <html lang="zh-CN" data-theme="auto">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="frame-src 'none'; object-src 'none'; base-uri 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f7faf8">
   <meta name="mobile-web-app-capable" content="yes">
@@ -64,9 +65,10 @@
 
   <script src="js/utils.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/charts.js"></script>
   <script>window.Views = {};</script>
-  <script>window.__APP_VERSION = '2.10'; window.__APP_CODE = 21000;</script>
+  <script>window.__APP_VERSION = '2.11'; window.__APP_CODE = 21100;</script>
   <script src="js/views/home.js"></script>
   <script src="js/views/expense.js"></script>
   <script src="js/views/bills.js"></script>

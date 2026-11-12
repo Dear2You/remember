@@ -7,7 +7,9 @@ const App = {
   routes: {},
 
   init() {
-    Store.init();
+    const existingData = Store.init();
+    if (existingData) Cloud.queue();
+    else if (Cloud.status().enabled) Cloud.pause();
     this.applyTheme();
     window.matchMedia('(prefers-color-scheme: dark)').addListener(() => this.applyTheme());
     Store.on('replace', () => { this.applyTheme(); Views.focus.restore(); });

@@ -431,6 +431,9 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 body.keyb #tabbar { display: none; }
 body.keyb #pageBody { padding-bottom: 16px; }
 
+.cloud-note { color: var(--text-2); font-size: 13px; line-height: 1.65; }
+.cloud-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
 /* 书页导航 */
 .masthead { flex: none; background: var(--tab-bg); border-bottom: 1px solid var(--hairline); }
 .mast-inner { max-width: 1184px; padding: 0 18px; height: 57px; display: flex; align-items: center; gap: 16px; margin: auto; }
