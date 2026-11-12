@@ -2,8 +2,8 @@
 <html lang="zh-CN" data-theme="auto">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#f6f7f9">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f7faf8">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -15,11 +15,15 @@
 </head>
 <body>
   <div id="app">
-    <main id="pageBody"></main>
+    <header class="masthead"><div class="mast-inner">
+      <a class="wordmark" href="#/home" aria-label="那年夏天首页">
+        <svg aria-hidden="true" viewBox="0 0 36 36"><rect width="36" height="36" rx="9" fill="currentColor"/><g fill="none" stroke="#f5edcf" stroke-width="1.5" stroke-linecap="round"><path d="M7 21c4 0 7-6 11-6s7 6 11 5M7 25c5 0 7-3 11-3s6 2 11 2M10 29c4-1 7-2 12-1"/><circle cx="23" cy="11" r="3" fill="#e6b884" stroke="none"/></g></svg>
+        <span>那年夏天</span>
+      </a>
 
-    <nav id="tabbar">
+    <nav id="tabbar" aria-label="主导航">
       <button class="tab" data-route="home">
-        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></svg>
         <span>首页</span>
       </button>
       <button class="tab" data-route="assets">
@@ -31,7 +35,7 @@
         <span>工时</span>
       </button>
       <button class="tab-plus j-add" aria-label="记一笔">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>记一笔</span>
       </button>
       <button class="tab" data-route="bills">
         <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
@@ -47,9 +51,11 @@
       </button>
     </nav>
 
-    <button id="fab" title="AI 助手">
-      <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+    <button id="fab" aria-label="打开 AI 助手" title="AI 助手">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 13h6"/></svg>
     </button>
+    </div></header>
+    <main id="pageBody"></main>
   </div>
 
   <div id="sheetRoot"></div>
@@ -60,7 +66,7 @@
   <script src="js/store.js"></script>
   <script src="js/charts.js"></script>
   <script>window.Views = {};</script>
-  <script>window.__APP_VERSION = '1.15'; window.__APP_CODE = 115;</script>
+  <script>window.__APP_VERSION = '2.10'; window.__APP_CODE = 21000;</script>
   <script src="js/views/home.js"></script>
   <script src="js/views/expense.js"></script>
   <script src="js/views/bills.js"></script>

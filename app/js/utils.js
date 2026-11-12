@@ -42,7 +42,7 @@ const U = {
     const d = new Date(ts);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日';
   },
-  fmtHours(n) { const v = Math.round((Number(n) || 0) * 10) / 10; return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + 'h'; },
+  fmtHours(n) { return (Math.round((Number(n) || 0) * 100) / 100) + 'h'; },
   daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); },
   // 月历矩阵（周一开头），返回周数组
   monthMatrix(y, m) {
@@ -98,7 +98,7 @@ const U = {
   escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   },
-  PALETTE: ['#00b27a', '#4a9bff', '#ff9f43', '#f4708a', '#9c6cff', '#00b8d4', '#eab308', '#ff7a59', '#33c481', '#7a8ba6', '#d946ef', '#0ea5e9'],
+  PALETTE: ['#76ac94', '#80a9c6', '#dba56e', '#ce92a4', '#a394bf', '#71afa9', '#c3ac61', '#d99279', '#93ad77', '#8b9cb2', '#bc91b9', '#7daebc'],
   colorFor(name) {
     let h = 0;
     const s = String(name);
@@ -108,7 +108,28 @@ const U = {
 };
 
 /* ============ UI 组件（Toast / Confirm / Sheet） ============ */
+const iconPaths = {
+    worktime: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 4h2m4 0h2"/>',
+    memo: '<path d="M5 3h11l3 3v15H5zM15 3v5h4M8 12h8m-8 4h5"/>',
+    focus: '<circle cx="12" cy="14" r="7.5"/><path d="M12 6V3M9 3h6m3 5 2-2m-8 8 3-3"/>',
+    habit: '<path d="M4 20c0-6 3-11 10-14M8 15C4 8 11 3 21 3c-1 9-5 15-13 12Z"/>',
+    countdown: '<path d="M5 3h14M5 21h14M7 3c0 4 1 6 5 9-4 3-5 5-5 9m10-18c0 4-1 6-5 9 4 3 5 5 5 9M9 7h6m-5 10h4"/>',
+    subs: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',
+    check: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7.5 12 3 3 6-6"/>',
+    arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
+    book: '<path d="M5 3h14v18H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2m-2 15a2 2 0 0 1 2-2h13M8 3v13"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="2.5"/>',
+    off: '<path d="m3 3 18 18M9 5.5c5-2 10 2 13 6.5a20 20 0 0 1-4 4.5M6 7.5A20 20 0 0 0 2 12s4 7 10 7c1 0 2.5-.3 4-1"/>'
+  };
 const UI = {
+  amount(minor, grouped = false) {
+    if (Store.settings.hideAmount) return '••••';
+    return grouped ? Store.fmtMinorThousand(minor) : Store.fmtMinor(minor);
+  },
+  icon(name) {
+    return '<svg class="journal-icon" aria-hidden="true" viewBox="0 0 24 24">' + iconPaths[name] + '</svg>';
+  },
   toast(msg, type) {
     const root = document.getElementById('toastRoot');
     const t = document.createElement('div');

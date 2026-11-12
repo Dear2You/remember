@@ -7,7 +7,7 @@ Views.expense = (() => {
   const curBook = () => Store.settings.currentBookId;
 
   /* ---------- 记一笔 / 编辑弹层 ---------- */
-  function openEntrySheet(editItem, presetKind) {
+  function openEntrySheet(editItem, presetKind, presetDate) {
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
@@ -26,12 +26,12 @@ Views.expense = (() => {
       };
     } else {
       state = {
-        bookId: (books.find(b => b.id === Store.settings.lastBookId && !b.archived) || books[0] || {}).id || '',
+        bookId: (Store.currentBook() || books.find(b => b.id === Store.settings.lastBookId && !b.archived) || books[0] || {}).id || '',
         type: presetKind || 'out', amount: '', categoryId: '',
         accountId: lastAcc,
         fromId: assetAccs[0] ? assetAccs[0].id : '',
         toId: (accsAll.find(a => a.type === 'liability') || accsAll[1] || accsAll[0] || {}).id || '',
-        note: '', date: U.todayStr()
+        note: '', date: presetDate || U.todayStr()
       };
     }
     let saving = false;
@@ -42,7 +42,7 @@ Views.expense = (() => {
         function render() {
           const isTransfer = state.type === 'transfer';
           const catKind = state.type === 'in' ? 'in' : 'out';
-          const roots = Store.categories(catKind);
+          const roots = Store.rootCategories(catKind);
           if (!state.categoryId || !Store.category(state.categoryId) || Store.catRoot(state.categoryId).kind !== catKind) {
             state.categoryId = roots.length ? roots[0].id : '';
           }
@@ -50,9 +50,10 @@ Views.expense = (() => {
           const rootCat = root ? Store.catRoot(state.categoryId) : null;
           const subs = rootCat ? Store.subCategories(rootCat.id) : [];
           const accs = state.type === 'in' ? assetAccs : accsAll;   // 收入限资产账户
+          if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
 
-          if (!isTransfer && rootCat && subs.length && (!root || !root.parentId)) state.categoryId = subs[0].id;
+          if (!editItem && !isTransfer && rootCat && subs.length && (!root || !root.parentId)) state.categoryId = subs[0].id;
 
           body.innerHTML =
             '<div class="field"><label>账本</label><div class="acct-chips j-book">' +
@@ -74,7 +75,7 @@ Views.expense = (() => {
                 accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + a.icon + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' +
                 (isRepayMode
-                  ? '<div class="repay-tip">💳 还款：欠款 ¥' + Store.fmtMinor(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
+                  ? '<div class="repay-tip">💳 还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>账户' + (state.type === 'out' ? '（负债账户=刷卡）' : '') + '</label><div class="acct-chips j-acc">' +
                 accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + a.icon + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : '') + '</button>').join('') +
@@ -175,7 +176,7 @@ Views.expense = (() => {
                   Store.addTransaction(payload);
                   UI.toast(payload.type === 'in' ? '已记收入 ✓' : payload.type === 'transfer' ? (Store.isRepay(payload) ? '已还款 ✓' : '已转账 ✓') : '已记支出 ✓');
                 }
-              } catch (e) { UI.toast('保存失败：' + e.message, 'err'); saving = false; return; }
+              } catch (e) { UI.toast('保存失败：' + e.message, 'err'); saving = false; body.querySelector('.j-save').textContent = '保存'; return; }
               close();
             }, 120);
           };
@@ -199,7 +200,7 @@ Views.expense = (() => {
       title: '筛选账单',
       content(body, close) {
         const accs = Store.accounts();
-        const roots = Store.categories('', true);
+        const roots = Store.rootCategories('', true);
         let pickRoot = filter.categoryId ? (Store.catRoot(filter.categoryId) || {}).id : '';
         function render() {
           const subs = pickRoot ? Store.subCategories(pickRoot) : [];
@@ -264,7 +265,7 @@ Views.expense = (() => {
     const sign = t.type === 'out' ? '-' : '+';
     const cls = t.type === 'out' ? 'money-out' : (t.type === 'in' ? 'money-in' : '');
     const color = t.type === 'transfer' ? 'style="color:var(--text-2)"' : '';
-    return '<span class="num ' + cls + '" ' + color + '>' + sign + '¥' + Store.fmtMinor(t.amountMinor) + '</span>';
+    return '<span class="num ' + cls + '" ' + color + '>' + sign + '¥' + UI.amount(t.amountMinor) + '</span>';
   }
   function applyFilter(list) {
     return list.filter(t => {

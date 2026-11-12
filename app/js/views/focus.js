@@ -6,7 +6,7 @@ Views.focus = (() => {
   let mode = 'pomodoro';           // pomodoro | countup | countdown
   let targetMin = 25;
   let running = false, paused = false;
-  let startedAt = 0, accumulated = 0, pauseStart = 0, pausedTotal = 0;
+  let sessionStart = 0, startedAt = 0, accumulated = 0, pauseStart = 0, pausedTotal = 0;
   let timerId = null;
   let boundTaskId = '';
   let tickFn = null;
@@ -21,8 +21,32 @@ Views.focus = (() => {
     return accumulated + (running && !paused ? (Date.now() - startedAt) / 1000 : 0);
   }
 
+  function persist() {
+    Store.data.activeFocus = { mode, targetMin, paused, startedAt, sessionStart, accumulated, pausedTotal, pauseStart, boundTaskId };
+    Store.save();
+  }
+  function tick() {
+    if (running && !paused && mode !== 'countup' && elapsed() >= targetMin * 60) finish(false);
+    else if (tickFn && App.route === 'focus') tickFn();
+  }
+  function restore() {
+    clearInterval(timerId); timerId = null;
+    running = false; paused = false; accumulated = 0; pausedTotal = 0; boundTaskId = '';
+    const saved = Store.data.activeFocus;
+    if (!saved || !['pomodoro', 'countdown', 'countup'].includes(saved.mode) ||
+        !Number.isFinite(saved.startedAt) || !Number.isFinite(saved.sessionStart) ||
+        !(saved.targetMin > 0 && saved.targetMin <= 600) || !Number.isFinite(saved.accumulated) ||
+        !Number.isFinite(saved.pausedTotal) || !Number.isFinite(saved.pauseStart)) return;
+    ({ mode, targetMin, paused, startedAt, sessionStart, accumulated, pausedTotal, pauseStart, boundTaskId } = saved);
+    running = true; timerId = setInterval(tick, 500);
+    tick();
+    if (running && App.route === 'focus') App.refresh();
+  }
   function finish(broken) {
-    const el = Math.round(elapsed());
+    const now = Date.now();
+    const el = Math.max(0, Math.round(mode === 'countup' ? elapsed() : Math.min(elapsed(), targetMin * 60)));
+    const pausedSec = pausedTotal + (paused ? (now - pauseStart) / 1000 : 0);
+    delete Store.data.activeFocus;
     const wasRunning = running;
     running = false; paused = false;
     if (timerId) { clearInterval(timerId); timerId = null; }
@@ -30,16 +54,16 @@ Views.focus = (() => {
     if (needSave) {
       Store.addFocusSession({
         taskId: boundTaskId, mode, targetMin: mode === 'countup' ? 0 : targetMin,
-        actualSec: el, pausedSec: Math.round(pausedTotal),
-        startedAt: startedAt - accumulated * 1000, endedAt: Date.now(), status: broken ? 'broken' : 'done'
+        actualSec: el, pausedSec: Math.round(pausedSec),
+        startedAt: sessionStart, endedAt: !broken && mode !== 'countup' ? sessionStart + (targetMin * 60 + pausedTotal) * 1000 : now, status: broken ? 'broken' : 'done'
       });
       UI.toast((broken ? '已结束（中断）' : '完成专注 🍅') + ' ' + fmtSec(el));
     } else {
+      Store.save();
       UI.toast('已重置');
     }
     accumulated = 0; pausedTotal = 0;
-    if (tickFn) tickFn();
-    App.refresh(true);
+    if (App.route === 'focus') App.refresh(true);
   }
 
   function mount(root) {
@@ -56,9 +80,9 @@ Views.focus = (() => {
 
       '  <div class="card" style="text-align:center;padding:26px 16px">' +
       '    <div class="seg j-mode" style="margin-bottom:18px;width:78%;margin-left:auto;margin-right:auto">' +
-      '      <button data-m="pomodoro" class="' + (mode === 'pomodoro' ? 'on' : '') + '">🍅 番茄钟</button>' +
-      '      <button data-m="countdown" class="' + (mode === 'countdown' ? 'on' : '') + '">⏳ 倒计时</button>' +
-      '      <button data-m="countup" class="' + (mode === 'countup' ? 'on' : '') + '">⏱ 正计时</button>' +
+      '      <button data-m="pomodoro" class="' + (mode === 'pomodoro' ? 'on' : '') + '">番茄钟</button>' +
+      '      <button data-m="countdown" class="' + (mode === 'countdown' ? 'on' : '') + '">倒计时</button>' +
+      '      <button data-m="countup" class="' + (mode === 'countup' ? 'on' : '') + '">正计时</button>' +
       '    </div>' +
       (mode !== 'countup'
         ? '<div class="chips-wrap" style="justify-content:center;margin-bottom:14px">' +
@@ -66,7 +90,7 @@ Views.focus = (() => {
           (mode === 'countdown' ? '<input class="j-custom num" inputmode="numeric" placeholder="自定义" style="width:76px;text-align:center;padding:6px 8px" value="' + (![15, 25, 45, 50].includes(targetMin) && targetMin ? targetMin : '') + '"> ' : '') +
           '</div>'
         : '') +
-      '    <div class="j-clock num" style="font-size:56px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:2px;margin:6px 0 20px">--:--</div>' +
+      '    <div class="j-clock focus-clock num">--:--</div>' +
       '    <div class="field-row" style="justify-content:center">' +
       '      <button class="btn btn-grad j-start" style="flex:1;max-width:150px">开始专注</button>' +
       '      <button class="btn btn-ghost j-reset" style="flex:0 0 76px">重置</button>' +
@@ -104,8 +128,8 @@ Views.focus = (() => {
       else {
         const remain = Math.max(targetMin * 60 - el, 0);
         clock.textContent = fmtSec(remain);
-        if (running && !paused && remain <= 0) { finish(false); return; }   // 到点自动完成
       }
+      root.querySelector('.j-reset').textContent = running ? '结束并保存' : '重置';
       startBtn.textContent = !running ? '开始专注' : (paused ? '继续' : '暂停');
       startBtn.className = 'btn ' + (!running ? 'btn-grad' : (paused ? 'btn-grad' : 'btn-ghost')) + ' j-start';
       statusEl.textContent = !running ? '' : (paused ? '已暂停（暂停时长不计入专注）' : '专注中…保持加油 💪');
@@ -135,8 +159,8 @@ Views.focus = (() => {
     startBtn.onclick = () => {
       if (!running) {                       // 开始
         running = true; paused = false;
-        startedAt = Date.now(); accumulated = 0; pausedTotal = 0;
-        if (!timerId) timerId = setInterval(paint, 500);
+        sessionStart = startedAt = Date.now(); accumulated = 0; pausedTotal = 0;
+        if (!timerId) timerId = setInterval(tick, 500);
         paint();
       } else if (!paused) {                 // 暂停：累计当前段
         accumulated += (Date.now() - startedAt) / 1000;
@@ -148,14 +172,15 @@ Views.focus = (() => {
         startedAt = Date.now();
         paint();
       }
+      persist();
     };
     root.querySelector('.j-reset').onclick = () => {
-      if (running) { finish(true); }         // 结束并按中断记录
+      if (running) { finish(mode !== 'countup' && elapsed() < targetMin * 60); }         // 结束并按中断记录
       else { accumulated = 0; paint(); }
     };
     // 离开页面时保持计时（interval 挂全局，切回时恢复 UI）
-    if (!timerId && running) timerId = setInterval(paint, 500);
+    if (!timerId && running) timerId = setInterval(tick, 500);
   }
 
-  return { mount };
+  return { mount, restore };
 })();

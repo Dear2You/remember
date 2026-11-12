@@ -4,10 +4,10 @@ Views.lifetasks = (() => {
   let filter2 = 'today';   // today | week | overdue | done | all
   let view = 'list';       // list | quad
 
-  function openTaskSheet(edit) {
+  function openTaskSheet(edit, date) {
     let state = edit
       ? { title: edit.title, note: edit.note || '', dueDate: edit.dueDate || '', dueTime: edit.dueTime || '', important: !!edit.important, urgent: !!edit.urgent, repeat: edit.repeat || 'none' }
-      : { title: '', note: '', dueDate: '', dueTime: '', important: false, urgent: false, repeat: 'none' };
+      : { title: '', note: '', dueDate: date || '', dueTime: '', important: false, urgent: false, repeat: 'none' };
     UI.sheet({
       title: edit ? '编辑事项' : '新建事项',
       content(body, close) {
@@ -84,14 +84,25 @@ Views.lifetasks = (() => {
     };
     const list = Store.tasksBy(filter2);
 
+    const occurrence = t => {
+      if (!t.repeat || t.repeat === 'none') return today;
+      if (filter2 === 'done') return (t.doneDates || []).slice().sort().pop() || today;
+      if (filter2 === 'week') return Store.nextTaskDate(t, today, 7);
+      if (filter2 === 'all' && !Store.taskOccursOn(t, today)) {
+        const first = t.dueDate || t.createdDate || today;
+        return Store.nextTaskDate(t, first > today ? first : today, 63);
+      }
+      return today;
+    };
+
     // 四象限数据（基于当前筛选的任务）
     const quads = { 1: [], 2: [], 3: [], 4: [] };
-    (filter2 === 'done' || filter2 === 'all' ? list : Store.tasksBy('today').concat(Store.tasksBy('overdue'))).forEach(t => quads[Store.quadrantOf(t)].push(t));
+    list.forEach(t => quads[Store.quadrantOf(t)].push(t));
     const quadTitles = { 1: ['🔴 重要且紧急', '马上做'], 2: ['🟢 重要不紧急', '计划做'], 3: ['🟠 紧急不重要', '尽快处理'], 4: ['⚪️ 不重要不紧急', '有空再做'] };
 
     root.innerHTML =
       '<div class="chips-wrap" style="margin-bottom:10px">' +
-      [['today', '今日 ' + (counts.today + counts.overdue || '')], ['week', '未来7天'], ['overdue', '逾期 ' + (counts.overdue || '')], ['done', '已完成'], ['all', '全部']].map(([k, lab]) =>
+      [['today', '今日 ' + (counts.today || '')], ['week', '未来7天'], ['overdue', '逾期 ' + (counts.overdue || '')], ['done', '已完成'], ['all', '全部']].map(([k, lab]) =>
         '<button class="chip j-f2 ' + (filter2 === k ? 'on' : '') + '" data-v="' + k + '">' + lab + '</button>').join('') +
       '</div>' +
       '<div class="seg" style="margin-bottom:12px">' +
@@ -100,7 +111,7 @@ Views.lifetasks = (() => {
       '</div>' +
       (view === 'list'
         ? (list.length
-            ? '<div class="cell-list">' + list.map(t => taskRow(t, today)).join('') + '</div>'
+            ? '<div class="cell-list">' + list.map(t => taskRow(t, occurrence(t))).join('') + '</div>'
             : '<div class="empty"><span class="emoji">✅</span><div>' + ({ today: '今日没有待办', week: '未来 7 天没有事项', overdue: '没有逾期事项', done: '还没有完成记录', all: '还没有事项' })[filter2] + '</div></div>')
         : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
           [1, 2, 3, 4].map(q =>
@@ -109,7 +120,7 @@ Views.lifetasks = (() => {
             '  <div style="font-size:10.5px;color:var(--text-3);margin-bottom:6px">' + quadTitles[q][1] + '</div>' +
             (quads[q].length
               ? quads[q].map(t => {
-                const done = Store.taskDoneOn(t, today);
+                const done = Store.taskDoneOn(t, occurrence(t));
                 return '<div style="display:flex;gap:7px;align-items:flex-start;padding:5px 0">' +
                   '<button class="td-box ' + (done ? 'on' : '') + ' j-check" data-id="' + t.id + '" style="width:18px;height:18px;font-size:10px;flex-shrink:0;margin-top:2px">' + (done ? '✓' : '') + '</button>' +
                   '<span class="j-edit" data-id="' + t.id + '" style="flex:1;font-size:13px;' + (done ? 'text-decoration:line-through;opacity:.5' : '') + '">' + U.escapeHtml(t.title) + '</span></div>';
@@ -125,8 +136,10 @@ Views.lifetasks = (() => {
     root.querySelectorAll('.j-check').forEach(b => b.onclick = e => {
       e.stopPropagation();
       const t = Store.data.tasks.find(x => x.id === b.dataset.id);
-      Store.toggleTask(t.id, today);
-      UI.toast(Store.taskDoneOn(t, today) ? '完成 ✓' : '已撤销');
+      const date = occurrence(t);
+      if (!date) return;
+      Store.toggleTask(t.id, date);
+      UI.toast(Store.taskDoneOn(t, date) ? '完成 ✓' : '已撤销');
       ctx.refresh();
       if (window.Views.life && App.route === 'life') { /* 今日页数字由下次进入刷新 */ }
     });
@@ -136,5 +149,9 @@ Views.lifetasks = (() => {
     });
   }
 
-  return { mount, openTaskSheet };
+  return { mount, openTaskSheet, openList(filter) {
+    filter2 = filter;
+    view = 'list';
+    Views.life.go('tasks');
+  } };
 })();

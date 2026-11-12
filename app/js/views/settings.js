@@ -63,8 +63,7 @@ Views.settings = (() => {
           if (ar) ar.onclick = () => {
             const b = Store.book(editing);
             Store.updateBook(editing, { archived: !b.archived });
-            if (Store.settings.currentBookId === editing && b.archived === false) Store.settings.currentBookId = '';
-            UI.toast(b.archived ? '已恢复' : '已归档');
+            UI.toast(b.archived ? '已归档' : '已恢复');
             render();
           };
           const del = body.querySelector('.j-del');
@@ -88,7 +87,7 @@ Views.settings = (() => {
       content(body, close) {
         const book = Store.book(bookId);
         if (!book) { body.innerHTML = '<div class="empty">请先选择具体账本</div>'; return; }
-        const roots = Store.categories('out');
+        const roots = Store.rootCategories('out');
         const total = Store.getBudget(book.id, ym, '');
         const totalUsed = Store.budgetUsed(book.id, ym, '');
         function render() {
@@ -96,8 +95,8 @@ Views.settings = (() => {
             '<div style="font-size:12.5px;color:var(--text-3);margin-bottom:10px">' + book.icon + ' 「' + U.escapeHtml(book.name) + '」· ' + U.ymLabel(ym) + '<br>月总预算与分类预算是两套观察口径，互不相加。转账/还款不占预算。</div>' +
             '<div class="card" style="margin-bottom:12px;background:var(--input-bg);box-shadow:none">' +
             '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-            '    <div><b>月总预算</b><div style="font-size:11.5px;color:var(--text-3)">已用 ¥' + Store.fmtMinor(totalUsed) + (total ? ' · 剩余 ¥' + Store.fmtMinor(total.amountMinor - totalUsed) : '') + '</div></div>' +
-            '    <div style="font-size:19px;font-weight:800">' + (total ? '¥' + Store.fmtMinor(total.amountMinor) : '未设置') + '</div>' +
+            '    <div><b>月总预算</b><div style="font-size:11.5px;color:var(--text-3)">已用 ¥' + UI.amount(totalUsed) + (total ? ' · 剩余 ¥' + UI.amount(total.amountMinor - totalUsed) : '') + '</div></div>' +
+            '    <div style="font-size:19px;font-weight:800">' + (total ? '¥' + UI.amount(total.amountMinor) : '未设置') + '</div>' +
             '  </div>' +
             '  <div class="progress ' + (total && totalUsed > total.amountMinor ? 'over' : '') + '"><div style="width:' + (total ? Math.min(totalUsed / total.amountMinor, 1) * 100 : 0).toFixed(1) + '%"></div></div>' +
             '  <div class="field-row" style="margin-top:10px">' +
@@ -113,7 +112,7 @@ Views.settings = (() => {
                 '<div class="cell">' +
                 '  <div class="c-ico">' + c.icon + '</div>' +
                 '  <div class="c-main"><div class="c-title">' + U.escapeHtml(c.name) + '</div>' +
-                '  <div class="c-sub">已用 ¥' + Store.fmtMinor(used) + (b ? ' · ' + (used > b.amountMinor ? '<span style="color:var(--danger)">超支 ¥' + Store.fmtMinor(used - b.amountMinor) + '</span>' : '剩余 ¥' + Store.fmtMinor(b.amountMinor - used)) : ' · 未设预算') + '</div></div>' +
+                '  <div class="c-sub">已用 ¥' + UI.amount(used) + (b ? ' · ' + (used > b.amountMinor ? '<span style="color:var(--danger)">超支 ¥' + UI.amount(used - b.amountMinor) + '</span>' : '剩余 ¥' + UI.amount(b.amountMinor - used)) : ' · 未设预算') + '</div></div>' +
                 '  <input class="j-cb num" data-id="' + c.id + '" inputmode="decimal" placeholder="¥" style="max-width:86px;text-align:center" value="' + (b ? b.amountMinor / 100 : '') + '">' +
                 '</div>';
               return rowHtml;
@@ -124,7 +123,7 @@ Views.settings = (() => {
             const minor = v === '' ? 0 : Store.parseAmount(v);
             if (v !== '' && !minor) { UI.toast('金额无效', 'err'); return; }
             Store.setBudget(book.id, ym, '', minor || 0);
-            UI.toast(minor ? '月总预算已设为 ¥' + Store.fmtMinor(minor) : '已取消月总预算');
+            UI.toast(minor ? '月总预算已设为 ¥' + UI.amount(minor) : '已取消月总预算');
             close();
             App.refresh(true);
           };
@@ -160,14 +159,14 @@ Views.settings = (() => {
             '<div class="cell j-edit" data-id="' + a.id + '" style="' + (a.archived ? 'opacity:.5' : '') + '">' +
             '  <div class="c-ico">' + a.icon + '</div>' +
             '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (a.type === 'liability' ? ' <span class="badge red">负债</span>' : '') + (a.archived ? '（停用）' : '') + '</div>' +
-            '  <div class="c-sub">' + (a.type === 'liability' ? '欠款' : '期初') + ' ¥' + Store.fmtMinor(a.opening || 0) + ' · 当前' + (a.type === 'liability' ? '欠款' : '余额') + ' ¥' + Store.fmtMinor(Store.accountBalance(a.id)) + '</div></div>' +
+            '  <div class="c-sub">' + (a.type === 'liability' ? '欠款' : '期初') + ' ¥' + UI.amount(a.opening || 0) + ' · 当前' + (a.type === 'liability' ? '欠款' : '余额') + ' ¥' + UI.amount(Store.accountBalance(a.id)) + '</div></div>' +
             '  <div class="c-right" style="color:var(--text-3)">✏️</div>' +
             '</div>';
           body.innerHTML =
             '<div style="display:flex;gap:10px;margin-bottom:12px;text-align:center">' +
-            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">总资产</div><div style="font-weight:800" class="num">¥' + Store.fmtMinor(Store.totalAssets()) + '</div></div>' +
-            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">总负债</div><div style="font-weight:800;color:var(--danger)" class="num">¥' + Store.fmtMinor(Store.totalLiabilities()) + '</div></div>' +
-            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">净资产</div><div style="font-weight:800;color:var(--accent)" class="num">¥' + Store.fmtMinor(Store.netWorth()) + '</div></div>' +
+            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">总资产</div><div style="font-weight:800" class="num">¥' + UI.amount(Store.totalAssets()) + '</div></div>' +
+            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">总负债</div><div style="font-weight:800;color:var(--danger)" class="num">¥' + UI.amount(Store.totalLiabilities()) + '</div></div>' +
+            '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--text-3)">净资产</div><div style="font-weight:800;color:var(--accent)" class="num">¥' + UI.amount(Store.netWorth()) + '</div></div>' +
             '</div>' +
             '<div class="section-title">资产账户</div>' +
             '<div class="cell-list" style="margin-bottom:12px">' + assets.map(row).join('') + '</div>' +
@@ -250,7 +249,7 @@ Views.settings = (() => {
       content(body, close) {
         let kind = 'out', editing = null;
         function render() {
-          const roots = Store.categories(kind, true);
+          const roots = Store.rootCategories(kind, true);
           const used = c => Store.data.transactions.some(t => t.categoryId === c.id);
           const it = editing ? Store.category(editing) : null;
           const itRoot = it ? Store.catRoot(it.id) : null;
@@ -281,7 +280,7 @@ Views.settings = (() => {
               ? '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">' + (it.parentId ? '二级分类（属于 ' + (itRoot ? itRoot.icon + ' ' + U.escapeHtml(itRoot.name) : '?') + '，最多两级）' : '一级分类') + (used(it) ? ' · 有账单引用只能改名/停用' : '') + '</div>'
               : '<div class="field"><label>上级（选"作为一级分类"则新建一级）</label><div class="chips-wrap">' +
                 '<button class="chip j-parent ' + (!newParent ? 'on' : '') + '" data-v="">作为一级分类</button>' +
-                Store.categories(kind).map(r => '<button class="chip j-parent ' + (newParent === r.id ? 'on' : '') + '" data-v="' + r.id + '">' + r.icon + ' ' + U.escapeHtml(r.name) + '</button>').join('') +
+                Store.rootCategories(kind).map(r => '<button class="chip j-parent ' + (newParent === r.id ? 'on' : '') + '" data-v="' + r.id + '">' + r.icon + ' ' + U.escapeHtml(r.name) + '</button>').join('') +
                 '</div></div>') +
             '<div class="field field-row">' +
             '  <input class="j-name" placeholder="分类名称" maxlength="10" style="flex:1" value="' + U.escapeHtml(it ? it.name : '') + '">' +
@@ -338,6 +337,10 @@ Views.settings = (() => {
 
   /* ---------- 下载工具 ---------- */
   function download(name, content, mime) {
+    if (window.AndroidBridge && window.AndroidBridge.saveDocument) {
+      window.AndroidBridge.saveDocument(name, content, mime.startsWith('text/csv'));
+      return;
+    }
     const blob = new Blob([content], { type: mime || 'application/octet-stream' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -355,18 +358,16 @@ Views.settings = (() => {
       '  <div class="page-head"><div><div class="page-title">我的</div></div></div>' +
 
       '  <div class="card"><div class="section-title">生活模块</div>' +
-      '    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
-      '      <button class="j-mod" data-r="life" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;border-radius:14px;background:var(--input-bg)"><span style="font-size:24px">✨</span><span style="font-size:12.5px">时光</span></button>' +
-      '      <button class="j-mod" data-r="worktime" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;border-radius:14px;background:var(--input-bg)"><span style="font-size:24px">🕒</span><span style="font-size:12.5px">记工时</span></button>' +
-      '      <button class="j-mod" data-r="memo" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;border-radius:14px;background:var(--input-bg)"><span style="font-size:24px">📝</span><span style="font-size:12.5px">备忘录</span></button>' +
-      '      <button class="j-mod" data-r="habit" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0;border-radius:14px;background:var(--input-bg)"><span style="font-size:24px">🎯</span><span style="font-size:12.5px">打卡</span></button>' +
+      '    <div class="settings-tools">' +
+      [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
+        '<button class="j-mod" data-r="' + route + '">' + UI.icon(symbol) + label + '</button>').join('') +
       '    </div>' +
       '  </div>' +
 
       '  <div class="card"><div class="section-title">账本与预算</div>' +
-      '    <div class="set-row j-books" style="cursor:pointer"><div><div class="sr-lab">账本管理</div><div class="sr-desc">' + Store.books().length + ' 个账本（当前：' + (book ? book.name : '全部账本') + '）</div></div><span style="color:var(--text-3)">›</span></div>' +
+      '    <div class="set-row j-books" style="cursor:pointer"><div><div class="sr-lab">账本管理</div><div class="sr-desc">' + Store.books().length + ' 个账本（当前：' + (book ? U.escapeHtml(book.name) : '全部账本') + '）</div></div><span style="color:var(--text-3)">›</span></div>' +
       '    <div class="set-row j-budget" style="cursor:pointer"><div><div class="sr-lab">预算设置</div><div class="sr-desc">月总预算 + 一级分类预算' + (book ? '（' + U.escapeHtml(book.name) + '）' : '（选具体账本后设置）') + '</div></div><span style="color:var(--text-3)">›</span></div>' +
-      '    <div class="set-row j-accounts" style="cursor:pointer"><div><div class="sr-lab">账户管理</div><div class="sr-desc">资产 ' + Store.accounts(true).filter(a => a.type !== 'liability').length + ' · 负债 ' + Store.accounts(true).filter(a => a.type === 'liability').length + ' · 净资产 ¥' + Store.fmtMinor(Store.netWorth()) + '</div></div><span style="color:var(--text-3)">›</span></div>' +
+      '    <div class="set-row j-accounts" style="cursor:pointer"><div><div class="sr-lab">账户管理</div><div class="sr-desc">资产 ' + Store.accounts(true).filter(a => a.type !== 'liability').length + ' · 负债 ' + Store.accounts(true).filter(a => a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth()) + '</div></div><span style="color:var(--text-3)">›</span></div>' +
       '    <div class="set-row j-cats" style="cursor:pointer"><div><div class="sr-lab">分类管理</div><div class="sr-desc">一级/二级分类，可增改停用</div></div><span style="color:var(--text-3)">›</span></div>' +
       '  </div>' +
 
@@ -402,7 +403,7 @@ Views.settings = (() => {
       '  <div class="card"><div class="section-title">数据</div>' +
       '    <div class="set-row"><div><div class="sr-lab">🛡️ 自动备份</div><div class="sr-desc">' + (Store.lastBackupText() || 'App 内自动把全部数据写到「下载/那年夏天备份/」，卸载 App 也不会丢') + '</div></div></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导出 CSV 账单</div><div class="sr-desc">含账本/两级分类/账户，Excel 直接打开</div></div><button class="btn btn-ghost j-csv" style="min-width:76px">导出</button></div>' +
-      '    <div class="set-row"><div><div class="sr-lab">导出完整备份</div><div class="sr-desc">JSON，含账本/分类层级/预算</div></div><button class="btn btn-ghost j-export" style="min-width:76px">导出</button></div>' +
+      '    <div class="set-row"><div><div class="sr-lab">导出完整备份</div><div class="sr-desc">JSON，含账单与生活记录，不含 API Key</div></div><button class="btn btn-ghost j-export" style="min-width:76px">导出</button></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导入备份</div><div class="sr-desc">从备份 JSON 恢复（自动备份文件在「下载/那年夏天备份/」）</div></div><button class="btn btn-ghost j-import" style="min-width:76px">导入</button></div>' +
       '    <input type="file" class="j-file" accept=".json,application/json" style="display:none">' +
       '    <div class="set-row"><div><div class="sr-lab">清空数据</div><div class="sr-desc">删除全部记录，不可恢复</div></div><button class="btn btn-danger j-clear" style="min-width:76px">清空</button></div>' +
@@ -496,9 +497,9 @@ Views.settings = (() => {
         title: '备份数据',
         content(body) {
           body.innerHTML =
-            '<div class="section-title">方式一：下载（浏览器环境）</div>' +
+            '<div class="section-title">保存到文件</div>' +
             '<button class="btn btn-primary btn-block j-dl" style="margin-bottom:14px">下载 ' + fname + '</button>' +
-            '<div class="section-title">方式二：全选复制保存</div>' +
+            '<div class="section-title">复制备份内容（不含 API Key）</div>' +
             '<textarea class="j-json" rows="8" readonly style="font-size:11px;font-family:monospace">' + U.escapeHtml(json) + '</textarea>';
           body.querySelector('.j-json').onclick = e => e.target.select();
           body.querySelector('.j-dl').onclick = () => download(fname, json, 'application/json');
@@ -511,9 +512,16 @@ Views.settings = (() => {
       const f = file.files && file.files[0];
       if (!f) return;
       if (!(await UI.confirm({ title: '导入备份', msg: '备份将覆盖现有全部数据（账本/账单/账户/预算/工时/备忘/打卡），确定继续？', danger: true, okText: '覆盖导入' }))) { file.value = ''; return; }
-      const text = await f.text();
-      const r = Store.importData(text);
-      UI.toast(r.msg, r.ok ? '' : 'err');
+      try {
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsText(f);
+        });
+        const r = Store.importData(text);
+        UI.toast(r.msg, r.ok ? '' : 'err');
+      } catch (e) { UI.toast('无法读取文件，请重新选择备份', 'err'); }
       file.value = '';
     };
     root.querySelector('.j-clear').onclick = async () => {
@@ -543,7 +551,7 @@ Views.settings = (() => {
         const curCode = window.__APP_CODE || 0;
         if (j.versionCode > curCode) {
           latestApkUrl = j.apkUrl;
-          updateStatus.innerHTML = '🎉 发现新版本 <b>v' + j.versionName + '</b>' + (j.note ? '：' + U.escapeHtml(j.note) : '') + '（当前 v' + (window.__APP_VERSION || '?') + '）';
+          updateStatus.innerHTML = '🎉 发现新版本 <b>v' + U.escapeHtml(j.versionName) + '</b>' + (j.note ? '：' + U.escapeHtml(j.note) : '') + '（当前 v' + (window.__APP_VERSION || '?') + '）';
           updateStatus.style.color = 'var(--accent)';
           dlBtn.style.display = 'flex';
         } else {

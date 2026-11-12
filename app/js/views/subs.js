@@ -11,7 +11,7 @@ Views.subs = (() => {
       content(body, close) {
         function render() {
           const rate = Store.settings.sgdRate || 5.30;
-          const amt = parseFloat(state.amount) || 0;
+          const amt = (Store.parseAmount(state.amount) || 0) / 100;
           const cny = state.currency === 'SGD' ? amt * rate : amt;
           body.innerHTML =
             '<div class="field"><input class="j-name" placeholder="名称，如：AI 会员 / Netflix / 话费" maxlength="20" value="' + U.escapeHtml(state.name) + '"></div>' +
@@ -23,7 +23,7 @@ Views.subs = (() => {
             '  </div>' +
             '</div>' +
             (state.currency === 'SGD'
-              ? '<div style="font-size:12.5px;color:var(--text-2);margin:-4px 0 10px;padding:8px 12px;background:var(--input-bg);border-radius:10px">💰 按汇率 1 S$ = ¥' + rate + ' 折算 ≈ <b>¥' + (Math.round(cny * 100) / 100) + '</b>/月</div>'
+              ? '<div style="font-size:12.5px;color:var(--text-2);margin:-4px 0 10px;padding:8px 12px;background:var(--input-bg);border-radius:10px">💰 按汇率 1 S$ = ¥' + rate + ' 折算 ≈ <b class="j-converted">¥' + (Math.round(cny * 100) / 100) + '</b>/月</div>'
               : '') +
             '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="40" value="' + U.escapeHtml(state.note) + '"></div>' +
             '<div class="field-row">' +
@@ -31,7 +31,11 @@ Views.subs = (() => {
             '  <button class="btn btn-primary j-ok" style="flex:2">保存</button>' +
             '</div>';
           body.querySelector('.j-name').oninput = e => { state.name = e.target.value; };
-          body.querySelector('.j-amount').oninput = e => { state.amount = e.target.value; };
+          body.querySelector('.j-amount').oninput = e => {
+            state.amount = e.target.value;
+            const quote = body.querySelector('.j-converted');
+            if (quote) quote.textContent = '¥' + Store.fmtMinor(Math.round((Store.parseAmount(state.amount) || 0) * rate));
+          };
           body.querySelector('.j-cur').onclick = e => {
             const b = e.target.closest('button[data-c]');
             if (!b) return;
@@ -40,7 +44,7 @@ Views.subs = (() => {
           };
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
           body.querySelector('.j-ok').onclick = () => {
-            const amt2 = parseFloat(state.amount);
+            const amt2 = (Store.parseAmount(state.amount) || 0) / 100;
             if (!state.name.trim()) { UI.toast('请输入名称', 'err'); return; }
             if (!(amt2 > 0)) { UI.toast('请输入正确金额', 'err'); return; }
             if (edit) { Store.updateSubscription(edit.id, { name: state.name.trim(), amount: Math.round(amt2 * 100) / 100, currency: state.currency, note: state.note.trim() }); UI.toast('已保存'); }
@@ -87,8 +91,8 @@ Views.subs = (() => {
       // 月合计
       '  <div class="card" style="text-align:center;padding:18px">' +
       '    <div style="font-size:12px;color:var(--text-3)">每月固定支出合计（折合人民币）</div>' +
-      '    <div style="font-size:30px;font-weight:800;color:#e5484d" class="num">¥' + Store.fmtMinorThousand(totalCNY) + '</div>' +
-      '    <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">日均 ¥' + Store.fmtMinor(Math.round(totalCNY / 30)) + ' · 年化 ¥' + Store.fmtMinorThousand(totalCNY * 12) + '</div>' +
+      '    <div style="font-size:30px;font-weight:800;color:#e5484d" class="num">¥' + UI.amount(totalCNY, true) + '</div>' +
+      '    <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">日均 ¥' + UI.amount(Math.round(totalCNY / 30)) + ' · 年化 ¥' + UI.amount(totalCNY * 12, true) + '</div>' +
       '  </div>' +
 
       // 列表
@@ -98,8 +102,8 @@ Views.subs = (() => {
           return '<div class="cell j-item" data-id="' + s.id + '">' +
             '  <div class="c-ico">💳</div>' +
             '  <div class="c-main"><div class="c-title">' + U.escapeHtml(s.name) + '</div>' +
-            '  <div class="c-sub">' + (s.note ? U.escapeHtml(s.note) + ' · ' : '') + (s.currency === 'SGD' ? 'S$' + s.amount + ' ≈ ¥' + Store.fmtMinor(cny) : '¥' + Store.fmtMinor(cny)) + '/月</div></div>' +
-            '  <div class="c-right"><div class="c-val num money-out">¥' + Store.fmtMinor(cny) + '</div><div style="font-size:10px;color:var(--text-3)">每月</div></div>' +
+            '  <div class="c-sub">' + (s.note ? U.escapeHtml(s.note) + ' · ' : '') + (s.currency === 'SGD' ? 'S$' + UI.amount(Math.round(s.amount * 100)) + ' ≈ ¥' + UI.amount(cny) : '¥' + UI.amount(cny)) + '/月</div></div>' +
+            '  <div class="c-right"><div class="c-val num money-out">¥' + UI.amount(cny) + '</div><div style="font-size:10px;color:var(--text-3)">每月</div></div>' +
             '</div>';
         }).join('') + '</div>'
         : '<div class="empty"><span class="emoji">💳</span><div>还没有订阅记录</div><div class="tip" style="margin-top:4px">把 AI 会员、视频会员等固定月支出加进来</div></div>') +

@@ -9,6 +9,8 @@ const App = {
   init() {
     Store.init();
     this.applyTheme();
+    window.matchMedia('(prefers-color-scheme: dark)').addListener(() => this.applyTheme());
+    Store.on('replace', () => { this.applyTheme(); Views.focus.restore(); });
     this.routes = {
       home: Views.home, bills: Views.bills,
       assets: Views.assets, settings: Views.settings, ai: Views.ai,
@@ -33,21 +35,22 @@ const App = {
     window.__backupDone = (status, msg) => Store.noteBackupResult(status, msg);
     // Android 返回键：先关弹层/对话框，都关了才后退页面（由原生 onBackPressed 调用）
     window.__tryCloseOverlays = () => {
-      const sheet = document.getElementById('sheetRoot');
-      if (sheet.classList.contains('show') && !sheet.dataset.closing) {
-        const btn = sheet.querySelector('.sheet-close');
-        if (btn) btn.click();
-        return true;
-      }
       const dlg = document.getElementById('dialogRoot');
       if (dlg.classList.contains('show')) {
         const cancel = dlg.querySelector('.j-cancel');
         if (cancel) cancel.click();
         return true;
       }
+      const sheet = document.getElementById('sheetRoot');
+      if (sheet.classList.contains('show') && !sheet.dataset.closing) {
+        const btn = sheet.querySelector('.sheet-close');
+        if (btn) btn.click();
+        return true;
+      }
       return false;
     };
     this.render(location.hash);
+    Views.focus.restore();
   },
 
   go(route) {
@@ -59,7 +62,7 @@ const App = {
     document.documentElement.dataset.theme = Store.settings.theme || 'auto';
     const dark = Store.settings.theme === 'dark' ||
       (Store.settings.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#101114' : '#f6f7f9');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#19201d' : '#f7faf8');
     // 同步 Android 状态栏（颜色/图标深浅）
     if (window.AndroidBridge && window.AndroidBridge.setStatusBar) {
       try { window.AndroidBridge.setStatusBar(dark); } catch (e) { /* ignore */ }
@@ -73,9 +76,9 @@ const App = {
     if (redirect) { location.hash = '#/' + redirect; return; }
     this.route = this.routes[route] ? route : 'home';
     // 子页高亮映射：时光子页→时光，订阅→资产，旧报表/明细→账单
-    const tabRoute = ({ countdown: 'life', focus: 'life', subs: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
+    const tabRoute = ({ countdown: 'life', focus: 'life', memo: 'life', habit: 'life', subs: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
     document.querySelectorAll('#tabbar .tab').forEach(b => b.classList.toggle('on', b.dataset.route === tabRoute));
-    document.getElementById('fab').classList.toggle('hide', this.route === 'ai');
+    document.getElementById('fab').classList.toggle('on', this.route === 'ai');
     const body = document.getElementById('pageBody');
     body.scrollTop = 0;
     this.routes[this.route].mount(body);

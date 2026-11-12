@@ -5,7 +5,7 @@ Views.assets = (() => {
 
   function mount(root) {
     const hide = Store.settings.hideAmount;
-    const amt = minor => hide ? '✱✱✱' : '¥' + Store.fmtMinorThousand(minor);
+    const amt = minor => hide ? '✱✱✱' : '¥' + UI.amount(minor, true);
 
     const ym = U.ymNow();
     const today = U.todayStr();
@@ -26,7 +26,7 @@ Views.assets = (() => {
     if (book) {
       const total = Store.getBudget(book.id, ym, '');
       const used = Store.budgetUsed(book.id, ym, '');
-      const overCats = Store.categories('out')
+      const overCats = Store.rootCategories('out')
         .map(c => ({ c, b: Store.getBudget(book.id, ym, c.id), u: Store.budgetUsed(book.id, ym, c.id) }))
         .filter(x => x.b && x.u > x.b.amountMinor).slice(0, 2);
       if (total && total.amountMinor > 0) {
@@ -39,7 +39,7 @@ Views.assets = (() => {
           '    <div style="font-size:13px;font-weight:700;color:' + (used > total.amountMinor ? 'var(--danger)' : 'var(--accent)') + '">' + (used > total.amountMinor ? '超支 ' + amt(used - total.amountMinor) : '剩余 ' + amt(total.amountMinor - used)) + '</div>' +
           '  </div>' +
           '  <div class="progress ' + (used > total.amountMinor ? 'over' : '') + '"><div style="width:' + (pct * 100).toFixed(1) + '%"></div></div>' +
-          (overCats.length ? '<div style="margin-top:8px;font-size:12px;color:var(--danger)">' + overCats.map(x => x.c.icon + ' ' + U.escapeHtml(x.c.name) + ' 超支 ¥' + Store.fmtMinor(x.u - x.b.amountMinor)).join('；') + '</div>' : '') +
+          (overCats.length ? '<div style="margin-top:8px;font-size:12px;color:var(--danger)">' + overCats.map(x => x.c.icon + ' ' + U.escapeHtml(x.c.name) + ' 超支 ¥' + UI.amount(x.u - x.b.amountMinor)).join('；') + '</div>' : '') +
           '</div>';
       }
     }
@@ -53,7 +53,7 @@ Views.assets = (() => {
       return '<div class="cell">' +
         '  <div class="c-ico">' + a.icon + '</div>' +
         '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + '</div>' +
-        '  <div class="c-sub">本月支出 ¥' + Store.fmtMinor(out) + (inc ? ' · 收入 ¥' + Store.fmtMinor(inc) : '') + '</div></div>' +
+        '  <div class="c-sub">本月支出 ¥' + UI.amount(out) + (inc ? ' · 收入 ¥' + UI.amount(inc) : '') + '</div></div>' +
         '  <div class="c-right"><div class="c-val num">' + amt(bal) + '</div></div>' +
         '</div>';
     };
@@ -89,10 +89,10 @@ Views.assets = (() => {
       '    <div class="stat-grid">' +
       '      <div><div class="lab">支出</div><div class="val money-out">' + amt(stat.out) + '</div></div>' +
       '      <div><div class="lab">收入</div><div class="val money-in">' + amt(stat.inc) + '</div></div>' +
-      '      <div><div class="lab">结余</div><div class="val" style="color:' + (stat.net >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (hide ? '✱✱✱' : (stat.net >= 0 ? '+' : '-') + Store.fmtMinorThousand(Math.abs(stat.net))) + '</div></div>' +
+      '      <div><div class="lab">结余</div><div class="val" style="color:' + (stat.net >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (hide ? '✱✱✱' : (stat.net >= 0 ? '+' : '-') + UI.amount(Math.abs(stat.net), true)) + '</div></div>' +
       '    </div>' +
       '    <div style="text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--text-2)">今日支出 <b class="money-out num">' + amt(todayOut) + '</b>' +
-      (subsCount ? ' · 固定订阅 <b class="money-out num">¥' + Store.fmtMinor(subsTotal) + '</b>/月' : '') + '</div>' +
+      (subsCount ? ' · 固定订阅 <b class="money-out num">¥' + UI.amount(subsTotal) + '</b>/月' : '') + '</div>' +
       '  </div>' +
 
       budgetCard +
@@ -115,7 +115,7 @@ Views.assets = (() => {
 
       '  <div class="field-row" style="margin-bottom:14px">' +
       '    <button class="btn btn-primary j-transfer" style="flex:1">🔁 转账 / 还款</button>' +
-      '    <button class="btn btn-grad j-subscribe" style="flex:1">💳 会员支出' + (subsCount ? ' ¥' + Store.fmtMinor(subsTotal) + '/月' : '') + '</button>' +
+      '    <button class="btn btn-grad j-subscribe" style="flex:1">💳 会员支出' + (subsCount ? ' ¥' + UI.amount(subsTotal) + '/月' : '') + '</button>' +
       '  </div>' +
 
       // 资产账户

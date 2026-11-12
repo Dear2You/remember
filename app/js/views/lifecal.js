@@ -43,7 +43,8 @@ Views.lifecal = (() => {
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
           body.querySelector('.j-ok').onclick = () => {
             if (!state.title.trim()) { UI.toast('请输入标题', 'err'); return; }
-            if (!state.allDay && state.start && state.end && state.end < state.start) { UI.toast('结束时间不能早于开始时间', 'err'); return; }
+            if (!state.start || !state.end) { UI.toast('请选择开始和结束日期', 'err'); return; }
+            if ((state.allDay ? state.end.slice(0, 10) < state.start.slice(0, 10) : state.end < state.start)) { UI.toast('结束时间不能早于开始时间', 'err'); return; }
             if (edit) { Store.updateEvent(edit.id, { title: state.title.trim(), start: state.start, end: state.end, allDay: state.allDay, location: state.location.trim(), note: state.note.trim(), color: state.color, repeat: state.repeat }); UI.toast('已保存'); }
             else { Store.addEvent({ title: state.title, start: state.start, end: state.end, allDay: state.allDay, location: state.location, note: state.note, color: state.color, repeat: state.repeat }); UI.toast('日程已创建 ✓'); }
             close();
@@ -69,7 +70,6 @@ Views.lifecal = (() => {
         function render() {
           const evs = Store.eventsOn(dateStr);
           const tasks = Store.tasksDueOn(dateStr);
-          const today = U.todayStr();
           body.innerHTML =
             '<div class="section-title">日程（' + evs.length + '）</div>' +
             (evs.length
@@ -83,7 +83,7 @@ Views.lifecal = (() => {
             '<div class="section-title">到期的待办（' + tasks.length + '）</div>' +
             (tasks.length
               ? '<div class="cell-list" style="margin-bottom:14px">' + tasks.map(t => {
-                const done = Store.taskDoneOn(t, today);
+                const done = Store.taskDoneOn(t, dateStr);
                 return '<div class="cell">' +
                   '<button class="td-box ' + (done ? 'on' : '') + ' j-check" data-id="' + t.id + '" style="width:22px;height:22px">' + (done ? '✓' : '') + '</button>' +
                   '<div class="c-main"><div class="c-title" style="' + (done ? 'text-decoration:line-through;opacity:.55' : '') + '">' + U.escapeHtml(t.title) + (t.repeat !== 'none' ? ' 🔁' : '') + '</div>' +
@@ -99,17 +99,13 @@ Views.lifecal = (() => {
             if (e) { close(); openEventSheet(e); }
           });
           body.querySelectorAll('.j-check').forEach(b => b.onclick = () => {
-            Store.toggleTask(b.dataset.id, today);
+            Store.toggleTask(b.dataset.id, dateStr);
             render();
           });
           body.querySelector('.j-add-ev').onclick = () => { close(); openEventSheet(null, dateStr); };
           body.querySelector('.j-add-tk').onclick = () => {
             close();
-            Views.lifetasks.openTaskSheet();
-            setTimeout(() => { // 预填日期
-              const d = document.querySelector('.sheet-body .j-date');
-              if (d) { d.value = dateStr; d.dispatchEvent(new Event('change', { bubbles: true })); }
-            }, 300);
+            Views.lifetasks.openTaskSheet(null, dateStr);
           };
         }
         render();

@@ -12,7 +12,12 @@ BT="$SDK/build-tools/34.0.0"
 PLATFORM="$SDK/platforms/android-35/android.jar"
 WORK="$ROOT/build/work"
 VERSION_NAME="${1:-1.0}"
-VERSION_CODE="${VERSION_NAME//./}"
+if [[ ! "$VERSION_NAME" =~ ^([0-9]{1,4})\.([0-9]{1,2})(\.([0-9]{1,2}))?$ ]]; then
+  echo "版本格式应为 主.次 或 主.次.修订" >&2
+  exit 1
+fi
+PATCH_PART="${BASH_REMATCH[4]:-0}"
+VERSION_CODE=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#$PATCH_PART))
 
 OUT_APK="$ROOT/那年夏天-v$VERSION_NAME.apk"
 KEYSTORE="$ROOT/android/keystore.jks"

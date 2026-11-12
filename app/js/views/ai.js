@@ -36,7 +36,7 @@ Views.ai = (() => {
     const accs = Store.accounts(true);
     const accStr = accs.map(a => a.name + (a.type === 'liability' ? '(负债¥' + (Store.accountBalance(a.id) / 100).toFixed(0) + ')' : '(¥' + (Store.accountBalance(a.id) / 100).toFixed(0) + ')')).join('、') || '无';
     const books = Store.books();
-    const catTree = kind => Store.categories(kind).map(r => r.name + (Store.subCategories(r.id).length ? '[' + Store.subCategories(r.id).map(s => s.name).join('/') + ']' : '')).join('、');
+    const catTree = kind => Store.rootCategories(kind).map(r => r.name + (Store.subCategories(r.id).length ? '[' + Store.subCategories(r.id).map(s => s.name).join('/') + ']' : '')).join('、');
     const ws = Store.monthWorkSummary(ym);
     const workPayStr = ws.total ? ws.total.toFixed(1) + 'h' + (ws.pay ? '约¥' + (ws.pay / 100).toFixed(0) : '') : '无';
     const habits = Store.activeHabits().map(h =>
@@ -85,7 +85,7 @@ Views.ai = (() => {
   /* ---------- 执行 action ---------- */
   function findCategory(kind, name) {
     if (!name) return null;
-    const all = Store.categories(kind, true);
+    const all = Store.categories(kind).filter(c => !c.parentId || (Store.catRoot(c.id) && !Store.catRoot(c.id).archived));
     // 优先精确（含二级），再模糊，再一级包含
     return all.find(c => c.name === name) ||
       all.find(c => name.length > 1 && (c.name.includes(name) || name.includes(c.name))) ||
@@ -110,12 +110,14 @@ Views.ai = (() => {
           let cat = findCategory(kind, a.category);
           if (!cat && a.category) cat = Store.addCategory({ name: a.category, kind, icon: '🏷️' });
           if (!cat) cat = findCategory(kind, kind === 'in' ? '其他收入' : '其他支出') || Store.categories(kind)[0];
-          const acc = a.account ? (findAccount(a.account) || null) : null;
+          const choices = Store.accounts(true).filter(acc => kind !== 'in' || acc.type !== 'liability');
+          const acc = a.account ? findAccount(a.account) : (choices.find(x => x.id === Store.settings.lastAccountId) || choices[0]);
+          if (!acc) throw new Error('未找到可用账户');
           let bookId = a.book ? (findBook(a.book) || {}).id : '';
           if (!bookId) bookId = Store.settings.currentBookId || (Store.books()[0] || {}).id;
           const item = Store.addTransaction({
             bookId, type: kind, amountMinor: minor, categoryId: cat ? cat.id : '',
-            accountId: acc ? acc.id : (Store.settings.lastAccountId || (Store.accounts(true).filter(x => x.type !== 'liability')[0] || {}).id || ''),
+            accountId: acc.id,
             note: a.note || '', date: /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : U.todayStr()
           });
           const rootCat = cat ? Store.catRoot(cat.id) : null;
@@ -127,7 +129,7 @@ Views.ai = (() => {
         case 'add_transfer': {
           const minor = Store.parseAmount(a.amount);
           const from = findAccount(a.from), to = findAccount(a.to);
-          if (!minor || !from || !to || from.id === to.id) return { label: '转账失败：请提供不同的转出/转入账户名', undo: () => {} };
+          if (!minor || !from || !to || from.id === to.id) return { label: '转账失败：请提供不同的转出/转入账户名' };
           let bookId = a.book ? (findBook(a.book) || {}).id : '';
           if (!bookId) bookId = Store.settings.currentBookId || (Store.books()[0] || {}).id;
           const item = Store.addTransaction({ bookId, type: 'transfer', amountMinor: minor, fromId: from.id, toId: to.id, note: a.note || '', date: U.todayStr() });
@@ -152,10 +154,11 @@ Views.ai = (() => {
         case 'check_habit': {
           const h = Store.activeHabits().find(x => x.name === a.name) ||
             Store.activeHabits().find(x => a.name && x.name.includes(a.name));
-          if (!h) return { label: '未找到打卡「' + (a.name || '') + '」', undo: () => {} };
+          if (!h) return { label: '未找到打卡「' + (a.name || '') + '」' };
           const today = U.todayStr();
-          if (!Store.habitDone(h.id, today)) Store.toggleHabit(h.id, today);
-          return { label: '已打卡「' + h.icon + ' ' + h.name + '」' };
+          if (Store.habitDone(h.id, today)) return { label: '今天已打卡「' + h.name + '」' };
+          Store.toggleHabit(h.id, today);
+          return { label: '已打卡「' + h.icon + ' ' + h.name + '」', uncheck: h.id, uncheckDate: today };
         }
         case 'add_worktime': {
           const hours = Number(a.hours);
@@ -167,7 +170,7 @@ Views.ai = (() => {
           return { label: '已记工时 ' + U.fmtHours(hours) + ' · ' + item.project + (item.note ? ' · ' + item.note : '') + '（' + U.fmtDay(item.date) + '）', itemId: item.id };
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { return { label: '操作未保存：' + e.message }; }
     return null;
   }
 
@@ -238,22 +241,11 @@ Views.ai = (() => {
     box.innerHTML = '';
     if (!chats.length) {
       box.innerHTML =
-        '<div class="empty" style="padding:22px 0 10px"><span class="emoji">✨</span>' +
-        '<div style="font-size:15px;color:var(--text-2)">你好，我是你的 AI 助手</div>' +
-        '<div class="tip" style="margin-top:4px">记账 · 工时 · 备忘 · 打卡，都可以让我帮忙</div>' +
-        '<div class="field-row" style="margin-top:14px;justify-content:center">' +
-        '  <button class="btn btn-grad j-big-new" style="flex:0 0 150px">＋ 新建对话</button>' +
-        '  <button class="btn btn-ghost j-big-list" style="flex:0 0 130px">📋 历史对话(' + Store.aiSessions().length + ')</button>' +
-        '</div></div>' +
         '<div class="quick-chips">' +
         ['这个月花了多少钱？', '帮我记一笔：午饭 25 元', '分析一下我的消费', '本月工时总结'].map(q =>
           '<button class="chip j-quick">' + U.escapeHtml(q) + '</button>').join('') +
         '</div>';
       box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.textContent));
-      const bigNew = box.querySelector('.j-big-new');
-      if (bigNew) bigNew.onclick = () => { Store.aiNewSession(); UI.toast('已开始新对话'); App.refresh(true); };
-      const bigList = box.querySelector('.j-big-list');
-      if (bigList) bigList.onclick = openSessionsSheet;
       return;
     }
     chats.forEach((msg, idx) => {
@@ -272,7 +264,7 @@ Views.ai = (() => {
           card.className = 'action-card' + (ac.revoked ? ' revoked' : '');
           card.innerHTML = '<span>' + (ac.revoked ? '↩️' : '✅') + '</span>' +
             '<span class="ac-txt">' + U.escapeHtml(ac.revoked ? ac.label + '（已撤销）' : ac.label) + '</span>' +
-            (ac.revoked ? '' : '<button class="ac-undo">撤销</button>');
+            (ac.revoked || (!ac.itemId && !ac.uncheck) ? '' : '<button class="ac-undo">撤销</button>');
           const undoBtn = card.querySelector('.ac-undo');
           if (undoBtn) undoBtn.onclick = () => {
             undoAction(idx, ai2);
@@ -295,6 +287,7 @@ Views.ai = (() => {
       Store.data.transactions = Store.data.transactions.filter(x => x.id !== ac.itemId);
       Store.data.worktimes = Store.data.worktimes.filter(x => x.id !== ac.itemId);
       Store.data.memos = Store.data.memos.filter(x => x.id !== ac.itemId);
+      delete Store.data.habitLogs[ac.itemId];
       Store.data.habits = Store.data.habits.filter(x => x.id !== ac.itemId);
       Store.data.tasks = Store.data.tasks.filter(x => x.id !== ac.itemId);
     }
@@ -364,7 +357,7 @@ Views.ai = (() => {
           stream: true,
           messages: [
             { role: 'system', content: buildSystem() },
-            ...sess.messages.slice(-13, -1).map(m => ({ role: m.role, content: m.content }))
+            ...sess.messages.slice(-13).map(m => ({ role: m.role, content: m.content }))
           ],
           temperature: 0.6,
           max_tokens: 1024
@@ -380,8 +373,7 @@ Views.ai = (() => {
       let buf = '';
       for (;;) {
         const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
+        buf += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
         const lines = buf.split('\n');
         buf = lines.pop() || '';
         for (const line of lines) {
@@ -395,7 +387,10 @@ Views.ai = (() => {
             if (delta && delta.content) { raw += delta.content; paint(); }
           } catch (e) { /* 半包忽略 */ }
         }
+        if (done) break;
       }
+      if (!raw.trim()) throw new Error('服务没有返回消息，请重试');
+      if (!Store.data.aiSessions.includes(sess)) return;
 
       // 完成：解析并执行 action
       const { text: cleanText, actions } = extractActions(raw);
@@ -403,11 +398,7 @@ Views.ai = (() => {
       actions.forEach(a => {
         const r = runAction(a);
         if (r) {
-          acts.push({ label: r.label, itemId: r.itemId || null });
-          if (a.type === 'check_habit') {
-            const h = Store.activeHabits().find(x => x.name === a.name) || Store.activeHabits().find(x => a.name && x.name.includes(a.name));
-            if (h) acts[acts.length - 1].uncheck = h.id, acts[acts.length - 1].uncheckDate = U.todayStr();
-          }
+          acts.push(r);
         }
       });
       sess.messages.push({ role: 'assistant', content: cleanText || '(已完成)', actions: acts, ts: Date.now() });
@@ -452,7 +443,7 @@ Views.ai = (() => {
     root.innerHTML =
       '<div class="page" style="display:flex;flex-direction:column;min-height:100%">' +
       '  <div class="page-head">' +
-      '    <div><div class="page-title">AI 助手</div><div class="page-sub">' + U.escapeHtml(Store.settings.aiModel || 'glm-5.3') + ' · 上下文已连接记账/工时/打卡</div></div>' +
+      '    <div><div class="page-title">AI 助手</div><div class="page-sub">' + U.escapeHtml(Store.settings.aiModel || 'glm-5.3') + '</div></div>' +
       '    <div style="display:flex;gap:8px">' +
       '    <button class="chip j-sessions" style="padding:7px 13px">☰ 对话</button>' +
       '    <button class="chip j-new" style="padding:7px 13px;background:var(--accent-weak);color:var(--accent);font-weight:700">＋ 新建</button>' +
@@ -460,13 +451,13 @@ Views.ai = (() => {
       '  </div>' +
       (!cfgOk
         ? '<div class="card" style="border:1px dashed var(--warn)">' +
-          '<div style="font-size:14px;font-weight:600">⚙️ 还没配置 API Key</div>' +
-          '<div style="font-size:12.5px;color:var(--text-3);margin:4px 0 10px">配置后即可使用 AI 记账、分析消费、管理打卡</div>' +
+          '<div style="font-size:14px;font-weight:600">连接 AI 服务</div>' +
+          '<div style="font-size:12.5px;color:var(--text-3);margin:4px 0 10px">在设置中填写 API Key 后，即可用对话记账或查看工时。</div>' +
           '<button class="btn btn-primary j-goset" style="width:100%">去设置</button></div>'
         : '') +
       '  <div id="chatBox" class="chat-wrap"></div>' +
       '  <div class="ai-input-bar">' +
-      '    <textarea id="aiInput" rows="1" placeholder="问我、让我记点什么…"></textarea>' +
+      '    <textarea id="aiInput" rows="1" placeholder="输入消息…"></textarea>' +
       '    <button id="aiSend" class="ai-send"><svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.5-7.5z"/></svg></button>' +
       '  </div>' +
       '</div>';
@@ -483,9 +474,10 @@ Views.ai = (() => {
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(input.value); }
     });
-    setSendBtn(false);
+    setSendBtn(sending);
 
-    root.querySelector('.j-goset').onclick = () => App.go('settings');
+    const settingsButton = root.querySelector('.j-goset');
+    if (settingsButton) settingsButton.onclick = () => App.go('settings');
     root.querySelector('.j-sessions').onclick = openSessionsSheet;
     root.querySelector('.j-new').onclick = () => {
       Store.aiNewSession();

@@ -97,46 +97,51 @@ const Store = {
         if (legacy) { legacy.__key = k; break; }
       }
     }
-    const def = this.defaults();
-    this.data = Object.assign(def, v3 || {});
-    this.data.settings = Object.assign(def.settings, (v3 && v3.settings) || {});
-    if (!Array.isArray(this.data.books) || !this.data.books.length) this.data.books = this.DEFAULT_BOOK();
-    if (!Array.isArray(this.data.accounts) || !this.data.accounts.length) this.data.accounts = this.DEFAULT_ACCOUNTS();
-    if (!Array.isArray(this.data.categories) || !this.data.categories.length) this.data.categories = this.DEFAULT_CATS();
-    if (!Array.isArray(this.data.transactions)) this.data.transactions = [];
-    if (!Array.isArray(this.data.budgets)) this.data.budgets = [];
-    // v4 时光模块集合（旧版本无这些 key 时补空）
-    if (!Array.isArray(this.data.tasks)) this.data.tasks = [];
-    if (!Array.isArray(this.data.events)) this.data.events = [];
-    if (!Array.isArray(this.data.countdowns)) this.data.countdowns = [];
-    if (!Array.isArray(this.data.focusSessions)) this.data.focusSessions = [];
-    if (!Array.isArray(this.data.subscriptions)) this.data.subscriptions = [];
-    if (!Array.isArray(this.data.aiSessions)) this.data.aiSessions = [];
-    // 老版本单聊天记录 → 迁移为一个会话
-    if (!this.data.aiSessions.length && Array.isArray(this.data.chats) && this.data.chats.length) {
-      const firstUser = this.data.chats.find(m => m.role === 'user');
-      this.data.aiSessions.push({
-        id: U.id(), title: firstUser ? firstUser.content.slice(0, 14) : '历史对话',
-        messages: this.data.chats, createdAt: Date.now(), updatedAt: Date.now()
-      });
-      this.data.settings.aiActiveSessionId = this.data.aiSessions[0].id;
-    }
-    // 旧默认模型升级为 GLM-5.3
-    if (this.data.settings.aiModel === 'glm-4-flash') this.data.settings.aiModel = 'glm-5.3';
-    if (!Array.isArray(this.data.wageProjects)) this.data.wageProjects = [];
-    if (typeof this.data.settings.sgdRate !== 'number' || !(this.data.settings.sgdRate > 0)) this.data.settings.sgdRate = 5.30;
-    if (typeof this.data.settings.defaultRate !== 'number' || this.data.settings.defaultRate < 0) this.data.settings.defaultRate = 0;
-    if (this.data.version < 4) { this.data.version = 4; }
-    this.data.accounts.forEach(a => { if (!a.type) a.type = a.id === 'acc-credit' ? 'liability' : 'asset'; });
-    if (!this.data.habitLogs) this.data.habitLogs = {};
-    if (!Array.isArray(this.data.chats)) this.data.chats = [];
-    // 当前账本有效性
-    if (!this.data.books.find(b => b.id === this.data.settings.currentBookId && !b.archived)) {
-      const fb = this.data.books.find(b => !b.archived);
-      this.data.settings.currentBookId = fb ? fb.id : '';
-    }
+    this.data = this.normalizeData(v3 || {});
     if (legacy && !v3) this._migrateLegacy(legacy);
-    this.save();
+    // 打开应用本身不触发外部自动备份，避免空安装覆盖已有备份。
+    if (v3 || legacy) this.save(false);
+  },
+
+  normalizeData(saved) {
+    const def = this.defaults();
+    const data = Object.assign({}, def, saved);
+    data.settings = Object.assign({}, def.settings, saved.settings || {});
+    if (!Array.isArray(data.books) || !data.books.length) data.books = this.DEFAULT_BOOK();
+    if (!Array.isArray(data.accounts) || !data.accounts.length) data.accounts = this.DEFAULT_ACCOUNTS();
+    if (!Array.isArray(data.categories) || !data.categories.length) data.categories = this.DEFAULT_CATS();
+    if (!Array.isArray(data.transactions)) data.transactions = [];
+    if (!Array.isArray(data.budgets)) data.budgets = [];
+    // v4 时光模块集合（旧版本无这些 key 时补空）
+    if (!Array.isArray(data.tasks)) data.tasks = [];
+    if (!Array.isArray(data.events)) data.events = [];
+    if (!Array.isArray(data.countdowns)) data.countdowns = [];
+    if (!Array.isArray(data.focusSessions)) data.focusSessions = [];
+    if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
+    if (!Array.isArray(data.aiSessions)) data.aiSessions = [];
+    // 老版本单聊天记录 → 迁移为一个会话
+    if (!data.aiSessions.length && Array.isArray(data.chats) && data.chats.length) {
+      const firstUser = data.chats.find(m => m.role === 'user');
+      data.aiSessions.push({
+        id: U.id(), title: firstUser ? firstUser.content.slice(0, 14) : '历史对话',
+        messages: data.chats, createdAt: Date.now(), updatedAt: Date.now()
+      });
+      data.settings.aiActiveSessionId = data.aiSessions[0].id;
+      data.chats = [];
+    }
+    if (!Array.isArray(data.wageProjects)) data.wageProjects = [];
+    if (typeof data.settings.sgdRate !== 'number' || !(data.settings.sgdRate > 0)) data.settings.sgdRate = 5.30;
+    if (typeof data.settings.defaultRate !== 'number' || data.settings.defaultRate < 0) data.settings.defaultRate = 0;
+    if (data.version < 4) { data.version = 4; }
+    data.accounts.forEach(a => { if (!a.type) a.type = a.id === 'acc-credit' ? 'liability' : 'asset'; });
+    if (!data.habitLogs) data.habitLogs = {};
+    if (!Array.isArray(data.chats)) data.chats = [];
+    // 当前账本有效性
+    if (data.settings.currentBookId && !data.books.find(b => b.id === data.settings.currentBookId && !b.archived)) {
+      const fb = data.books.find(b => !b.archived);
+      data.settings.currentBookId = fb ? fb.id : '';
+    }
+    return data;
   },
 
   _migrateLegacy(legacy) {
@@ -187,10 +192,10 @@ const Store = {
     try { localStorage.removeItem(legacy.__key); } catch (e) { /* ignore */ }
   },
 
-  save() {
+  save(backup = true) {
     try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); }
     catch (e) { UI.toast('本地存储失败，空间可能已满', 'err'); }
-    this._scheduleAutoBackup();
+    if (backup) this._scheduleAutoBackup();
   },
 
   /* ---------- 自动备份到手机下载目录（卸载 App 不丢） ---------- */
@@ -222,10 +227,10 @@ const Store = {
 
   /* ---------- 金额工具 ---------- */
   parseAmount(str) {
-    const s = String(str == null ? '' : str).trim().replace(/[，,]/g, '').replace(/￥¥\s/g, '');
+    const s = String(str == null ? '' : str).trim().replace(/[，,]/g, '').replace(/^[￥¥]\s*/, '');
     if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
     const v = Math.round(parseFloat(s) * 100);
-    return v > 0 ? v : null;
+    return Number.isSafeInteger(v) && v > 0 ? v : null;
   },
   fmtMinor(minor) {
     const n = Math.round(Number(minor) || 0);
@@ -254,12 +259,23 @@ const Store = {
     this.mutate(d => d.books.push(item));
     return item;
   },
-  updateBook(id, patch) { this.mutate(d => { const it = d.books.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id, isDefault: it.isDefault }); }); },
+  updateBook(id, patch) {
+    this.mutate(d => {
+      const book = d.books.find(b => b.id === id);
+      if (!book) return;
+      Object.assign(book, patch, { id, isDefault: book.isDefault });
+      if (book.archived && d.settings.currentBookId === id) d.settings.currentBookId = '';
+    });
+  },
   removeBook(id) {
     const b = this.book(id);
     if (!b || b.isDefault) return false;
     if (this.data.transactions.some(t => t.bookId === id)) return false; // 有账单只能归档
-    this.mutate(d => { d.books = d.books.filter(x => x.id !== id); });
+    this.mutate(d => {
+      d.books = d.books.filter(x => x.id !== id);
+      d.budgets = d.budgets.filter(x => x.bookId !== id);
+      if (d.settings.currentBookId === id) d.settings.currentBookId = '';
+    });
     return true;
   },
   // 账本筛选：bookId 为空 = 全部账本（每笔只算一次，天然去重）
@@ -276,11 +292,12 @@ const Store = {
   accountName(id) { const a = this.account(id); return a ? a.name : '已删除账户'; },
   // 资产余额 = 期初 + 收入 - 支出 + 转入 - 转出
   // 负债余额 = 期初欠款 + 刷卡支出(该账户的 out) - 还款(转入该账户的 transfer)
-  accountBalance(id) {
+  accountBalance(id, skipId) {
     const a = this.account(id);
     if (!a) return 0;
     let bal = a.opening || 0;
     this.data.transactions.forEach(t => {
+      if (skipId && t.id === skipId) return;
       if (a.type === 'liability') {
         if (t.type === 'out' && t.accountId === id) bal += t.amountMinor;      // 刷卡 → 欠款增加
         if (t.type === 'transfer' && t.toId === id) bal -= t.amountMinor;      // 还款 → 欠款减少
@@ -320,6 +337,7 @@ const Store = {
       .filter(c => (kind ? c.kind === kind : true) && (includeArchived ? true : !c.archived))
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   },
+  rootCategories(kind, includeArchived) { return this.categories(kind, includeArchived).filter(c => !c.parentId); },
   category(id) { return this.data.categories.find(c => c.id === id); },
   subCategories(parentId) {
     return this.data.categories.filter(c => c.parentId === parentId && !c.archived)
@@ -351,27 +369,35 @@ const Store = {
       categoryId: o.categoryId || '', note: o.note || '', date: o.date || U.todayStr(),
       createdAt: now, updatedAt: now
     };
+    this.validateTransaction(item);
+    this.mutate(d => d.transactions.push(item));
+    if (item.type !== 'transfer' && item.accountId) { this.data.settings.lastAccountId = item.accountId; this.save(); }
+    if (item.bookId) { this.data.settings.lastBookId = item.bookId; this.save(); }
+    return item;
+  },
+  validateTransaction(item, previousId) {
+    if (!Number.isSafeInteger(item.amountMinor) || item.amountMinor <= 0) throw new Error('请输入有效金额');
+    if (!['in', 'out', 'transfer'].includes(item.type) || !this.book(item.bookId)) throw new Error('无效的账本或交易类型');
+    if (item.type !== 'transfer' && !this.account(item.accountId)) throw new Error('请选择有效账户');
     if (item.type === 'in') {
       const acc = this.account(item.accountId);
       if (acc && acc.type === 'liability') throw new Error('收入不能记入负债账户');
     }
     if (item.type === 'transfer') {
       const from = this.account(item.fromId), to = this.account(item.toId);
-      if (from && from.type === 'liability') throw new Error('首版不支持从负债账户转出');
-      if (to && to.type === 'liability' && item.amountMinor > Math.max(this.accountBalance(item.toId), 0)) {
+      if (!from || !to || from.id === to.id) throw new Error('请选择两个不同的账户');
+      if (from.type === 'liability') throw new Error('首版不支持从负债账户转出');
+      if (to && to.type === 'liability' && item.amountMinor > Math.max(this.accountBalance(item.toId, previousId), 0)) {
         throw new Error('还款金额不能超过当前欠款');
       }
     }
-    this.mutate(d => d.transactions.push(item));
-    if (item.type !== 'transfer' && item.accountId) { this.data.settings.lastAccountId = item.accountId; this.save(); }
-    if (item.bookId) { this.data.settings.lastBookId = item.bookId; this.save(); }
-    return item;
   },
   updateTransaction(id, patch) {
-    this.mutate(d => {
-      const it = d.transactions.find(x => x.id === id);
-      if (it) Object.assign(it, patch, { id: it.id, updatedAt: Date.now() });
-    });
+    const it = this.data.transactions.find(x => x.id === id);
+    if (!it) throw new Error('找不到这条账单');
+    const next = Object.assign({}, it, patch, { id, updatedAt: Date.now() });
+    this.validateTransaction(next, id);
+    this.mutate(() => Object.assign(it, next));
   },
   removeTransaction(id) { this.mutate(d => { d.transactions = d.transactions.filter(x => x.id !== id); }); },
   isRepay(t) { return t.type === 'transfer' && this.account(t.toId) && this.account(t.toId).type === 'liability'; },
@@ -468,17 +494,23 @@ const Store = {
   },
   // 单条收入（分）= 时长 × 时薪
   workPayMinor(w) { return Math.round(w.hours * this.workRate(w) * 100); },
+  workHours(value) {
+    const hours = Number(value);
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || +hours.toFixed(2) !== hours)
+      throw new Error('工时应大于 0 且不超过 24 小时，最多两位小数');
+    return hours;
+  },
   addWork(o) {
     const item = {
       id: U.id(), date: o.date || U.todayStr(), project: (o.project || '未分类').trim() || '未分类',
-      hours: Math.round((Number(o.hours) || 0) * 10) / 10, note: o.note || '',
+      hours: this.workHours(o.hours), note: o.note || '',
       rate: (o.rate != null && Number(o.rate) >= 0) ? Math.round(Number(o.rate) * 100) / 100 : null,
       createdAt: Date.now()
     };
     this.mutate(d => d.worktimes.push(item));
     return item;
   },
-  updateWork(id, patch) { this.mutate(d => { const it = d.worktimes.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  updateWork(id, patch) { if (patch.hours != null) this.workHours(patch.hours); this.mutate(d => { const it = d.worktimes.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
   removeWork(id) { this.mutate(d => { d.worktimes = d.worktimes.filter(x => x.id !== id); }); },
   monthWorktimes(ym) { return this.data.worktimes.filter(w => w.date.startsWith(ym)); },
   dayWorktimes(dateStr) { return this.data.worktimes.filter(w => w.date === dateStr).sort((a, b) => b.createdAt - a.createdAt); },
@@ -496,7 +528,7 @@ const Store = {
     const total = list.reduce((s, w) => s + w.hours, 0);
     const pay = list.reduce((s, w) => s + this.workPayMinor(w), 0);
     const days = new Set(list.map(w => w.date)).size;
-    const byProject = {}, byProjectPay = {};
+    const byProject = Object.create(null), byProjectPay = Object.create(null);
     list.forEach(w => {
       byProject[w.project] = (byProject[w.project] || 0) + w.hours;
       byProjectPay[w.project] = (byProjectPay[w.project] || 0) + this.workPayMinor(w);
@@ -510,7 +542,8 @@ const Store = {
   setWageProject(name, rate) {
     const n = (name || '').trim();
     if (!n) return false;
-    const r = Math.round((Number(rate) || 0) * 100) / 100;
+    const r = Math.round(Number(rate) * 100) / 100;
+    if (!Number.isFinite(r) || r < 0) return false;
     this.mutate(d => {
       const exist = d.wageProjects.find(p => p.name === n);
       if (exist) exist.rate = r;
@@ -520,8 +553,8 @@ const Store = {
   },
   removeWageProject(name) { this.mutate(d => { d.wageProjects = d.wageProjects.filter(p => p.name !== name); }); },
   setDefaultRate(rate) {
-    const r = Math.round((Number(rate) || 0) * 100) / 100;
-    if (r < 0) return false;
+    const r = Math.round(Number(rate) * 100) / 100;
+    if (!Number.isFinite(r) || r < 0) return false;
     this.settings.defaultRate = r;
     this.save();
     return true;
@@ -567,6 +600,7 @@ const Store = {
     });
   },
   habitDueOn(h, date) {
+    if (h.createdAt && U.dateStr(date) < U.dateStr(new Date(h.createdAt))) return false;
     if (!h.freq || h.freq.type !== 'weekly') return true;
     return h.freq.days.indexOf(date.getDay()) >= 0;
   },
@@ -579,6 +613,7 @@ const Store = {
       if (!(this.habitDueOn(h, d) && set.has(U.dateStr(d)))) d.setDate(d.getDate() - 1);
       for (let guard = 0; guard < 3000; guard++) {
         const ds = U.dateStr(d);
+        if (h.createdAt && ds < U.dateStr(new Date(h.createdAt))) break;
         if (!this.habitDueOn(h, d)) { d.setDate(d.getDate() - 1); continue; }
         if (set.has(ds)) { n++; d.setDate(d.getDate() - 1); } else break;
       }
@@ -615,16 +650,24 @@ const Store = {
 
   /* ---------- 待办事项 / 四象限 ---------- */
   // 某日发生的任务：非重复=截止日当天；重复=按规则展开（daily 每日 / weekly 同星期 / monthly 同日期）
+  taskOccursOn(t, dateStr) {
+    if (t.cancelled) return false;
+    if (!t.repeat || t.repeat === 'none') return t.dueDate === dateStr;
+    const first = t.dueDate || t.createdDate || (t.createdAt ? U.dateStr(new Date(t.createdAt)) : dateStr);
+    if (dateStr < first) return false;
+    if (t.repeat === 'daily') return true;
+    if (t.repeat === 'weekly') return U.parseDate(dateStr).getDay() === U.parseDate(first).getDay();
+    return t.repeat === 'monthly' && Number(dateStr.slice(8)) === (t.repeatDay || Number(first.slice(8)));
+  },
   tasksDueOn(dateStr) {
-    const dow = U.parseDate(dateStr).getDay();
-    const day = U.parseDate(dateStr).getDate();
-    return this.data.tasks.filter(t => {
-      if (t.cancelled) return false;
-      if (t.repeat === 'daily') return true;
-      if (t.repeat === 'weekly') return dow === (U.parseDate(t.createdDate || t.dueDate || dateStr).getDay());
-      if (t.repeat === 'monthly') return day === (t.repeatDay || 15);
-      return t.dueDate === dateStr;
-    });
+    return this.data.tasks.filter(t => this.taskOccursOn(t, dateStr));
+  },
+  nextTaskDate(t, today, days) {
+    for (let i = 0; i < days; i++) {
+      const date = U.addDays(today, i);
+      if (this.taskOccursOn(t, date) && !this.taskDoneOn(t, date)) return date;
+    }
+    return '';
   },
   // 任务在某天是否已完成（重复任务查 doneDates；非重复查 done）
   taskDoneOn(t, dateStr) {
@@ -671,15 +714,12 @@ const Store = {
   // 事项筛选：today | week | overdue | done | all
   tasksBy(filter2) {
     const today = U.todayStr();
-    const week = new Date(); week.setDate(week.getDate() + 7);
-    const weekStr = U.dateStr(week);
     const list = this.data.tasks.filter(t => !t.cancelled);
     switch (filter2) {
       case 'today':
-        return list.filter(t => (t.repeat !== 'none' ? true : (!t.dueDate || t.dueDate === today)) && !this.taskDoneOn(t, today));
+        return list.filter(t => ((!t.dueDate && (!t.repeat || t.repeat === 'none')) || this.taskOccursOn(t, today)) && !this.taskDoneOn(t, today));
       case 'week':
-        return list.filter(t => !t.dueDate ? false : (t.dueDate >= today && t.dueDate <= weekStr) || (t.repeat !== 'none'))
-          .filter(t => !this.taskDoneOn(t, today));
+        return list.filter(t => this.nextTaskDate(t, today, 7));
       case 'overdue': return list.filter(t => this.isTaskOverdue(t));
       case 'done': return list.filter(t => t.repeat === 'none' ? t.done : (t.doneDates || []).length > 0).sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
       default: return list;
@@ -702,31 +742,42 @@ const Store = {
   updateEvent(id, patch) { this.mutate(d => { const it = d.events.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
   removeEvent(id) { this.mutate(d => { d.events = d.events.filter(x => x.id !== id); }); },
   // 某日期的日程（含每周重复虚拟展开，不复制源记录）
-  eventsOn(dateStr) {
-    const dow = U.parseDate(dateStr).getDay();
-    return this.data.events.filter(e => {
-      if (!e.start) return false;
-      const d0 = e.start.slice(0, 10);
-      if (e.repeat === 'weekly') {
-        const dow0 = U.parseDate(d0).getDay();
-        return dateStr >= d0 && dow === dow0;
-      }
-      if (e.end && e.end.slice(0, 10) > d0) return dateStr >= d0 && dateStr <= e.end.slice(0, 10); // 跨日
-      return d0 === dateStr;
-    }).sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-  },
-  // 下一场日程（从现在起）
-  nextEvent() {
-    const now = new Date();
-    const nowStr = U.todayStr(), nowHM = U.pad(now.getHours()) + ':' + U.pad(now.getMinutes());
-    let best = null;
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(); d.setDate(d.getDate() + i);
-      const ds = U.dateStr(d);
-      const evs = this.eventsOn(ds).filter(e => e.start.slice(0, 10) < ds || e.start.slice(11) >= nowHM || i > 0);
-      if (evs.length) { best = evs.find(e => !(i === 0 && e.start.slice(11) < nowHM && !e.allDay)) || evs[0]; if (best) return { ev: best, date: ds }; }
+  eventOccurrence(ev, date) {
+    const first = ev.start.slice(0, 10);
+    let start = first;
+    if (ev.repeat === 'weekly' && date > first) {
+      const weeks = Math.floor((U.daysBetween(first, date) - 1) / 7);
+      start = U.addDays(first, weeks * 7);
     }
-    return null;
+    const span = Math.max(0, U.daysBetween(first, (ev.end || ev.start).slice(0, 10)) - 1);
+    return { start, end: U.addDays(start, span) };
+  },
+  eventsOn(dateStr) {
+    return this.data.events.filter(ev => {
+      if (!ev.start) return false;
+      const { start, end } = this.eventOccurrence(ev, dateStr);
+      return start <= dateStr && dateStr <= end;
+    }).sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.slice(11).localeCompare(b.start.slice(11)));
+  },
+  nextEvent() {
+    const today = U.todayStr();
+    const now = new Date();
+    const clock = U.pad(now.getHours()) + ':' + U.pad(now.getMinutes());
+    let best = null;
+    let bestTime = '';
+    for (const ev of this.data.events) {
+      if (!ev.start) continue;
+      const occurrence = this.eventOccurrence(ev, today);
+      let date = occurrence.start;
+      if (occurrence.end < today || (occurrence.end === today && !ev.allDay && (ev.end || ev.start).slice(11) < clock)) {
+        if (ev.repeat !== 'weekly') continue;
+        date = U.addDays(date, 7);
+      }
+      if (date < today) date = today;
+      const time = date + ' ' + (ev.allDay ? '00:00' : ev.start.slice(11));
+      if (!best || time < bestTime) { best = { ev, date }; bestTime = time; }
+    }
+    return best;
   },
 
   /* ---------- 倒数日 ---------- */
@@ -773,8 +824,7 @@ const Store = {
       .reduce((s2, x) => s2 + x.actualSec, 0);
   },
   focusWeek() {
-    const from = new Date(); from.setDate(from.getDate() - 6);
-    const fromStr = U.dateStr(from);
+    const fromStr = U.weekStart(U.todayStr());
     return this.data.focusSessions.filter(s => U.dateStr(new Date(s.startedAt)) >= fromStr)
       .reduce((s2, x) => s2 + x.actualSec, 0);
   },
@@ -803,6 +853,7 @@ const Store = {
   },
   setSgdRate(rate) {
     const v = Math.round(Number(rate) * 10000) / 10000;
+    if (!Number.isFinite(v)) return false;
     if (!(v > 0 && v < 100)) return false;
     this.settings.sgdRate = v;
     this.save();
@@ -873,7 +924,9 @@ const Store = {
 
   /* ---------- 备份 ---------- */
   exportData() {
-    return JSON.stringify({ app: 'nianxiatian', version: 3, exportedAt: new Date().toISOString(), data: this.data }, null, 2);
+    const settings = Object.assign({}, this.settings);
+    delete settings.aiKey;
+    return JSON.stringify({ app: 'nianxiatian', version: this.data.version, exportedAt: new Date().toISOString(), data: { ...this.data, settings } }, null, 2);
   },
   exportCSV() {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
@@ -905,16 +958,45 @@ const Store = {
     if (!d || typeof d !== 'object' || !Array.isArray(d.transactions) || !Array.isArray(d.accounts) || !Array.isArray(d.books)) {
       return { ok: false, msg: '文件格式不匹配，请选择那年夏天导出的备份' };
     }
-    for (const t of d.transactions.slice(0, 50)) {
-      if (!t.date || !t.type || !(t.amountMinor > 0) || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
+    const defaults = this.defaults();
+    const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+    for (const key of Object.keys(defaults)) {
+      if (!(key in d)) continue;
+      if (Array.isArray(defaults[key]) && (!Array.isArray(d[key]) || !d[key].every(object))) {
+        return { ok: false, msg: '备份中的记录格式错误，已中止导入' };
+      }
     }
-    this.data = Object.assign(this.defaults(), d);
-    this.data.settings = Object.assign(this.defaults().settings, d.settings || {});
-    this.save();
+    if ((d.settings && !object(d.settings)) || (d.habitLogs && (!object(d.habitLogs) || !Object.values(d.habitLogs).every(Array.isArray))) ||
+        (d.aiSessions || []).some(s => !Array.isArray(s.messages) || !s.messages.every(object))) {
+      return { ok: false, msg: '备份中的设置或记录格式错误，已中止导入' };
+    }
+    for (const t of d.transactions) {
+      if (typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date) || !['out','in','transfer'].includes(t.type) || !Number.isSafeInteger(t.amountMinor) || t.amountMinor <= 0 || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
+    }
+    const isDate = date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date;
+    const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' && Number.isFinite(w.hours)) &&
+      (d.transactions || []).every(t => isDate(t.date)) &&
+      (d.events || []).every(e => typeof e.start === 'string' && (!e.end || typeof e.end === 'string')) &&
+      (d.countdowns || []).every(c => isDate(c.date)) &&
+      (d.memos || []).every(m => (!m.items || (Array.isArray(m.items) && m.items.every(object)))) &&
+      (d.tasks || []).every(t => !t.doneDates || Array.isArray(t.doneDates)) &&
+      (d.habits || []).every(h => !h.freq || h.freq.type !== 'weekly' || Array.isArray(h.freq.days));
+    if (!validRecords) return { ok: false, msg: '备份内有日期或记录格式错误，已中止导入' };
+    let next;
+    try {
+      next = this.normalizeData(d);
+      if (!d.settings || !Object.prototype.hasOwnProperty.call(d.settings, 'aiKey')) next.settings.aiKey = this.settings.aiKey || '';
+      localStorage.setItem(this.KEY, JSON.stringify(next));
+    } catch (e) {
+      return { ok: false, msg: '无法恢复备份，请检查文件内容和设备剩余空间' };
+    }
+    this.data = next;
+    this.emit('replace');
+    this._scheduleAutoBackup();
     this.emit('change');
     return { ok: true, msg: '导入成功' };
   },
-  clearAll() { this.data = this.defaults(); this.save(); this.emit('change'); }
+  clearAll() { this.data = this.defaults(); this.save(); this.emit('replace'); this.emit('change'); }
 };
 
 window.Store = Store;

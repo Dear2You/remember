@@ -74,9 +74,9 @@ Views.bills = (() => {
         const trans = list.filter(t => t.type === 'transfer').reduce((s, t) => s + t.amountMinor, 0);
         body.innerHTML =
           '<div style="display:flex;gap:8px;margin-bottom:12px;text-align:center">' +
-          '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">支出</div><div style="font-weight:800;color:#e5484d" class="num">¥' + Store.fmtMinor(out) + '</div></div>' +
-          '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">收入</div><div style="font-weight:800;color:var(--accent)" class="num">¥' + Store.fmtMinor(inc) + '</div></div>' +
-          (trans ? '<div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">转账</div><div style="font-weight:800" class="num">¥' + Store.fmtMinor(trans) + '</div></div>' : '') +
+          '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">支出</div><div style="font-weight:800;color:#e5484d" class="num">¥' + UI.amount(out) + '</div></div>' +
+          '  <div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">收入</div><div style="font-weight:800;color:var(--accent)" class="num">¥' + UI.amount(inc) + '</div></div>' +
+          (trans ? '<div style="flex:1;background:var(--input-bg);border-radius:12px;padding:8px"><div style="font-size:11px;color:var(--text-3)">转账</div><div style="font-weight:800" class="num">¥' + UI.amount(trans) + '</div></div>' : '') +
           '</div>' +
           '<div class="cell-list">' +
           (list.length ? list.sort((a, b) => b.createdAt - a.createdAt).map(t => {
@@ -93,11 +93,7 @@ Views.bills = (() => {
         });
         body.querySelector('.j-add').onclick = () => {
           close();
-          Views.expense.openEntrySheet(null, 'out');
-          setTimeout(() => {
-            const d = document.querySelector('.sheet-body .j-date');
-            if (d) { d.value = dateStr; d.dispatchEvent(new Event('change', { bubbles: true })); }
-          }, 300);
+          Views.expense.openEntrySheet(null, 'out', dateStr);
         };
       }
     });
@@ -154,13 +150,13 @@ Views.bills = (() => {
       const sumCard =
         '<div class="card">' +
         '  <div class="exp-summary">' +
-        '    <div><div class="lab">支出</div><div class="val num money-out">¥' + Store.fmtMinorThousand(fOut) + '</div></div>' +
-        '    <div><div class="lab">收入</div><div class="val num money-in">¥' + Store.fmtMinorThousand(fInc) + '</div></div>' +
-        '    <div><div class="lab">' + periodName + '结余</div><div class="val num" style="color:' + (fInc - fOut >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (fInc - fOut >= 0 ? '+' : '-') + '¥' + Store.fmtMinorThousand(Math.abs(fInc - fOut)) + '</div></div>' +
+        '    <div><div class="lab">支出</div><div class="val num money-out">¥' + UI.amount(fOut, true) + '</div></div>' +
+        '    <div><div class="lab">收入</div><div class="val num money-in">¥' + UI.amount(fInc, true) + '</div></div>' +
+        '    <div><div class="lab">' + periodName + '结余</div><div class="val num" style="color:' + (fInc - fOut >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (fInc - fOut >= 0 ? '+' : '-') + '¥' + UI.amount(Math.abs(fInc - fOut), true) + '</div></div>' +
         '  </div>' +
         '  <div class="stat-grid" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">' +
-        '    <div><div class="lab">' + periodName + '日均收入</div><div class="val num money-in" style="font-size:15px">¥' + Store.fmtMinorThousand(Math.round(fInc / p.days)) + '</div></div>' +
-        '    <div><div class="lab">' + periodName + '日均支出</div><div class="val num money-out" style="font-size:15px">¥' + Store.fmtMinorThousand(Math.round(fOut / p.days)) + '</div></div>' +
+        '    <div><div class="lab">' + periodName + '日均收入</div><div class="val num money-in" style="font-size:15px">¥' + UI.amount(Math.round(fInc / p.days), true) + '</div></div>' +
+        '    <div><div class="lab">' + periodName + '日均支出</div><div class="val num money-out" style="font-size:15px">¥' + UI.amount(Math.round(fOut / p.days), true) + '</div></div>' +
         '    <div><div class="lab">笔数</div><div class="val num" style="font-size:15px">' + filtered.length + '</div></div>' +
         '  </div>' +
         '</div>';
@@ -177,7 +173,7 @@ Views.bills = (() => {
           '<div class="hbar-row j-mon" data-ym="' + p.year + '-' + U.pad(r.m) + '" style="cursor:pointer">' +
           '  <span class="hb-lab">' + r.m + '月</span>' +
           '  <span class="hb-track"><span class="hb-fill" style="width:' + (r.out / maxOut * 100).toFixed(1) + '%;background:#e5484d;display:block;height:100%"></span></span>' +
-          '  <span class="hb-val num" style="font-size:11px">支' + Store.fmtMinor(r.out) + (r.inc ? ' 收' + Store.fmtMinor(r.inc) : '') + '</span></div>').join('') +
+          '  <span class="hb-val num" style="font-size:11px">支' + UI.amount(r.out) + (r.inc ? ' 收' + UI.amount(r.inc) : '') + '</span></div>').join('') +
           '<div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:6px">点击月份 → 切到该月月历</div></div>';
       } else {
         const dayMap = {};
@@ -206,13 +202,12 @@ Views.bills = (() => {
           rows.map(week => '<tr>' + week.map(c => {
             const d = dayMap[c.date];
             const intensity = d ? (d.out + d.inc) / maxDayTotal : 0;
-            const bg = d && c.inMonth ? 'rgba(0,178,122,' + (0.2 + intensity * 0.55).toFixed(3) + ')' : '';
             const hasBill = d && c.inMonth;
-              return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + (hasBill ? ' fill' : '') + '" data-date="' + c.date + '" style="' + (hasBill ? '--fill-color:' + bg : '') + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
+              return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + (hasBill ? ' fill' : '') + '" data-date="' + c.date + '" style="' + (hasBill ? '--fill-color:#68ac9b;--fill-opacity:' + (0.14 + intensity * 0.23).toFixed(3) : '') + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
               '<span class="cal-num">' + c.day + '</span>' +
               (hasBill
-                ? (d.out ? '<span class="cal-sub num" style="color:#fff">-' + Store.fmtMinor(d.out) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>') +
-                  (d.inc ? '<span class="cal-sub num" style="color:#fff;font-weight:700">+' + Store.fmtMinor(d.inc) + '</span>' : '')
+                ? (d.out ? '<span class="cal-sub num">-' + UI.amount(d.out) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>') +
+                  (d.inc ? '<span class="cal-sub num">+' + UI.amount(d.inc) + '</span>' : '')
                 : '<span class="cal-sub" style="visibility:hidden">·</span><span class="cal-sub" style="visibility:hidden">·</span>') +
               '</div></td>';
           }).join('') + '</tr>').join('') +
@@ -237,7 +232,7 @@ Views.bills = (() => {
       const ca = root.querySelector('.j-clearall');
       if (ca) ca.onclick = () => { kw = ''; Views.expense.clearFilter(); App.refresh(true); };
       root.querySelectorAll('.j-day').forEach(el => el.onclick = () => {
-        openDaySheet(el.dataset.date, stat.list.filter(t => t.date === el.dataset.date));
+        openDaySheet(el.dataset.date, filtered.filter(t => t.date === el.dataset.date));
       });
       root.querySelectorAll('.j-mon').forEach(el => el.onclick = () => {
         periods.calendar.kind = 'month';
@@ -257,9 +252,9 @@ Views.bills = (() => {
         const dI = byDay[d].filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
         const dT = byDay[d].filter(t => t.type === 'transfer').reduce((s, t) => s + t.amountMinor, 0);
         const bits = [];
-        if (dO) bits.push('支出 ¥' + Store.fmtMinor(dO));
-        if (dI) bits.push('收入 ¥' + Store.fmtMinor(dI));
-        if (dT) bits.push('转账 ¥' + Store.fmtMinor(dT));
+        if (dO) bits.push('支出 ¥' + UI.amount(dO));
+        if (dI) bits.push('收入 ¥' + UI.amount(dI));
+        if (dT) bits.push('转账 ¥' + UI.amount(dT));
         return '<div class="day-group"><div class="day-head"><span>' + U.fmtDay(d) + '</span><span class="num">' + bits.join(' · ') + '</span></div>' +
           '<div class="cell-list">' + byDay[d].sort((a, b) => b.createdAt - a.createdAt).map(t => {
             const s = E.tSummary(t);
@@ -284,7 +279,7 @@ Views.bills = (() => {
       const months = [...Array(12)].map((_, i) => ({ label: String(i + 1), value: 0 }));
       filtered.filter(t => t.type === statKind).forEach(t => { months[parseInt(t.date.slice(5, 7), 10) - 1].value += t.amountMinor / 100; });
       trendData = months; trendLabel = '每月' + (statKind === 'in' ? '收入' : '支出');
-      trendClick = idx => UI.toast((idx + 1) + '月 ' + (statKind === 'in' ? '收入' : '支出') + '：¥' + Store.fmtMinorThousand(Math.round(months[idx].value * 100)));
+      trendClick = idx => UI.toast((idx + 1) + '月 ' + (statKind === 'in' ? '收入' : '支出') + '：¥' + UI.amount(Math.round(months[idx].value * 100), true));
     } else {
       const days2 = U.daysBetween(p.start, p.end);
       const daily = [...Array(days2)].map(() => 0);
@@ -292,12 +287,12 @@ Views.bills = (() => {
         const idx = U.daysBetween(p.start, t.date) - 1;
         if (idx >= 0 && idx < days2) daily[idx] += t.amountMinor;
       });
-      trendData = daily.map((v, i) => ({ label: p.kind === 'week' ? '周' + '一二三四五六日'[[1, 2, 3, 4, 5, 6, 0][i]] : String(i + 1), value: v / 100 }));
+      trendData = daily.map((v, i) => ({ label: p.kind === 'week' ? '周' + '一二三四五六日'[i] : String(i + 1), value: v / 100 }));
       trendLabel = '每日' + (statKind === 'in' ? '收入' : '支出');
       trendClick = idx => {
         const ds = U.addDays(p.start, idx);
         const d = daily[idx];
-        UI.toast(U.fmtDay(ds) + ' ' + (statKind === 'in' ? '收入' : '支出') + '：' + (d ? '¥' + Store.fmtMinor(d) : '无'));
+        UI.toast(U.fmtDay(ds) + ' ' + (statKind === 'in' ? '收入' : '支出') + '：' + (d ? '¥' + UI.amount(d) : '无'));
       };
     }
     const accStats = Store.accountBreakdown(bookId, filtered);
@@ -316,13 +311,13 @@ Views.bills = (() => {
 
       '  <div class="card">' +
       '    <div class="exp-summary">' +
-      '      <div><div class="lab">支出</div><div class="val num money-out">¥' + Store.fmtMinorThousand(fOut) + '</div></div>' +
-      '      <div><div class="lab">收入</div><div class="val num money-in">¥' + Store.fmtMinorThousand(fInc) + '</div></div>' +
-      '      <div><div class="lab">' + periodName + '结余</div><div class="val num" style="color:' + (fInc - fOut >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (fInc - fOut >= 0 ? '+' : '-') + '¥' + Store.fmtMinorThousand(Math.abs(fInc - fOut)) + '</div></div>' +
+      '      <div><div class="lab">支出</div><div class="val num money-out">¥' + UI.amount(fOut, true) + '</div></div>' +
+      '      <div><div class="lab">收入</div><div class="val num money-in">¥' + UI.amount(fInc, true) + '</div></div>' +
+      '      <div><div class="lab">' + periodName + '结余</div><div class="val num" style="color:' + (fInc - fOut >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (fInc - fOut >= 0 ? '+' : '-') + '¥' + UI.amount(Math.abs(fInc - fOut), true) + '</div></div>' +
       '    </div>' +
       '    <div class="stat-grid" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline)">' +
-      '      <div><div class="lab">' + periodName + '日均收入</div><div class="val num money-in" style="font-size:15px">¥' + Store.fmtMinorThousand(Math.round(fInc / p.days)) + '</div></div>' +
-      '      <div><div class="lab">' + periodName + '日均支出</div><div class="val num money-out" style="font-size:15px">¥' + Store.fmtMinorThousand(Math.round(fOut / p.days)) + '</div></div>' +
+      '      <div><div class="lab">' + periodName + '日均收入</div><div class="val num money-in" style="font-size:15px">¥' + UI.amount(Math.round(fInc / p.days), true) + '</div></div>' +
+      '      <div><div class="lab">' + periodName + '日均支出</div><div class="val num money-out" style="font-size:15px">¥' + UI.amount(Math.round(fOut / p.days), true) + '</div></div>' +
       '      <div><div class="lab">笔数</div><div class="val num" style="font-size:15px">' + filtered.length + '</div></div>' +
       '    </div>' +
       (hasFilter
@@ -344,16 +339,16 @@ Views.bills = (() => {
           '</span></div>' +
           (drill
             ? '<div style="margin-bottom:10px"><div class="section-title" style="margin:0 0 4px"><span>' + drill.icon + ' ' + U.escapeHtml(drill.name) + ' 下钻</span><span class="link j-closedrill">收起</span></div>' +
-              (drill.direct ? '<div class="legend-row"><i class="dot" style="background:' + U.colorFor(drill.name) + '"></i><span class="lab">直接记在一级</span><span class="val num">¥' + Store.fmtMinor(drill.direct) + '</span></div>' : '') +
-              drill.subs.map(s => '<div class="legend-row"><i class="dot" style="background:' + U.colorFor(s.name) + '"></i><span class="lab">' + s.icon + ' ' + U.escapeHtml(s.name) + '</span><span class="val num">¥' + Store.fmtMinor(s.minor) + '</span></div>').join('') +
-              '<div class="legend-row" style="border-top:1px solid var(--hairline);margin-top:4px;padding-top:8px"><span class="lab" style="font-weight:700">一级合计（不重复）</span><span class="val num">¥' + Store.fmtMinor(drill.minor) + '</span></div></div>'
+              (drill.direct ? '<div class="legend-row"><i class="dot" style="background:' + U.colorFor(drill.name) + '"></i><span class="lab">直接记在一级</span><span class="val num">¥' + UI.amount(drill.direct) + '</span></div>' : '') +
+              drill.subs.map(s => '<div class="legend-row"><i class="dot" style="background:' + U.colorFor(s.name) + '"></i><span class="lab">' + s.icon + ' ' + U.escapeHtml(s.name) + '</span><span class="val num">¥' + UI.amount(s.minor) + '</span></div>').join('') +
+              '<div class="legend-row" style="border-top:1px solid var(--hairline);margin-top:4px;padding-top:8px"><span class="lab" style="font-weight:700">一级合计（不重复）</span><span class="val num">¥' + UI.amount(drill.minor) + '</span></div></div>'
             : '') +
           '<canvas class="j-donut" data-h="170"></canvas>' +
           '<div class="legend">' + donutItems.map(c =>
             '<div class="legend-row j-cat" data-id="' + (c.label === '其他' ? '' : (top6.find(x => x.name === c.label) || {}).id) + '" style="' + (c.label === '其他' ? '' : 'cursor:pointer') + '">' +
             '<i class="dot" style="background:' + c.color + '"></i>' +
             '<span class="lab">' + U.escapeHtml(c.label) + '</span>' +
-            '<span class="val num">¥' + Store.fmtMinor(c.value) + '</span>' +
+            '<span class="val num">¥' + UI.amount(c.value) + '</span>' +
             '<span class="pct">' + (kindTotal ? (c.value / kindTotal * 100).toFixed(0) : 0) + '%</span></div>').join('') + '</div></div>'
         : '') +
 
@@ -366,7 +361,7 @@ Views.bills = (() => {
           '<div class="hbar-row">' +
           '  <span class="hb-lab">' + a.icon + ' ' + U.escapeHtml(a.name) + '</span>' +
           '  <span class="hb-track"><span class="hb-fill" style="width:' + (Math.max(a.out, a.inc) / Math.max(...accStats.map(x => Math.max(x.out, x.inc)), 1) * 100).toFixed(1) + '%;background:' + U.colorFor(a.name) + ';display:block;height:100%"></span></span>' +
-          '  <span class="hb-val num" style="font-size:11.5px">支' + Store.fmtMinor(a.out) + (a.inc ? ' 收' + Store.fmtMinor(a.inc) : '') + '</span></div>').join('') + '</div>'
+          '  <span class="hb-val num" style="font-size:11.5px">支' + UI.amount(a.out) + (a.inc ? ' 收' + UI.amount(a.inc) : '') + '</span></div>').join('') + '</div>'
         : '') +
 
       '<div class="section-title" style="padding:2px 2px 0">流水明细</div>' +
@@ -381,6 +376,7 @@ Views.bills = (() => {
     root.querySelector('.j-filter').onclick = () => Views.expense.openFilterSheet();
     const search = root.querySelector('.j-search');
     if (search) search.oninput = e => {
+      if (e.isComposing) return;
       kw = e.target.value;
       const st = root.scrollTop, active = document.activeElement === search;
       App.refresh(true);
@@ -401,11 +397,11 @@ Views.bills = (() => {
     if (cd2) cd2.onclick = () => { drillCat = ''; App.refresh(true); };
 
     const donut = root.querySelector('.j-donut');
-    if (donut) Charts.donut(donut, donutItems, { centerTitle: '¥' + Store.fmtMinorThousand(kindTotal), centerSub: periodName + (statKind === 'in' ? '收入' : '支出') });
+    if (donut) Charts.donut(donut, donutItems, { centerTitle: '¥' + UI.amount(kindTotal, true), centerSub: periodName + (statKind === 'in' ? '收入' : '支出') });
     const bars = root.querySelector('.j-bars');
     if (bars) {
       const maxV = Math.max(...trendData.map(x => x.value), 0.01);
-      Charts.bars(bars, trendData, { showLabel: true, showMax: true, maxLabel: '¥' + Store.fmtMinorThousand(Math.round(maxV * 100)) });
+      Charts.bars(bars, trendData, { showLabel: true, showMax: true, maxLabel: '¥' + UI.amount(Math.round(maxV * 100), true) });
       bars.onclick = e => {
         const rect = bars.getBoundingClientRect();
         const idx = Math.floor((e.clientX - rect.left) / (rect.width / (trendData.length || 1)));

@@ -45,7 +45,7 @@ Views.life = (() => {
       '<div class="card j-go-tasks" style="cursor:pointer">' +
       '  <div class="section-title">今日待办 <span class="link">全部 ›</span></div>' +
       (dg.tasksOverdue ? '<div style="font-size:12.5px;color:var(--danger);margin-bottom:6px">⚠️ ' + dg.tasksOverdue + ' 项已逾期</div>' : '') +
-      (dg.tasksOpen + dg.tasksOverdue
+      (dg.tasksOpen
         ? Store.tasksBy('today').slice(0, 3).map(t => {
           const done = Store.taskDoneOn(t, today);
           return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0">' +
@@ -54,7 +54,7 @@ Views.life = (() => {
             (t.important ? '<span style="font-size:12px">⭐</span>' : '') + (t.urgent ? '<span style="font-size:12px">🔥</span>' : '') +
             '</div>';
         }).join('') + (dg.tasksOpen > 3 ? '<div style="font-size:12px;color:var(--text-3)">还有 ' + (dg.tasksOpen - 3) + ' 项…</div>' : '')
-        : '<div style="font-size:13px;color:var(--text-3);padding:4px 0">今天没有待办，享受当下 🎈</div>') +
+        : '<div style="font-size:13px;color:var(--text-3);padding:4px 0">今天没有待办</div>') +
       '  <button class="btn btn-ghost j-add-task" style="width:100%;margin-top:8px;padding:8px 0">＋ 添加今日待办</button>' +
       '</div>' +
 
@@ -105,7 +105,7 @@ Views.life = (() => {
 
       // 财务摘要（只读引用财务模块）
       '<div class="card" style="border:1px dashed var(--hairline)">' +
-      '  <div class="section-title">财务摘要（只读）</div>' +
+      '  <div class="section-title">本月收支</div>' +
       '  <div class="stat-grid">' +
       '    <div><div class="lab">本月支出</div><div class="val money-out num">' + (hide ? '✱✱✱' : '¥' + Store.fmtMinorThousand(stat.out)) + '</div></div>' +
       '    <div><div class="lab">本月收入</div><div class="val money-in num">' + (hide ? '✱✱✱' : '¥' + Store.fmtMinorThousand(stat.inc)) + '</div></div>' +
@@ -124,7 +124,7 @@ Views.life = (() => {
       UI.toast(Store.taskDoneOn(Store.data.tasks.find(t => t.id === b.dataset.id), today) ? '完成 ✓' : '已撤销');
       ctx.refresh();
     });
-    root.querySelector('.j-add-task').onclick = () => Views.lifetasks.openTaskSheet();
+    root.querySelector('.j-add-task').onclick = () => Views.lifetasks.openTaskSheet(null, today);
     root.querySelector('.j-go-habits').onclick = () => App.go('habit');
     root.querySelectorAll('.j-hab').forEach(el => el.onclick = () => {
       const h = Store.data.habits.find(x => x.id === el.dataset.id);
@@ -140,20 +140,20 @@ Views.life = (() => {
   /* ---------- 更多 ---------- */
   function mountMore(root) {
     const items = [
-      ['countdown', '⏳', '倒数日 / 纪念日', '生日、答辩、投稿截止倒计时'],
-      ['focus', '🍅', '番茄专注', '番茄钟 / 正计时 / 倒计时，真实时长记录'],
-      ['habit', '🎯', '习惯打卡', '连续天数、打卡月历'],
-      ['memo', '📝', '备忘录', '文本 / 清单、搜索、置顶'],
-      ['worktime', '🕒', '记工时', '月历记录每天的工作']
+      ['countdown', 'countdown', '倒数日 / 纪念日', '生日、答辩、投稿截止倒计时'],
+      ['focus', 'focus', '番茄专注', '番茄钟 / 正计时 / 倒计时，真实时长记录'],
+      ['habit', 'habit', '习惯打卡', '连续天数、打卡月历'],
+      ['memo', 'memo', '备忘录', '文本 / 清单、搜索、置顶'],
+      ['worktime', 'worktime', '记工时', '月历记录每天的工作']
     ];
     root.innerHTML = '<div class="cell-list">' +
       items.map(([r, ic, name, desc]) =>
         '<div class="cell j-mod" data-r="' + r + '" style="cursor:pointer">' +
-        '  <div class="c-ico" style="font-size:22px">' + ic + '</div>' +
+        '  <div class="c-ico" >' + UI.icon(ic) + '</div>' +
         '  <div class="c-main"><div class="c-title">' + name + '</div><div class="c-sub">' + desc + '</div></div>' +
         '  <div class="c-right" style="color:var(--text-3)">›</div></div>').join('') +
       '</div>' +
-      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">💡 时光模块与记账数据完全独立；财务摘要只读展示。提醒说明：本应用不申请系统通知权限，逾期与今日信息在打开 App 时展示。</div>';
+      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">打开应用即可查看当天安排和逾期事项，提醒仅在应用内显示。</div>';
     root.querySelectorAll('.j-mod').forEach(el => el.onclick = () => App.go(el.dataset.r));
   }
 

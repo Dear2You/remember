@@ -1,6 +1,6 @@
 {
-  "versionCode": 27,
-  "versionName": "2.7",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=27",
-  "note": "日历格子改圆角正方形"
+  "versionCode": 21000,
+  "versionName": "2.10",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21000",
+  "note": "修复还款编辑、账本与分类、重复待办和工时精度；专注可恢复，安卓支持备份文件导入导出，修复 AI 对话。"
 }

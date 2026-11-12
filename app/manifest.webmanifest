@@ -4,8 +4,8 @@
   "description": "记账 · 工时 · 备忘 · 打卡 · AI 助手",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f6f7f9",
-  "theme_color": "#00b27a",
+  "background_color": "#f7faf8",
+  "theme_color": "#f7faf8",
   "lang": "zh-CN",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },

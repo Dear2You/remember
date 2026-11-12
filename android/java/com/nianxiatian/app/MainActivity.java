@@ -19,6 +19,11 @@ import java.net.URL;
 public class MainActivity extends Activity {
 
     private WebView webView;
+    private static final int PICK_BACKUP = 1;
+    private static final int SAVE_DOCUMENT = 2;
+    private android.webkit.ValueCallback<Uri[]> filePicker;
+    private String pendingExport;
+    private final java.util.concurrent.ExecutorService backupWriter = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -52,7 +57,7 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new NativeBridge(), "AndroidBridge");
 
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        webView.setBackgroundColor(0xFFF6F7F9);
+        webView.setBackgroundColor(0xFFF7FAF8);
 
         // Android 15+ 强制边缘到边缘：把系统栏高度作为安全衬距（设在容器上，WebView 自身 padding 不可靠）
         final android.widget.FrameLayout container = fl;
@@ -71,6 +76,24 @@ public class MainActivity extends Activity {
             container.setFitsSystemWindows(true);
         }
 
+        webView.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, android.webkit.ValueCallback<Uri[]> result,
+                                             FileChooserParams params) {
+                if (filePicker != null) filePicker.onReceiveValue(null);
+                filePicker = result;
+                Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                pick.setType("*/*"); // 文件管理器可能将 JSON 标为纯文本
+                try { startActivityForResult(pick, PICK_BACKUP); }
+                catch (android.content.ActivityNotFoundException e) {
+                    filePicker = null;
+                    result.onReceiveValue(null);
+                    documentNotice("设备上没有可用的文件选择器");
+                }
+                return true;
+            }
+        });
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -95,7 +118,54 @@ public class MainActivity extends Activity {
         if (fl != null && android.os.Build.VERSION.SDK_INT >= 30) fl.requestApplyInsets();
     }
 
+    private void documentNotice(String message) {
+        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        Uri uri = result == RESULT_OK && data != null ? data.getData() : null;
+        if (uri != null && !"content".equals(uri.getScheme())) uri = null;
+        if (request == PICK_BACKUP && filePicker != null) {
+            filePicker.onReceiveValue(uri == null ? null : new Uri[]{uri});
+            filePicker = null;
+        } else if (request == SAVE_DOCUMENT) {
+            final String content = pendingExport;
+            pendingExport = null;
+            if (uri == null || content == null) return;
+            final Uri target = uri;
+            new Thread(() -> {
+                try (java.io.OutputStream out = getContentResolver().openOutputStream(target, "wt")) {
+                    if (out == null) throw new java.io.IOException();
+                    out.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                } catch (Exception e) {
+                    runOnUiThread(() -> documentNotice("保存失败，请重新选择位置"));
+                    return;
+                }
+                runOnUiThread(() -> documentNotice("文件已保存"));
+            }).start();
+        }
+    }
+
     class NativeBridge {
+        @JavascriptInterface
+        public void saveDocument(String name, String content, boolean csv) {
+            runOnUiThread(() -> {
+                if (pendingExport != null) return;
+                Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                save.addCategory(Intent.CATEGORY_OPENABLE);
+                save.setType(csv ? "text/csv" : "application/json");
+                save.putExtra(Intent.EXTRA_TITLE, name);
+                pendingExport = content;
+                try { startActivityForResult(save, SAVE_DOCUMENT); }
+                catch (android.content.ActivityNotFoundException e) {
+                    pendingExport = null;
+                    documentNotice("设备上没有可用的文件选择器");
+                }
+            });
+        }
+
         /** 前端主题切换时同步状态栏：深色模式给深底浅字，浅色模式给浅底深字 */
         @JavascriptInterface
         public void setStatusBar(final boolean dark) {
@@ -103,14 +173,14 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     try {
-                        getWindow().setStatusBarColor(dark ? 0xFF101114 : 0xFFF6F7F9);
-                        getWindow().setNavigationBarColor(dark ? 0xFF101114 : 0xFFF6F7F9);
+                        getWindow().setStatusBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
+                        getWindow().setNavigationBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
                         View decor = getWindow().getDecorView();
                         int vis = decor.getSystemUiVisibility();
                         if (dark) vis &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                         else vis |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                         decor.setSystemUiVisibility(vis);
-                        webView.setBackgroundColor(dark ? 0xFF101114 : 0xFFF6F7F9);
+                        webView.setBackgroundColor(dark ? 0xFF19201D : 0xFFF7FAF8);
                     } catch (Exception ignored) { }
                 }
             });
@@ -128,7 +198,7 @@ public class MainActivity extends Activity {
                 }});
                 return;
             }
-            new Thread(new Runnable() {
+            backupWriter.execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -144,7 +214,7 @@ public class MainActivity extends Activity {
                         byte[] bytes = json.getBytes("UTF-8");
                         if (existing != null) {
                             // 清空后重写（保留原 uri）
-                            java.io.OutputStream os = cr.openOutputStream(existing, "w");
+                            java.io.OutputStream os = cr.openOutputStream(existing, "wt");
                             os.write(bytes); os.flush(); os.close();
                         } else {
                             android.content.ContentValues cv = new android.content.ContentValues();
@@ -159,13 +229,13 @@ public class MainActivity extends Activity {
                             webView.loadUrl("javascript:window.__backupDone && window.__backupDone('ok','')");
                         }});
                     } catch (final Exception e) {
-                        final String msg = e.getMessage() == null ? "unknown" : e.getMessage().replace("'", "");
+                        final String msg = org.json.JSONObject.quote(e.toString());
                         runOnUiThread(new Runnable() { @Override public void run() {
-                            webView.loadUrl("javascript:window.__backupDone && window.__backupDone('error','" + msg + "')");
+                            webView.loadUrl("javascript:window.__backupDone && window.__backupDone('error'," + msg + ")");
                         }});
                     }
                 }
-            }).start();
+            });
         }
 
         /** 下载 APK 到应用缓存目录，完成后自动弹出系统安装器 */
@@ -219,7 +289,7 @@ public class MainActivity extends Activity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                webView.loadUrl("javascript:window.__apkProgress && window.__apkProgress('error:" + e.getMessage().replace("'", "") + "')");
+                                toast(e.toString());
                             }
                         });
                     }
@@ -229,7 +299,7 @@ public class MainActivity extends Activity {
     }
 
     private void toast(final String msg) {
-        webView.loadUrl("javascript:window.__apkProgress && window.__apkProgress('error:" + msg.replace("'", "") + "')");
+        webView.evaluateJavascript("window.__apkProgress && window.__apkProgress(" + org.json.JSONObject.quote("error:" + msg) + ")", null);
     }
 
     @Override
@@ -253,6 +323,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        backupWriter.shutdown();
+        if (filePicker != null) filePicker.onReceiveValue(null);
         if (webView != null) webView.destroy();
         super.onDestroy();
     }
