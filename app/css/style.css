@@ -552,20 +552,43 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .settings-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .settings-tools button { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 0; border-radius: 7px; color: var(--accent); background: var(--input-bg); }
 .focus-clock { font: 60px/1.25 Georgia, serif; font-variant-numeric: lining-nums tabular-nums; letter-spacing: .04em; margin: 8px 0 22px; }
-.worktime-summary { grid-template-columns: repeat(4,minmax(0,1fr)); padding: 16px 6px; }
-.worktime-summary .val { overflow-wrap: anywhere; }
-.work-calendar { padding: 14px 8px 12px; }
-.work-calendar .cal th { padding-bottom: 9px; }
-.work-calendar .cal-cell {
-  width: 100%; min-height: 54px; height: auto; padding: 5px 1px; gap: 0;
-  font-variant-numeric: tabular-nums;
+.work-panel { padding: 8px 9px 0; }
+.work-actions, .work-monthbar, .work-month { display: flex; gap: 6px; align-items: center; }
+.work-monthbar { justify-content: space-between; padding: 3px 4px 6px; }
+.work-month h2 { margin: 0; font: 700 clamp(16px,4.5vw,21px)/1.35 var(--title-font); }
+.work-month button { width: 32px; height: 36px; border-radius: 7px; font-size: 22px; color: var(--text-2); }
+.work-monthbar .report-switch { display: flex; }
+.work-calendar .work-day {
+  min-height: clamp(64px,16.8vw,86px); height: auto; padding: 4px 1px; gap: 1px;
+  --empty-tile: rgba(62,138,112,.075);
 }
-.work-calendar td:nth-last-child(-n+2) .cal-cell:not(.fill):not(.dim) { background: var(--input-bg); }
-.work-calendar .cal-num { font-size: 14px; line-height: 19px; font-weight: 500; color: var(--text); }
-.work-calendar .today .cal-num { font-weight: 700; color: var(--accent); }
-.work-calendar .day-pay { font-size: 10px; font-weight: 400; line-height: 13px; color: var(--text-2); }
-.work-calendar .calendar-hint { text-align: center; font-size: 12px; color: var(--text-3); margin: 12px 0 0; }
-.work-calendar .cal-cell:focus-visible { outline-offset: -2px; }
+.work-calendar .work-day.outside { color: var(--text-3); background: transparent; }
+.work-calendar .work-day.outside[class*="shift-"] { box-shadow: inset 0 0 0 1px var(--hairline); }
+.work-calendar .shift-daily { background: var(--tint-surface); box-shadow: inset 0 0 0 1px var(--hairline); }
+.work-calendar .shift-1 { background-color: rgba(62,138,112,.16); }
+.work-calendar .shift-2 { background-color: rgba(62,138,112,.26); }
+.work-calendar .shift-3 { background-color: rgba(62,138,112,.36); }
+.work-calendar .shift-4 { background-color: rgba(62,138,112,.48); }
+.work-calendar .day-hours, .work-calendar .day-pay { max-width: 100%; overflow-wrap: anywhere; line-height: 1.2; }
+.work-calendar .day-hours { font-size: 12px; font-weight: 600; color: var(--tile-in-text); }
+.work-calendar .day-pay { font-size: 11px; color: var(--tile-in-text); }
+.work-calendar .day-pay.compact { font-size: 10px; }
+.work-key { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin: 8px 4px; color: var(--text-3); font-size: 11px; }
+.work-key span { display: inline-flex; gap: 2px; }
+.work-key i { width: 10px; height: 8px; border-radius: 2px; }
+.worktime-summary { grid-template-columns: repeat(4,minmax(0,1fr)); padding: 12px 2px; border-top: 1px solid var(--hairline); }
+.worktime-summary .val { overflow-wrap: anywhere; color: var(--text); }
+.worktime-summary > div:nth-child(2) .val { color: var(--accent); }
+.work-day-total { justify-content: center; gap: 4px; }
+.work-entry-pay, .work-pay-note { color: var(--text-2); font-size: 12px; }
+.work-pay-note { margin: 6px 4px; }
+.work-form { display: grid; gap: 10px; }
+.work-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.work-form label { display: grid; min-width: 0; gap: 4px; font-size: 12px; color: var(--text-2); }
+.work-form [hidden] { display: none; }
+.work-form .j-ok { flex: 1; }
+.work-estimate { font-size: 13px; color: var(--accent); }
+.work-estimate:empty { display: none; }
 
 @media (max-width: 679px) {
   .lake-cover { background-position: 30% center; }
@@ -778,7 +801,7 @@ html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-ou
 .ledger-budget-link { padding: 7px 3px; }
 .ledger-budget small { display: block; margin-top: 8px; }
 @media (max-width: 480px) {
-  .ledger-calendar { margin-left: -7px; margin-right: -7px; padding-left: 5px; padding-right: 5px; }
+  .ledger-calendar, .work-panel { margin-left: -7px; margin-right: -7px; padding-left: 5px; padding-right: 5px; }
 }
 @media (max-width: 350px) {
   .ledger-grid td { padding: 1.5px; }

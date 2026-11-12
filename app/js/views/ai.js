@@ -38,7 +38,7 @@ Views.ai = (() => {
     const books = Store.books();
     const catTree = kind => Store.rootCategories(kind).map(r => r.name + (Store.subCategories(r.id).length ? '[' + Store.subCategories(r.id).map(s => s.name).join('/') + ']' : '')).join('、');
     const ws = Store.monthWorkSummary(ym);
-    const workPayStr = ws.total ? ws.total.toFixed(1) + 'h' + (ws.pay ? '约¥' + (ws.pay / 100).toFixed(0) : '') : '无';
+    const workPayStr = ws.days ? '已填工时 ' + U.fmtHours(ws.total) + '，已计工资 ¥' + Store.fmtMinor(ws.pay) : '无';
     const habits = Store.activeHabits().map(h =>
       h.name + (Store.habitDone(h.id, today) ? '(已打卡)' : '(未打卡)')).join('、') || '无';
     const memos = Store.memosSorted().slice(0, 5).map(m => '「' + m.title + '」').join('、') || '无';
@@ -55,7 +55,7 @@ Views.ai = (() => {
       budgetStr = tb ? '总¥' + (tb.amountMinor / 100).toFixed(0) + '，已用¥' + (Store.budgetUsed(book.id, ym, '') / 100).toFixed(0) : '无';
     }
     const todayOut = Store.todayOut();
-    const todayWork = Store.dayWorktimes(today).reduce((s, w) => s + w.hours, 0);
+    const todayWork = Store.workDaySummary(Store.dayWorktimes(today));
 
     return '你是「那年夏天」App 内置的 AI 助手，帮用户管理记账、工时、备忘录和打卡习惯。用中文回答，简洁友好，适当用 emoji。\n' +
       '【当前时间】' + U.fmtFull(today) + ' ' + new Date().toTimeString().slice(0, 5) + '\n' +
@@ -63,7 +63,7 @@ Views.ai = (() => {
       '- 账本：' + books.map(b => b.name).join('、') + '\n' +
       '- 本月(' + U.ymLabel(ym) + ')支出：¥' + (stat.out / 100).toFixed(2) + '（一级分类：' + catStr + '）；收入：¥' + (stat.inc / 100).toFixed(2) + '；预算：' + budgetStr + '\n' +
       '- 账户：' + accStr + '；总资产 ¥' + (Store.totalAssets() / 100).toFixed(2) + '；总负债 ¥' + (Store.totalLiabilities() / 100).toFixed(2) + '；净资产 ¥' + (Store.netWorth() / 100).toFixed(2) + '\n' +
-      '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；本月工时收入：' + workPayStr + '（' + ws.days + ' 天出勤）；今日工时：' + todayWork.toFixed(1) + 'h\n' +
+      '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；本月工时收入：' + workPayStr + '（' + ws.days + ' 天出勤）；今日已填工时：' + U.fmtHours(todayWork.hours) + (todayWork.missingHours ? '，另有日薪记录未填工时' : '') + '\n' +
       '- 打卡习惯：' + habits + '\n' +
       '- 今日待办(' + dg.tasksOpen + '项)：' + taskStr + '；逾期：' + overdueStr + '\n' +
       '- 下一场日程：' + nextEv + '；今日专注：' + focusStr + '\n' +
@@ -79,6 +79,7 @@ Views.ai = (() => {
       '{"type":"add_habit","name":"习惯名","icon":"一个emoji"}\n' +
       '{"type":"check_habit","name":"习惯名"}\n' +
       '{"type":"add_worktime","date":"YYYY-MM-DD","project":"项目名","hours":数字,"note":"干了什么"}\n' +
+      '按日薪用 {"type":"add_worktime","payMode":"day","dailyRate":每天的元数,"paidDays":计薪天数,"project":"项目名","date":"YYYY-MM-DD"}。半天为0.5，只在用户提供实际工时时填 hours。缺少日薪先询问。\n' +
       '规则：金额必须是数字（单位元）；日期不确定时用今天；category 优先用二级分类名（如早餐/午餐/打车），找不到就匹配一级：支出[' + catTree('out') + ']，收入[' + catTree('in') + ']；account 从[' + accs.map(a => a.name).join('/') + ']里选，用户没说就省略；book 从[' + books.map(b => b.name).join('/') + ']里选；不要臆造用户没说的金额；action 块可伴随正常文字说明。';
   }
 
@@ -161,13 +162,14 @@ Views.ai = (() => {
           return { label: '已打卡「' + h.icon + ' ' + h.name + '」', uncheck: h.id, uncheckDate: today };
         }
         case 'add_worktime': {
-          const hours = Number(a.hours);
-          if (!(hours > 0)) return null;
+          const daily = a.payMode === 'day';
           const item = Store.addWork({
             date: /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : U.todayStr(),
-            project: a.project || '未分类', hours, note: a.note || ''
+            project: a.project || '未分类', hours:a.hours, note:a.note || '', payMode:daily ? 'day' : 'hour',
+            dailyRateMinor:a.dailyRate === 0 ? 0 : Store.parseAmount(a.dailyRate), paidDays:a.paidDays == null ? 1 : Number(a.paidDays)
           });
-          return { label: '已记工时 ' + U.fmtHours(hours) + ' · ' + item.project + (item.note ? ' · ' + item.note : '') + '（' + U.fmtDay(item.date) + '）', itemId: item.id };
+          const units = daily ? '已记日薪 ' + item.paidDays + ' 天 · ¥' + UI.amount(Store.workPayMinor(item)) : '已记工时 ' + U.fmtHours(item.hours);
+          return { label: units + ' · ' + item.project + (item.note ? ' · ' + item.note : '') + '（' + U.fmtDay(item.date) + '）', itemId: item.id };
         }
       }
     } catch (e) { return { label: '操作未保存：' + e.message }; }

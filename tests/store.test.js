@@ -95,6 +95,53 @@ test('小数工时录入和编辑精度一致，拒绝无效金额和工时', ()
   assert.equal(store.parseAmount('99999999999999999999'), null);
 });
 
+test('同一天混合日薪和时薪按笔算到分，出勤只算一天', () => {
+  const {store} = fixture();
+  const date = '2026-11-03';
+  store.setDefaultRate(100);
+  store.addWork({date,project:'上午',payMode:'day',paidDays:0.5,dailyRateMinor:30001});
+  store.addWork({date,project:'晚班',hours:7.5,rate:20.11});
+  const list = store.dayWorktimes(date);
+  const day = store.workDaySummary(list), month = store.monthWorkSummary('2026-11');
+  assert.equal(day.pay,15001 + 15083);
+  assert.equal(day.hours,7.5);
+  assert.equal(day.paidDays,0.5);
+  assert.equal(day.missingHours,1);
+  assert.equal(month.pay,day.pay);
+  assert.equal(month.days,1);
+  assert.equal(month.total,7.5);
+  assert.equal(store.dayWorkPayMinor(date),day.pay);
+});
+
+test('日薪支持补工时和切换计薪方式，非法输入不改原记录', () => {
+  const {store} = fixture();
+  const w = store.addWork({payMode:'day',paidDays:1,dailyRateMinor:30000});
+  store.updateWork(w.id,{hours:6});
+  assert.equal(store.workPayMinor(w),30000);
+  assert.throws(() => store.updateWork(w.id,{paidDays:0}));
+  assert.equal(w.paidDays,1);
+  store.updateWork(w.id,{payMode:'hour',rate:30,hours:4});
+  assert.equal(store.workPayMinor(w),12000);
+  assert.equal(w.dailyRateMinor,null);
+  store.updateWork(w.id,{payMode:'day',paidDays:0.5,dailyRateMinor:18000,hours:null});
+  assert.equal(store.workPayMinor(w),9000);
+  assert.equal(store.workDaySummary([w]).missingHours,1);
+});
+
+test('混合计薪备份往返可恢复，旧时薪账与未设时薪仍可区分', () => {
+  const {store} = fixture();
+  const date = '2026-11-01';
+  const w = store.addWork({date,payMode:'day',paidDays:1,dailyRateMinor:27500});
+  const backup = JSON.parse(store.exportData());
+  backup.data.worktimes.push({id:'old',date,hours:4,project:'旧项目',rate:null});
+  assert.equal(store.importData(JSON.stringify(backup)).ok,true);
+  store.setWageProject('旧项目',20);
+  assert.equal(store.dayWorkPayMinor(date),35500);
+  backup.data.worktimes[0].dailyRateMinor = null;
+  assert.equal(store.importData(JSON.stringify(backup)).ok,false);
+  assert.equal(store.dayWorktimes(date).find(it => it.id === w.id).dailyRateMinor,27500);
+});
+
 test('归档当前账本后持久化全部账本，一级分类列表不含子类', () => {
   const { store } = fixture();
   const book = store.addBook({ name: '工作' });

@@ -488,31 +488,74 @@ const Store = {
 
   /* ---------- 工时 / 薪资 ---------- */
   // 每条工时的时薪（元/小时）：优先记录快照 → 项目时薪 → 默认时薪
-  workRate(w) {
+  workRate(w, unset = 0) {
+    if (w.payMode === 'day') return w.dailyRateMinor / 100;
     if (w.rate != null && w.rate >= 0) return w.rate;
     const wp = this.data.wageProjects.find(p => p.name === w.project);
     if (wp) return wp.rate;
-    return this.settings.defaultRate || 0;
+    return this.settings.defaultRate || unset;
   },
-  // 单条收入（分）= 时长 × 时薪
-  workPayMinor(w) { return Math.round(w.hours * this.workRate(w) * 100); },
+  workPayMinor(w, rate = this.workRate(w)) {
+    const daily = w.payMode === 'day';
+    const units = daily ? w.paidDays : Number(w.hours);
+    const cents = daily ? w.dailyRateMinor : Math.round(rate * 100);
+    const hundredths = Math.round(units * 100), product = hundredths * cents;
+    // 整数相乘再按笔舍入到分，避免 7.5 × 20.11 算成 150.82。
+    if (Number.isSafeInteger(product) && hundredths / 100 === units && (daily || cents / 100 === Number(rate))) return Math.round(product / 100);
+    return Math.round(units * rate * 100);
+  },
+  workDaySummary(items) {
+    let hours = 0, pay = 0, unpriced = 0, missingHours = 0, paidDays = 0;
+    for (const w of items) {
+      hours += Number(w.hours || 0);
+      if (w.payMode === 'day') {
+        paidDays += w.paidDays;
+        if (w.hours == null) missingHours++;
+      }
+      const rate = this.workRate(w, null);
+      if (rate == null) unpriced++;
+      else pay += this.workPayMinor(w, rate);
+    }
+    return {hours:Math.round(hours * 100) / 100, pay, unpriced, missingHours,
+      paidDays:Math.round(paidDays * 100) / 100, count:items.length};
+  },
   workHours(value) {
     const hours = Number(value);
     if (!Number.isFinite(hours) || hours <= 0 || hours > 24 || +hours.toFixed(2) !== hours)
       throw new Error('工时应大于 0 且不超过 24 小时，最多两位小数');
     return hours;
   },
+  validDailyPay(w) {
+    const hundredths = Math.round(w.paidDays * 100);
+    return Number.isSafeInteger(w.dailyRateMinor) && w.dailyRateMinor >= 0 &&
+      Number.isFinite(w.paidDays) && w.paidDays > 0 && +w.paidDays.toFixed(2) === w.paidDays &&
+      Number.isSafeInteger(hundredths) && Number.isSafeInteger(w.dailyRateMinor * hundredths);
+  },
+  workTerms(o) {
+    if (o.payMode === 'day') {
+      if (!this.validDailyPay(o)) throw new Error('请填写日薪和计薪天数，最多两位小数');
+      return {payMode:'day',dailyRateMinor:o.dailyRateMinor,paidDays:o.paidDays,rate:null,
+        hours:o.hours == null || o.hours === '' ? null : this.workHours(o.hours)};
+    }
+    const rate = o.rate == null || o.rate === '' ? null : Number(o.rate);
+    if (rate != null && (!Number.isFinite(rate) || rate < 0)) throw new Error('请输入有效时薪');
+    return {payMode:'hour',dailyRateMinor:null,paidDays:null,rate:rate == null ? null : Math.round(rate * 100) / 100,hours:this.workHours(o.hours)};
+  },
   addWork(o) {
     const item = {
       id: U.id(), date: o.date || U.todayStr(), project: (o.project || '未分类').trim() || '未分类',
-      hours: this.workHours(o.hours), note: o.note || '',
-      rate: (o.rate != null && Number(o.rate) >= 0) ? Math.round(Number(o.rate) * 100) / 100 : null,
+      ...this.workTerms(o), note: o.note || '',
       createdAt: Date.now()
     };
     this.mutate(d => d.worktimes.push(item));
     return item;
   },
-  updateWork(id, patch) { if (patch.hours != null) this.workHours(patch.hours); this.mutate(d => { const it = d.worktimes.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  updateWork(id, patch) {
+    const it = this.data.worktimes.find(w => w.id === id);
+    if (!it) return;
+    const terms = this.workTerms({...it,...patch});
+    this.mutate(() => Object.assign(it,patch,terms,{id}));
+  },
   removeWork(id) { this.mutate(d => { d.worktimes = d.worktimes.filter(x => x.id !== id); }); },
   monthWorktimes(ym) { return this.data.worktimes.filter(w => w.date.startsWith(ym)); },
   dayWorktimes(dateStr) { return this.data.worktimes.filter(w => w.date === dateStr).sort((a, b) => b.createdAt - a.createdAt); },
@@ -527,12 +570,12 @@ const Store = {
   },
   monthWorkSummary(ym) {
     const list = this.monthWorktimes(ym);
-    const total = list.reduce((s, w) => s + w.hours, 0);
+    const total = list.reduce((s, w) => s + Number(w.hours || 0), 0);
     const pay = list.reduce((s, w) => s + this.workPayMinor(w), 0);
     const days = new Set(list.map(w => w.date)).size;
     const byProject = Object.create(null), byProjectPay = Object.create(null);
     list.forEach(w => {
-      byProject[w.project] = (byProject[w.project] || 0) + w.hours;
+      byProject[w.project] = (byProject[w.project] || 0) + Number(w.hours || 0);
       byProjectPay[w.project] = (byProjectPay[w.project] || 0) + this.workPayMinor(w);
     });
     const { y, m } = U.ymParts(ym);
@@ -979,7 +1022,9 @@ const Store = {
       if (typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date) || !['out','in','transfer'].includes(t.type) || !Number.isSafeInteger(t.amountMinor) || t.amountMinor <= 0 || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
     }
     const isDate = date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date;
-    const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' && Number.isFinite(w.hours)) &&
+    const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' &&
+      (w.payMode === 'day' ? this.validDailyPay(w) && (w.hours == null || (Number.isFinite(w.hours) && w.hours > 0 && w.hours <= 24 && +w.hours.toFixed(2) === w.hours))
+        : (w.payMode == null || w.payMode === 'hour') && Number.isFinite(w.hours))) &&
       (d.transactions || []).every(t => isDate(t.date)) &&
       (d.events || []).every(e => typeof e.start === 'string' && (!e.end || typeof e.end === 'string')) &&
       (d.countdowns || []).every(c => isDate(c.date)) &&
