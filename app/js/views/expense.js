@@ -199,51 +199,63 @@ Views.expense = (() => {
     UI.sheet({
       title: '筛选账单',
       content(body, close) {
+        const draft = { ...filter };
         const accs = Store.accounts();
         const roots = Store.rootCategories('', true);
-        let pickRoot = filter.categoryId ? (Store.catRoot(filter.categoryId) || {}).id : '';
+        let pickRoot = draft.categoryId ? (Store.catRoot(draft.categoryId) || {}).id : '';
         function render() {
           const subs = pickRoot ? Store.subCategories(pickRoot) : [];
           body.innerHTML =
             '<div class="field"><label>类型</label><div class="chips-wrap">' +
             ['', 'out', 'in', 'transfer'].map(t =>
-              '<button class="chip j-f ' + (filter.type === t ? 'on' : '') + '" data-v="' + t + '">' + ({ '': '全部', out: '支出', in: '收入', transfer: '转账/还款' })[t] + '</button>').join('') +
+              '<button class="chip j-f ' + (draft.type === t ? 'on' : '') + '" data-v="' + t + '">' + ({ '': '全部', out: '支出', in: '收入', transfer: '转账/还款' })[t] + '</button>').join('') +
             '</div></div>' +
             '<div class="field"><label>账户</label><div class="chips-wrap">' +
-            '<button class="chip j-a ' + (!filter.accountId ? 'on' : '') + '" data-v="">全部</button>' +
-            accs.map(a => '<button class="chip j-a ' + (filter.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + a.icon + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
+            '<button class="chip j-a ' + (!draft.accountId ? 'on' : '') + '" data-v="">全部</button>' +
+            accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + a.icon + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
             '</div></div>' +
-            '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
-            '<button class="chip j-c ' + (!filter.categoryId ? 'on' : '') + '" data-v="">全部</button>' +
-            roots.map(c => '<button class="chip j-c ' + (pickRoot === c.id && filter.categoryId ? 'on' : '') + '" data-v="' + c.id + '">' + c.icon + ' ' + U.escapeHtml(c.name) + '</button>').join('') +
-            '</div></div>' +
-            (pickRoot && subs.length && filter.categoryId
+            (draft.type === 'transfer' ? '' : '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
+            '<button class="chip j-c ' + (!draft.categoryId ? 'on' : '') + '" data-v="">全部</button>' +
+            roots.filter(c => !draft.type || c.kind === draft.type).map(c => '<button class="chip j-c ' + (pickRoot === c.id && draft.categoryId ? 'on' : '') + '" data-v="' + c.id + '">' + c.icon + ' ' + U.escapeHtml(c.name) + '</button>').join('') +
+            '</div></div>') +
+            (pickRoot && subs.length && draft.categoryId
               ? '<div class="field"><label>二级分类</label><div class="chips-wrap">' +
-                '<button class="chip j-s ' + (filter.subId === '' ? 'on' : '') + '" data-v="">整级（含全部子类）</button>' +
-                subs.map(s => '<button class="chip j-s ' + (filter.subId === s.id ? 'on' : '') + '" data-v="' + s.id + '">' + s.icon + ' ' + U.escapeHtml(s.name) + '</button>').join('') +
+                '<button class="chip j-s ' + (draft.subId === '' ? 'on' : '') + '" data-v="">整级（含全部子类）</button>' +
+                subs.map(s => '<button class="chip j-s ' + (draft.subId === s.id ? 'on' : '') + '" data-v="' + s.id + '">' + s.icon + ' ' + U.escapeHtml(s.name) + '</button>').join('') +
                 '</div></div>'
               : '') +
-            '<div class="field"><label>关键词（备注）</label><input class="j-kw" placeholder="输入备注关键词" value="' + U.escapeHtml(filter.kw) + '"></div>' +
+            '<div class="field"><label>关键词</label><input class="j-kw" placeholder="备注、分类或账户" value="' + U.escapeHtml(draft.kw) + '"></div>' +
             '<div class="field-row">' +
             '  <button class="btn btn-ghost j-clear" style="flex:1">重置</button>' +
             '  <button class="btn btn-primary j-ok" style="flex:2">应用筛选</button>' +
             '</div>';
           const bind = (cls, fn) => body.querySelectorAll(cls).forEach(b => b.onclick = () => fn(b));
-          bind('.j-f', b => { filter.type = b.dataset.v; render(); });
-          bind('.j-a', b => { filter.accountId = b.dataset.v; render(); });
-          bind('.j-c', b => {
-            if (!b.dataset.v) { filter.categoryId = ''; filter.subId = ''; pickRoot = ''; }
-            else { pickRoot = b.dataset.v; filter.categoryId = b.dataset.v; filter.subId = ''; }
+          bind('.j-f', b => {
+            draft.type = b.dataset.v;
+            if (draft.type && pickRoot && (Store.category(pickRoot) || {}).kind !== draft.type) {
+              pickRoot = draft.categoryId = draft.subId = '';
+            }
             render();
           });
-          bind('.j-s', b => { filter.subId = b.dataset.v; render(); });
-          body.querySelector('.j-kw').oninput = e => { filter.kw = e.target.value; };
+          bind('.j-a', b => { draft.accountId = b.dataset.v; render(); });
+          bind('.j-c', b => {
+            if (!b.dataset.v) { draft.categoryId = ''; draft.subId = ''; pickRoot = ''; }
+            else { pickRoot = b.dataset.v; draft.categoryId = b.dataset.v; draft.subId = ''; }
+            render();
+          });
+          bind('.j-s', b => { draft.subId = b.dataset.v; render(); });
+          body.querySelector('.j-kw').oninput = e => { draft.kw = e.target.value; };
           body.querySelector('.j-clear').onclick = () => {
-            filter.type = ''; filter.accountId = ''; filter.categoryId = ''; filter.subId = ''; filter.kw = '';
+            draft.type = ''; draft.accountId = ''; draft.categoryId = ''; draft.subId = ''; draft.kw = '';
             pickRoot = '';
-            App.refresh(true); close();
+            render();
           };
-          body.querySelector('.j-ok').onclick = () => { App.refresh(true); if (afterApply) afterApply(); close(); };
+          body.querySelector('.j-ok').onclick = () => {
+            Object.assign(filter, draft);
+            close();
+            App.refresh(true);
+            if (afterApply) afterApply();
+          };
         }
         render();
       }
@@ -259,7 +271,7 @@ Views.expense = (() => {
     const c = Store.category(t.categoryId);
     const root = c ? Store.catRoot(t.categoryId) : null;
     const name = c && c.parentId ? (root ? root.name + '·' + c.name : c.name) : (c ? c.name : '未分类');
-    return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + U.escapeHtml((Store.book(t.bookId) || {}).name || '')) };
+    return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + ((Store.book(t.bookId) || {}).name || '')) };
   }
   function tAmountHtml(t) {
     const sign = t.type === 'out' ? '−' : t.type === 'in' ? '+' : '';
@@ -268,6 +280,7 @@ Views.expense = (() => {
     return '<span class="num ' + cls + '" ' + color + '>' + sign + '¥' + UI.amount(t.amountMinor) + '</span>';
   }
   function applyFilter(list) {
+    const needle = filter.kw.trim().toLowerCase();
     return list.filter(t => {
       if (filter.type && t.type !== filter.type) return false;
       if (filter.accountId && t.accountId !== filter.accountId && t.fromId !== filter.accountId && t.toId !== filter.accountId) return false;
@@ -277,7 +290,11 @@ Views.expense = (() => {
         if (!root || root.id !== filter.categoryId) return false;
         if (filter.subId && t.categoryId !== filter.subId) return false;
       }
-      if (filter.kw && !(t.note || '').toLowerCase().includes(filter.kw.toLowerCase())) return false;
+      if (needle) {
+        const summary = tSummary(t);
+        const type = {in:'收入', out:'支出', transfer:'转账'}[t.type];
+        if (![type, summary.title, summary.sub].some(text => (text || '').toLowerCase().includes(needle))) return false;
+      }
       return true;
     });
   }

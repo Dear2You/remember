@@ -672,3 +672,34 @@ html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-ou
 .subcategories .j-category-ledger { min-height:34px; padding:4px; color:var(--accent); font-size:12px; }
 .bill-report .money-out, .bill-report .balance-pair > div:nth-child(2) b { color:var(--report-out); }
 .bill-report .balance-pair > div:first-child b { color:var(--accent); }
+
+.period-options { margin: 4px 0 18px; }
+.j-jump { flex: 1; }
+.compare-link {
+  grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px;
+  width: 100%; text-align: left; margin-top: 12px; padding: 10px 0 0;
+  border-top: 1px solid var(--hairline); font-size: 12px; color: var(--text-2);
+}
+.compare-link b { margin-left: auto; font-weight: 500; color: var(--accent); text-align: right; overflow-wrap: anywhere; }
+.compare-link > span:first-child { flex: none; }
+.compare-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 14px; }
+.compare-dates > div { padding: 10px; background: var(--input-bg); border-radius: 7px; min-width: 0; }
+.compare-dates > div:first-child { background: var(--tint-surface); }
+.compare-dates b, .compare-dates span { display: block; }
+.compare-dates b { font-size: 13px; }
+.compare-dates span { margin-top: 3px; color: var(--text-2); font-size: 12px; }
+.compare-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.compare-table th, .compare-table td { padding: 8px 3px; border-bottom: 1px solid var(--hairline); text-align: right; font-size: 13px; overflow-wrap: anywhere; }
+.compare-table th:first-child { width: 18%; text-align: left; }
+.compare-table th { font-weight: 500; color: var(--text-2); }
+.compare-table thead th { font-size: 12px; }
+.compare-table tbody tr:last-child { font-weight: 600; }
+.compare-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 16px 0 7px; }
+.compare-head h3 { margin: 0; font: bold 18px var(--title-font); overflow-wrap: anywhere; }
+.compare-category, .compare-entry { display: flex; width: 100%; gap: 8px; align-items: center; padding: 12px 2px; border-bottom: 1px solid var(--hairline); text-align: left; font-size: 14px; }
+.compare-category b { margin-left: auto; color: var(--text-2); font-weight: 500; }
+.compare-category span:first-child, .compare-entry b, .compare-entry small { overflow-wrap: anywhere; }
+.compare-category span:last-child, .compare-note, .compare-entry small { color: var(--text-3); font-size: 12px; }
+.compare-entry > span:first-child { flex: 1; min-width: 0; }
+.compare-entry b, .compare-entry small { display: block; }
+.compare-note { margin: 8px 0; }

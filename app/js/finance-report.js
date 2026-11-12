@@ -27,7 +27,7 @@ const FinanceReport = (() => {
     return items.sort((a, b) => b.minor - a.minor);
   }
 
-  function summary(out, inc, period, count) {
+  function summary(out, inc, period, count, comparison = '') {
     const value = minor => Store.settings.hideAmount ? '••••' : (minor < 0 ? '−' : '') + '¥' + UI.amount(Math.abs(minor), true);
     const today = U.todayStr();
     const label = today < period.start || today > period.end ? '本期' : {week:'本周', month:'本月', year:'本年'}[period.kind];
@@ -36,7 +36,8 @@ const FinanceReport = (() => {
       <strong class="balance-value">${value(inc - out)}</strong>
       <div class="balance-pair">${[['收入',inc,'inc'],['支出',out,'out']].map(([title,amount,kind]) =>
         `<div><span class="flow-label"><i class="flow-dot ${kind}"></i>${title}</span>
-          <b>${value(amount)}</b><small>日均 ${value(Math.round(amount / period.days))}</small></div>`).join('')}</div>
+          <b>${value(amount)}</b><small>全期日均 ${value(Math.round(amount / period.days))}</small></div>`).join('')}</div>
+      ${comparison}
     </section>`;
   }
 

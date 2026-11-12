@@ -1,8 +1,8 @@
 {
-  "versionCode": 21300,
-  "versionName": "2.13",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.13/nianxiatian.apk",
-  "sha256": "9ccd72df3beb03aacb76084791130e0400305e6c785ed743e4346c6260a8e941",
-  "apkBlob": "aa14e172ebf268d8e3606870a62091546f76ab43",
-  "note": "账单新增收支双线、并排柱图和可展开的分类占比，支持从图表查看流水；整理首页与设置入口并修正年度筛选统计。"
+  "versionCode": 21400,
+  "versionName": "2.14",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.14/nianxiatian.apk",
+  "sha256": "7f15885cf0cac4ea82ddf63433b06bcf68399e8eeed8229d1b29dcb38915d97f",
+  "apkBlob": "8d0637ba8f03bca3d885cd66da8e76e2e507e0f1",
+  "note": "新增同期收支对比，可按分类核对两期流水。账单支持直达指定周、月、年。流水搜索支持备注、分类和账户，改善中文输入。"
 }

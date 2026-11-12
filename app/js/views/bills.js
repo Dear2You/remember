@@ -9,10 +9,8 @@ Views.bills = (() => {
   };
   let statKind = '';
   let chartType = 'line';
-  let kw = '';
 
   const KIND_LABEL = { week: '周账单', month: '月账单', year: '年账单' };
-  const KIND_ICON = { week: '📆', month: '🗓️', year: '📅' };
 
   function periodOf(mode) {
     const st = periods[mode];
@@ -32,7 +30,7 @@ Views.bills = (() => {
   function shiftAnchor(mode, dir) {
     const st = periods[mode];
     if (st.kind === 'week') st.anchor = U.addDays(st.anchor, 7 * dir);
-    else if (st.kind === 'year') st.anchor = (parseInt(st.anchor.slice(0, 4), 10) + dir) + st.anchor.slice(4);
+    else if (st.kind === 'year') st.anchor = (parseInt(st.anchor.slice(0, 4), 10) + dir) + '-01-01';
     else st.anchor = U.ymShift(st.anchor.slice(0, 7), dir) + '-01';
   }
 
@@ -42,22 +40,32 @@ Views.bills = (() => {
       title: '选择账单周期',
       content(body, close) {
         const cur = periods[mode].kind;
-        body.innerHTML = ['month', 'week', 'year'].map(k =>
-          '<button class="btn ' + (k === cur ? 'btn-primary' : 'btn-ghost') + ' btn-block j-pk" data-k="' + k + '" style="margin-bottom:10px;justify-content:flex-start;padding:14px 18px">' +
-          KIND_ICON[k] + ' ' + KIND_LABEL[k] +
-          (k === cur ? '<span style="margin-left:auto">✓ 当前</span>' : '') +
-          '</button>').join('') +
-          '<div style="text-align:center;font-size:11.5px;color:var(--text-3)">默认为月账单；切换后账单与统计随之转换</div>';
-        body.querySelectorAll('.j-pk').forEach(b => b.onclick = () => {
-          const k = b.dataset.k;
-          if (k !== periods[mode].kind) {
-            periods[mode].kind = k;
-            // 换周期时把锚点重置到今天所在周期，避免落在奇怪的位置
-            periods[mode].anchor = U.todayStr();
-          }
+        const anchor = periods[mode].anchor;
+        const inputType = {week:'date', month:'month', year:'number'}[cur];
+        const inputValue = cur === 'week' ? anchor : cur === 'month' ? anchor.slice(0,7) : anchor.slice(0,4);
+        const current = {week:'本周', month:'本月', year:'今年'}[cur];
+        body.innerHTML = `<div class="seg period-options">
+          ${['week','month','year'].map(k => `<button class="j-pk ${k === cur ? 'on' : ''}" data-k="${k}">${KIND_LABEL[k]}</button>`).join('')}
+          </div><div class="field"><label for="billPeriod">跳到指定${{week:'日期所在周',month:'月份',year:'年份'}[cur]}</label>
+          <input class="j-jump-value" id="billPeriod" type="${inputType}" value="${inputValue}" required ${cur === 'year' ? 'step="1" min="1000" max="9999"' : ''}></div>
+          <div class="field-row"><button class="btn btn-ghost j-present">回到${current}</button>
+          <button class="btn btn-primary j-jump">查看账单</button></div>`;
+        const visit = (kind, date) => {
+          periods[mode] = {kind, anchor:date};
           close();
           App.refresh(true);
-        });
+        };
+        body.querySelectorAll('.j-pk').forEach(b => b.onclick = () => visit(b.dataset.k, anchor));
+        body.querySelector('.j-present').onclick = () => visit(cur, U.todayStr());
+        body.querySelector('.j-jump').onclick = () => {
+          const input = body.querySelector('.j-jump-value');
+          const date = input.value + (cur === 'year' ? '-01-01' : cur === 'month' ? '-01' : '');
+          if (!input.checkValidity() || !/^\d{4}-\d{2}-\d{2}$/.test(date) || U.dateStr(U.parseDate(date)) !== date) {
+            UI.toast('请选择有效的日期', 'err');
+            return;
+          }
+          visit(cur, date);
+        };
       }
     });
   }
@@ -112,25 +120,26 @@ Views.bills = (() => {
     root.querySelector('.j-next').onclick = () => { shiftAnchor(mode, 1); App.refresh(true); };
   }
 
-  function mount(root) {
+  function mount(root, updatingSearch = false) {
     const E = Views.expense;
     const mode = topMode === 'calendar' ? 'calendar' : 'report';
     const p = periodOf(mode);
     const bookId = E.curBook();
     const books = Store.books();
     const stat = Store.periodStats(bookId, p);
-    const F = { ...E.filter };
-    const filtered = E.applyFilter(stat.list).filter(t => !kw || (t.note || '').toLowerCase().includes(kw.toLowerCase()));
-    const hasFilter = F.type || F.accountId || F.categoryId || F.subId || kw;
+    const F = { ...E.filter, kw: E.filter.kw.trim() };
+    const filtered = E.applyFilter(stat.list);
+    const hasFilter = F.type || F.accountId || F.categoryId || F.subId || F.kw;
     const fOut = filtered.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
     const fInc = filtered.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
     const hidden = Store.settings.hideAmount;
-    const rows = FinanceReport.buckets(p, filtered);
+    const rows = topMode === 'detail' ? [] : FinanceReport.buckets(p, filtered);
     const filterLabels = [
       ({out:'支出', in:'收入', transfer:'转账/还款'})[F.type],
       F.accountId && Store.accountName(F.accountId),
-      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, kw
+      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, F.kw
     ].filter(Boolean).map(U.escapeHtml);
+    const filterBar = hasFilter ? `<div class="report-filter"><span>${filterLabels.join(' · ')} · ${filtered.length}/${stat.list.length} 笔</span><button class="j-clearall">清除筛选</button></div>` : '';
     const pageHead = `<div class="page bill-report"><div class="page-head"><h1 class="page-title">账单</h1>
       <div class="report-actions"><select class="j-book-select" aria-label="选择账本">
       <option value="">全部账本</option>${books.map(b=>`<option value="${U.escapeHtml(b.id)}" ${bookId===b.id?'selected':''}>${U.escapeHtml(b.name)}</option>`).join('')}
@@ -138,10 +147,14 @@ Views.bills = (() => {
       <button class="head-btn j-eye" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button>
       <button class="head-btn j-filter" aria-label="筛选账单"><svg viewBox="0 0 24 24"><path d="M4 5h16M7 12h10M10 19h4"/></svg></button></div></div>`
       + headerHtml(p)
-      + (hasFilter ? `<div class="report-filter"><span>${filterLabels.join(' · ')} · ${filtered.length}/${stat.list.length} 笔</span><button class="j-clearall">清除筛选</button></div>` : '');
-    const summary = FinanceReport.summary(fOut,fInc,p,filtered.length);
+      + `<div class="j-filters">${filterBar}</div>`;
+    const comparison = topMode === 'report' ? PeriodComparison.collect(p, bookId, filtered) : null;
+    const comparisonKind = F.type === 'in' || (comparison && !comparison.now.out && !comparison.before.out) ? 'in' : 'out';
+    const summary = FinanceReport.summary(fOut, fInc, p, filtered.length, PeriodComparison.button(comparison, comparisonKind));
     function bindCommon() {
       bindHeader(root, mode);
+      const compare = root.querySelector('.j-compare');
+      if (compare) compare.onclick = () => PeriodComparison.open(comparison, comparisonKind);
       const select = root.querySelector('.j-book-select');
       select.onchange = () => {
         if (select.options[select.selectedIndex].dataset.manage) { select.value=bookId; Views.settings.openBooksSheet(); return; }
@@ -149,8 +162,9 @@ Views.bills = (() => {
       };
       root.querySelector('.j-eye').onclick = () => { Store.settings.hideAmount=!hidden; Store.save(); App.refresh(); };
       root.querySelector('.j-filter').onclick = () => E.openFilterSheet();
-      const clear = root.querySelector('.j-clearall');
-      if (clear) clear.onclick = () => { kw=''; E.clearFilter(); App.refresh(true); };
+      root.querySelector('.j-filters').onclick = e => {
+        if (e.target.closest('.j-clearall')) { E.clearFilter(); App.refresh(true); }
+      };
     }
 
     if (mode === 'calendar') {
@@ -202,7 +216,9 @@ Views.bills = (() => {
       root.innerHTML = pageHead + summary + calHtml + '</div>';
       bindCommon();
       root.querySelectorAll('.j-day').forEach(el => el.onclick = () => {
-        openDaySheet(el.dataset.date, filtered.filter(t => t.date === el.dataset.date));
+        const date = el.dataset.date;
+        const entries = date >= p.start && date <= p.end ? filtered : E.applyFilter(Store.txOfBook(bookId));
+        openDaySheet(date, entries.filter(t => t.date === date));
       });
       root.querySelectorAll('.j-mon').forEach(el => el.onclick = () => {
         periods.calendar.kind = 'month';
@@ -236,21 +252,30 @@ Views.bills = (() => {
         }).join('')
         : '<div class="empty"><span class="emoji">🧾</span><div>' + (hasFilter ? '没有符合条件的账单' : '这个周期还没有记录') + '</div></div>';
 
+      if (updatingSearch) {
+        root.querySelector('.j-filters').innerHTML = filterBar;
+        root.querySelector('.balance-panel').outerHTML = summary;
+        root.querySelector('.j-results').innerHTML = listHtml;
+        return;
+      }
       root.innerHTML = pageHead + summary +
-        `<div class="report-search"><input class="j-search" type="search" aria-label="搜索流水备注" placeholder="搜索流水备注" value="${U.escapeHtml(kw)}"></div>` +
-        listHtml + '</div>';
+        `<div class="report-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}"></div>
+        <div class="j-results">${listHtml}</div></div>`;
       bindCommon();
-      root.querySelector('.j-search').oninput = e => {
-        if (e.isComposing) return;
-        kw=e.target.value;
-        const caret=e.target.selectionStart;
-        App.refresh();
-        const input=root.querySelector('.j-search'); input.focus(); input.setSelectionRange(caret,caret);
+      const search = root.querySelector('.j-search');
+      const applySearch = () => {
+        if (E.filter.kw === search.value) return;
+        E.filter.kw = search.value;
+        mount(root, true);
       };
-      root.querySelectorAll('.j-item').forEach(el=>el.onclick=()=>{
-        const item=Store.data.transactions.find(t=>t.id===el.dataset.id);
+      search.addEventListener('compositionend', applySearch);
+      search.oninput = e => { if (!e.isComposing) applySearch(); };
+      root.querySelector('.j-results').onclick = e => {
+        const row = e.target.closest('.j-item');
+        if (!row) return;
+        const item=Store.data.transactions.find(t=>t.id===row.dataset.id);
         if (item) E.openEntrySheet(item);
-      });
+      };
       return;
     }
     const hasFlows = fOut > 0 || fInc > 0;
@@ -317,7 +342,7 @@ Views.bills = (() => {
 
   function openMonth() {
     topMode='report'; periods.report.kind='month'; periods.report.anchor=U.todayStr();
-    kw=''; Views.expense.clearFilter(); statKind=''; App.go('bills');
+    Views.expense.clearFilter(); statKind=''; App.go('bills');
   }
   return {mount,openMonth};
 })();
