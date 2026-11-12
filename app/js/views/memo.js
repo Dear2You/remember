@@ -21,6 +21,22 @@ Views.memo = (() => {
     UI.sheet({
       title: memo ? '编辑备忘' : '新建备忘',
       content(body, close) {
+        let saved = false;
+        function save() {
+          if (saved) return;
+          const items = state.items.filter(i=>i.text.trim());
+          const content = state.content.trim();
+          if (!state.title.trim() && !(state.type === 'list' ? items.length : content)) { UI.toast('内容为空','err'); return; }
+          if (!Reminders.valid(state,'memo',memo)) return;
+          const patch = {...state,title:state.title.trim() || '无标题',items,content};
+          let item = memo;
+          if (memo) Store.updateMemo(memo.id,patch);
+          else item = Store.addMemo(patch);
+          saved = true;
+          close();
+          UI.toast('已保存');
+          return item;
+        }
         function render() {
           body.innerHTML =
             '<div class="field"><input class="j-title" placeholder="标题" maxlength="40" value="' + U.escapeHtml(state.title) + '"></div>' +
@@ -71,23 +87,10 @@ Views.memo = (() => {
               inp.oninput = e => { state.items[+e.target.dataset.i].text = e.target.value; };
             });
           }
-          Reminders.bind(body,state,'memo');
+          Reminders.bind(body,state,'memo',memo,save);
           body.querySelector('.j-pin').onclick = () => { state.pinned = !state.pinned; render(); };
 
-          body.querySelector('.j-save').onclick = () => {
-            if (state.type === 'list') state.items = state.items.filter(i => i.text.trim());
-            else state.content = state.content.trim();
-            if (!state.title.trim() && !state.content && !state.items.length) { UI.toast('内容为空', 'err'); return; }
-            if (!Reminders.valid(state,'memo',memo)) return;
-            if (memo) {
-              Store.updateMemo(memo.id, { ...state, title: state.title.trim() || '无标题' });
-              UI.toast('已保存');
-            } else {
-              Store.addMemo(state);
-              UI.toast('已保存 ✓');
-            }
-            close();
-          };
+          body.querySelector('.j-save').onclick = save;
           const delBtn = body.querySelector('.j-del');
           if (delBtn) delBtn.onclick = async () => {
             if (await UI.confirm({ title: '删除备忘', msg: '确定删除「' + memo.title + '」吗？', danger: true, okText: '删除' })) {

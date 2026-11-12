@@ -59,12 +59,19 @@ window.Reminders = (() => {
       box.querySelector('.j-test-alarm-status').textContent = s.testAt ? '原定 ' + at(s.testAt) + '。现在可回桌面并锁屏。'
         : s.testPosted ? '上次测试原定 ' + at(s.testDue) + '，提交通知 ' + at(s.testPosted)
         : s.testDue ? '上次测试未能提交通知，请检查通知权限。' : '开始后回到桌面并锁屏，观察通知是否到达。';
+      const late = box.querySelector('.j-delayed-hint');
+      if (late) late.hidden = !(s.testPosted && s.testDue && s.testPosted - s.testDue >= 60000);
     });
   }
 
   function bindDiagnostics(box) {
     if (!box || !bridge().lockscreenTest) return;
     box.querySelector('.j-background').onclick = () => bridge().backgroundSettings();
+    const clockTest = box.querySelector('.j-test-clock');
+    if (clockTest) clockTest.onclick = () => {
+      const next = new Date(Date.now() + 120000);
+      bridge().setClockAlarm('那年夏天 · 手机时钟试响',U.dateStr(next),U.pad(next.getHours()) + ':' + U.pad(next.getMinutes()));
+    };
     box.querySelector('.j-clock-mode').onclick = () => {
       const s = status(), on = !s.clockMode;
       if (!bridge().reminderClockMode(on)) { UI.toast('未能更改提醒方式，请重试','err'); return; }
@@ -110,17 +117,26 @@ window.Reminders = (() => {
       <label class="notify-toggle"><input class="j-phone" type="checkbox" ${s.phoneRemind?'checked':''} ${available()?'':'disabled'}>
       到时通知我</label>
       ${available() ? '<button class="phone-permission" hidden>手机通知未开启 · 去设置 ›</button><button class="phone-timing" hidden>普通提醒可能延后 · 开启准时提醒 ›</button>' : '<small>手机通知可在安卓 App 中开启</small>'}
-      <div class="clock-handoff" hidden><button class="j-clock-alarm">另设手机闹钟 ›</button><small>在时钟中确认，后续更改也在时钟中操作。</small></div></div>`;
+      <div class="clock-handoff" hidden><button class="j-clock-alarm">另设手机闹钟 ›</button><small>在手机时钟里确认，由时钟负责响铃。</small></div>
+      ${bridge() && bridge().openCalendarDraft ? '<div class="calendar-handoff" hidden><button class="j-calendar-draft">保存并交给手机日历 ›</button><small>在日历选「开始时提醒」并保存；之后改期或取消也需在日历操作。</small></div>' : ''}</div>`;
   }
 
-  function bind(body,s,kind) {
+  function bind(body,s,kind,old,save) {
     const [d,t] = keys(kind), box = body.querySelector('.reminder-fields');
     const date = box.querySelector('input[type=date]'), time = box.querySelector('.j-time');
     const notify = box.querySelector('.j-phone'), handoff = box.querySelector('.clock-handoff');
+    const calendar = box.querySelector('.calendar-handoff');
+    function canHandOff() {
+      if (!dateOK(s[d]) || !timeOK(s[t])) return false;
+      if (kind === 'memo' && Store.memoComplete(s)) return false;
+      if (kind === 'task' && old && (old.cancelled || (old.done && s.repeat === 'none'))) return false;
+      return (kind === 'task' && s.repeat && s.repeat !== 'none') || s[d] >= clockDate(s[t]);
+    }
     function refresh() {
       date.value = s[d] || ''; time.value = s[t] || ''; notify.checked = !!s.phoneRemind;
       box.querySelector('.j-clear-remind').hidden = !s[d] && !s[t];
       handoff.hidden = !available() || !s[d] || clockDate(s[t]) !== s[d];
+      if (calendar) calendar.hidden = !canHandOff();
       paintStatus();
     }
     date.onchange = () => { s[d]=date.value; refresh(); };
@@ -149,6 +165,11 @@ window.Reminders = (() => {
     const timing = box.querySelector('.phone-timing');
     if (timing) timing.onclick = () => bridge().exactAlarmAccess();
     handoff.querySelector('button').onclick = () => bridge().setClockAlarm(s.title.trim() || (kind==='task'?'待办':'备忘'),s[d],s[t]);
+    if (calendar) calendar.querySelector('button').onclick = () => {
+      if (!canHandOff()) { UI.toast('请选择未来的日期和时间','err'); refresh(); return; }
+      const item = save();
+      if (item) bridge().openCalendarDraft(item.title,item[d],item[t],item.repeat || 'none',JSON.stringify(item.doneDates || []));
+    };
     refresh();
   }
 

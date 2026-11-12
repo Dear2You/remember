@@ -236,20 +236,23 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void setClockAlarm(String title,String date,String time) {
             runOnUiThread(() -> {
-                java.util.TimeZone zone = java.util.TimeZone.getDefault();
-                long now = System.currentTimeMillis();
-                String today = ReminderTime.dates(zone).format(new java.util.Date(now));
-                long at = ReminderTime.next(today,time,"daily",java.util.Collections.emptySet(),"",now,zone);
-                if (at == 0 || !date.equals(ReminderTime.dates(zone).format(new java.util.Date(at)))) {
-                    documentNotice("手机时钟只能接收最近一次这个时刻，其他日期可用到时通知"); return;
-                }
-                Intent clock = new Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
-                        .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE,title)
-                        .putExtra(android.provider.AlarmClock.EXTRA_HOUR,Integer.parseInt(time.substring(0,2)))
-                        .putExtra(android.provider.AlarmClock.EXTRA_MINUTES,Integer.parseInt(time.substring(3)))
-                        .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI,false);
-                try { startActivity(clock); }
+                try { startActivity(SystemReminderIntents.clock(title,date,time,System.currentTimeMillis(),java.util.TimeZone.getDefault())); }
+                catch (IllegalArgumentException e) { documentNotice(e.getMessage()); }
                 catch (RuntimeException e) { documentNotice("这台手机没有支持接收闹钟的时钟应用"); }
+            });
+        }
+        @JavascriptInterface public void openCalendarDraft(String title,String date,String time,String repeat,String doneDates) {
+            runOnUiThread(() -> {
+                try {
+                    org.json.JSONArray dates = new org.json.JSONArray(doneDates);
+                    java.util.Set<String> done = new java.util.HashSet<>();
+                    for (int i=0; i<dates.length(); i++) done.add(dates.getString(i));
+                    Intent draft = SystemReminderIntents.calendar(title,date,time,repeat,done,
+                            System.currentTimeMillis(),java.util.TimeZone.getDefault());
+                    startActivity(draft);
+                } catch (IllegalArgumentException e) { documentNotice(e.getMessage()); }
+                catch (org.json.JSONException e) { documentNotice("无法读取重复日期，请重新打开这条记录"); }
+                catch (RuntimeException e) { documentNotice("记录已存到那年夏天。未能打开手机日历，请在日历中手动添加提醒"); }
             });
         }
         @JavascriptInterface

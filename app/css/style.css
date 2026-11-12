@@ -839,12 +839,13 @@ html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-ou
 .reminder-dates label { min-width: 0; display: grid; gap: 4px; color: var(--text-2); font-size: 12px; }
 .reminder-dates input { min-width: 0; background: var(--card); }
 .reminder-shortcuts { display: flex; gap: 14px; margin: 4px 0; }
-.reminder-shortcuts button, .phone-permission, .phone-timing, .j-clock-alarm { font-size: 13px; color: var(--accent); padding: 6px 0; }
+.reminder-shortcuts button, .phone-permission, .phone-timing, .j-clock-alarm, .j-calendar-draft { font-size: 13px; color: var(--accent); padding: 6px 0; }
 .reminder-shortcuts .j-clear-remind { margin-left: auto; color: var(--text-3); }
 .notify-toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; font-weight: 600; }
 .notify-toggle input { width: 18px; height: 18px; accent-color: var(--solid); }
-.clock-handoff { border-top: 1px solid var(--hairline); padding-top: 3px; }
-.clock-handoff small, .reminder-fields > small { display: block; font-size: 12px; color: var(--text-2); }
+.clock-handoff, .calendar-handoff { border-top: 1px solid var(--hairline); padding-top: 3px; }
+.calendar-handoff { margin-top: 6px; }
+.clock-handoff small, .calendar-handoff small, .reminder-fields > small { display: block; font-size: 12px; color: var(--text-2); }
 .reminder-fields [hidden], .j-precise[hidden] { display: none; }
 .j-finish { margin-bottom: 10px; }
 .reminder-diagnostics { border-top: 1px solid var(--hairline); }

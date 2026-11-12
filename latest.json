@@ -1,8 +1,8 @@
 {
-  "versionCode": 21900,
-  "versionName": "2.19",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.19/nianxiatian.apk",
-  "sha256": "4617301f84fd365c4f8ac5731f9e68d425a42d19d1947cc32a0161866aaf0982",
-  "apkBlob": "c59325056d03d36a5434e633496bdd1c897b5281",
-  "note": "改善锁屏时的待办与备忘通知，保留未成功发送的一次性提醒。新增可选的系统闹钟排程、后台限制提示和一分钟锁屏测试。"
+  "versionCode": 22000,
+  "versionName": "2.20",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.20/nianxiatian.apk",
+  "sha256": "7a6f002a35f65e26f686203f481ef27a3ca48ee3ad15c309adb497793503cc09",
+  "apkBlob": "218a7aa5c77c0fd86d8f81a7854c0215fce6cd94",
+  "note": "待办和备忘可保存并交给手机日历，在日历选好提醒后由日历独立通知。新增手机时钟试响入口，方便核对后台延迟。"
 }

@@ -12,6 +12,19 @@ Views.lifetasks = (() => {
     UI.sheet({
       title: edit ? '编辑事项' : '新建事项',
       content(body, close) {
+        let saved = false;
+        function save() {
+          if (saved) return;
+          if (!state.title.trim()) { UI.toast('请输入标题','err'); return; }
+          if (!Reminders.valid(state,'task',edit)) return;
+          let item = edit;
+          if (edit) Store.updateTask(edit.id,{...state,title:state.title.trim(),note:state.note.trim(), repeatDay:state.dueDate ? Number(state.dueDate.slice(8)) : edit.repeatDay});
+          else item = Store.addTask(state);
+          saved = true;
+          close();
+          UI.toast('已保存');
+          return item;
+        }
         function render() {
           body.innerHTML =
             '<div class="field"><input class="j-title" placeholder="要做什么？" maxlength="50" value="' + U.escapeHtml(state.title) + '"></div>' +
@@ -32,20 +45,14 @@ Views.lifetasks = (() => {
             '</div>';
           const titleEl = body.querySelector('.j-title');
           titleEl.oninput = e => { state.title = e.target.value; };
-          Reminders.bind(body,state,'task');
+          Reminders.bind(body,state,'task',edit,save);
           const finish = body.querySelector('.j-finish');
           if (finish) finish.onclick = () => { Store.toggleTask(edit.id,reminderDay); close(); UI.toast('已完成'); };
           body.querySelector('.j-imp').onclick = () => { state.important = !state.important; render(); };
           body.querySelector('.j-urg').onclick = () => { state.urgent = !state.urgent; render(); };
           body.querySelectorAll('.j-rep').forEach(b => b.onclick = () => { state.repeat = b.dataset.v; render(); });
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
-          body.querySelector('.j-ok').onclick = () => {
-            if (!state.title.trim()) { UI.toast('请输入标题', 'err'); return; }
-            if (!Reminders.valid(state,'task',edit)) return;
-            if (edit) { Store.updateTask(edit.id, { ...state, title: state.title.trim(), note: state.note.trim(), repeatDay: state.dueDate ? parseInt(state.dueDate.slice(8), 10) : edit.repeatDay }); UI.toast('已保存'); }
-            else { Store.addTask(state); UI.toast('已添加 ✓'); }
-            close();
-          };
+          body.querySelector('.j-ok').onclick = save;
           const del = body.querySelector('.j-del');
           if (del) del.onclick = async () => {
             if (await UI.confirm({ title: '删除事项', msg: '确定删除「' + edit.title + '」？', danger: true, okText: '删除' })) {

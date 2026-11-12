@@ -413,9 +413,11 @@ Views.settings = (() => {
         '<div class="set-row"><div><div class="sr-lab">提醒时间</div><div class="sr-desc j-precise-status"></div></div><button class="btn btn-ghost j-precise">准时提醒</button></div>' +
         (window.AndroidBridge.lockscreenTest ? '<details class="reminder-diagnostics"><summary>锁屏提醒检查</summary>' +
         '<p class="j-next-alarm"></p><p class="j-last-alarm"></p>' +
-        '<div class="set-row"><div><div class="sr-lab">系统闹钟排程</div><div class="sr-desc">开启并允许准时提醒后，下一条提醒会显示为手机的下一次闹钟，到点发送通知。</div></div><button class="btn btn-ghost j-clock-mode" role="switch" aria-label="系统闹钟排程"></button></div>' +
+        '<div class="set-row"><div><div class="sr-lab">系统闹钟排程</div><div class="sr-desc">允许准时提醒后，系统会在设定时间唤醒那年夏天，由本应用发通知。</div></div><button class="btn btn-ghost j-clock-mode" role="switch" aria-label="系统闹钟排程"></button></div>' +
         '<div class="set-row"><div><div class="sr-lab">后台运行</div><div class="sr-desc j-background-status"></div></div><button class="btn btn-ghost j-background">应用信息</button></div>' +
-        '<div class="set-row"><div><div class="sr-lab">锁屏测试</div><div class="sr-desc j-test-alarm-status" role="status"></div></div><button class="btn btn-ghost j-test-alarm">一分钟测试</button></div></details>' : '') + '</div>' : '') +
+        '<div class="set-row"><div><div class="sr-lab">锁屏测试</div><div class="sr-desc j-test-alarm-status" role="status"></div></div><button class="btn btn-ghost j-test-alarm">一分钟测试</button></div>' +
+        (window.AndroidBridge.setClockAlarm ? '<p class="j-delayed-hint" hidden>本次提交通知明显延迟。重要事项可以交给手机时钟或日历。</p><div class="set-row"><div><div class="sr-lab">手机时钟试响</div><div class="sr-desc">打开手机时钟，确认约两分钟后的闹钟，再返回桌面等响铃。</div></div><button class="btn btn-ghost j-test-clock">去时钟试响</button></div>' : '') +
+        '</details>' : '') + '</div>' : '') +
       '  <section class="card settings-more"><details class="settings-data"><summary>数据</summary><div class="settings-fold-body">' +
       (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
       '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc j-local-status" role="status"></div></div></div>' +
