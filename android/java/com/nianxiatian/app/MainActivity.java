@@ -27,7 +27,11 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
-        setContentView(webView);
+        android.widget.FrameLayout fl = new android.widget.FrameLayout(this);
+        fl.addView(webView, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(fl);
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
@@ -50,9 +54,10 @@ public class MainActivity extends Activity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setBackgroundColor(0xFFF6F7F9);
 
-        // Android 15+ 强制边缘到边缘：把系统栏高度作为安全衬距，内容不再延伸进状态栏
+        // Android 15+ 强制边缘到边缘：把系统栏高度作为安全衬距（设在容器上，WebView 自身 padding 不可靠）
+        final android.widget.FrameLayout container = fl;
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            webView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            container.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
                 @Override
                 public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
                     android.graphics.Insets sys = insets.getInsets(
@@ -61,6 +66,9 @@ public class MainActivity extends Activity {
                     return android.view.WindowInsets.CONSUMED;
                 }
             });
+        } else {
+            // API 24-29：fitsSystemWindows 让系统自动留出状态栏
+            container.setFitsSystemWindows(true);
         }
 
         webView.setWebViewClient(new WebViewClient() {
@@ -76,6 +84,15 @@ public class MainActivity extends Activity {
             }
         });
         webView.loadUrl("file:///android_asset/www/index.html");
+        if (android.os.Build.VERSION.SDK_INT >= 30) fl.requestApplyInsets();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 返回前台时重申请一次安全衬距（横竖屏/分屏切换后也会重算）
+        android.widget.FrameLayout fl = (android.widget.FrameLayout) webView.getParent();
+        if (fl != null && android.os.Build.VERSION.SDK_INT >= 30) fl.requestApplyInsets();
     }
 
     class NativeBridge {

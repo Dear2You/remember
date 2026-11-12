@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "2.1",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=21",
-  "note": "修复状态栏重叠（安全区衬距+状态栏随主题变色）；AI多会话确认包含"
+  "versionCode": 22,
+  "versionName": "2.2",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=22",
+  "note": "彻底修复状态栏重叠：容器级安全区衬距（方案重写，覆盖全部机型）"
 }
