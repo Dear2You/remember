@@ -374,6 +374,7 @@ Views.settings = (() => {
     const accountDescription = () => '资产账户 ' + Store.accounts(true).filter(a=>a.type !== 'liability').length +
       ' · 负债账户 ' + Store.accounts(true).filter(a=>a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth());
     const dataWasOpen = !!root.querySelector('.settings-data[open]');
+    const diagnosticsOpen = !!root.querySelector('.reminder-diagnostics[open]');
     const s = Store.settings;
     const book = Store.currentBook();
     root.innerHTML =
@@ -409,7 +410,12 @@ Views.settings = (() => {
 
       (Reminders.available() ? '<div class="card"><div class="section-title">手机提醒</div>' +
         '<div class="set-row"><div><div class="sr-lab">待办与备忘通知</div><div class="sr-desc j-notify-status"></div></div><button class="btn btn-ghost j-notify-access">通知设置</button></div>' +
-        '<div class="set-row"><div><div class="sr-lab">提醒时间</div><div class="sr-desc j-precise-status"></div></div><button class="btn btn-ghost j-precise">准时提醒</button></div></div>' : '') +
+        '<div class="set-row"><div><div class="sr-lab">提醒时间</div><div class="sr-desc j-precise-status"></div></div><button class="btn btn-ghost j-precise">准时提醒</button></div>' +
+        (window.AndroidBridge.lockscreenTest ? '<details class="reminder-diagnostics"><summary>锁屏提醒检查</summary>' +
+        '<p class="j-next-alarm"></p><p class="j-last-alarm"></p>' +
+        '<div class="set-row"><div><div class="sr-lab">系统闹钟排程</div><div class="sr-desc">开启并允许准时提醒后，下一条提醒会显示为手机的下一次闹钟，到点发送通知。</div></div><button class="btn btn-ghost j-clock-mode" role="switch" aria-label="系统闹钟排程"></button></div>' +
+        '<div class="set-row"><div><div class="sr-lab">后台运行</div><div class="sr-desc j-background-status"></div></div><button class="btn btn-ghost j-background">应用信息</button></div>' +
+        '<div class="set-row"><div><div class="sr-lab">锁屏测试</div><div class="sr-desc j-test-alarm-status" role="status"></div></div><button class="btn btn-ghost j-test-alarm">一分钟测试</button></div></details>' : '') + '</div>' : '') +
       '  <section class="card settings-more"><details class="settings-data"><summary>数据</summary><div class="settings-fold-body">' +
       (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
       '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc j-local-status" role="status"></div></div></div>' +
@@ -465,6 +471,8 @@ Views.settings = (() => {
     if (Reminders.available()) {
       root.querySelector('.j-notify-access').onclick = () => window.AndroidBridge.notificationAccess();
       root.querySelector('.j-precise').onclick = () => window.AndroidBridge.exactAlarmAccess();
+      const diag = root.querySelector('.reminder-diagnostics');
+      if (diag) { Reminders.bindDiagnostics(diag); diag.open=diagnosticsOpen; }
       Reminders.paintStatus();
     }
     const cloudButton = root.querySelector('.j-cloud');

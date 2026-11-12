@@ -847,3 +847,7 @@ html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-ou
 .clock-handoff small, .reminder-fields > small { display: block; font-size: 12px; color: var(--text-2); }
 .reminder-fields [hidden], .j-precise[hidden] { display: none; }
 .j-finish { margin-bottom: 10px; }
+.reminder-diagnostics { border-top: 1px solid var(--hairline); }
+.reminder-diagnostics summary { cursor: pointer; padding: 11px 0 3px; font-size: 14px; font-weight: 600; color: var(--accent); }
+.reminder-diagnostics p { margin: 6px 0; font-size: 12px; color: var(--text-2); }
+.reminder-diagnostics p:empty { display: none; }

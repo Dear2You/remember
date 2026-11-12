@@ -129,7 +129,7 @@ public class MainActivity extends Activity {
         Uri uri = intent.getData();
         if (uri == null || !"nianxiatian".equals(uri.getScheme()) || !"reminder".equals(uri.getAuthority())) return;
         java.util.List<String> path = uri.getPathSegments();
-        if (path.size()!=3 || !("task".equals(path.get(0)) || "memo".equals(path.get(0)))) return;
+        if (path.size()!=3 || !("task".equals(path.get(0)) || "memo".equals(path.get(0)) || "test".equals(path.get(0)))) return;
         pendingReminder = new org.json.JSONArray(path).toString();
     }
 
@@ -211,8 +211,20 @@ public class MainActivity extends Activity {
             try { ReminderReceiver.replace(MainActivity.this,rules); return true; }
             catch (Exception e) { android.util.Log.w("Reminders","Could not save reminders",e); return false; }
         }
-        @JavascriptInterface public String reminderStatus() {
-            return "{\"enabled\":"+ReminderReceiver.allowed(MainActivity.this)+",\"exact\":"+ReminderReceiver.exact(MainActivity.this)+"}";
+        @JavascriptInterface public String reminderStatus() { return ReminderReceiver.status(MainActivity.this); }
+        @JavascriptInterface public boolean reminderClockMode(boolean on) {
+            try { ReminderReceiver.clockMode(MainActivity.this,on); return true; }
+            catch (Exception e) { return false; }
+        }
+        @JavascriptInterface public boolean lockscreenTest(boolean start) {
+            try { ReminderReceiver.test(MainActivity.this,start); return true; }
+            catch (Exception e) { return false; }
+        }
+        @JavascriptInterface public void backgroundSettings() {
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))); }
+                catch (android.content.ActivityNotFoundException e) { documentNotice("请在手机设置中打开本应用的电池或后台运行设置"); }
+            });
         }
         @JavascriptInterface public String takeReminderLink() { return takeReminder(); }
         @JavascriptInterface public void notificationAccess() { runOnUiThread(() -> openNotificationAccess()); }

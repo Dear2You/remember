@@ -1,8 +1,8 @@
 {
-  "versionCode": 21800,
-  "versionName": "2.18",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.18/nianxiatian.apk",
-  "sha256": "10b8d77dc963f611713fc9f83d93d7d6d05648f792ce7f341840165c3a9f29af",
-  "apkBlob": "fe18b58623fb351674d376c9645ef75753392600",
-  "note": "「我的」数据与 AI 设置默认收起。恢复前可核对备份时间与记录数量；修复清空本机后空白备份覆盖原文件、预算误清和更新状态丢失。"
+  "versionCode": 21900,
+  "versionName": "2.19",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.19/nianxiatian.apk",
+  "sha256": "4617301f84fd365c4f8ac5731f9e68d425a42d19d1947cc32a0161866aaf0982",
+  "apkBlob": "c59325056d03d36a5434e633496bdd1c897b5281",
+  "note": "改善锁屏时的待办与备忘通知，保留未成功发送的一次性提醒。新增可选的系统闹钟排程、后台限制提示和一分钟锁屏测试。"
 }

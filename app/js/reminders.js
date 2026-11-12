@@ -44,6 +44,51 @@ window.Reminders = (() => {
     document.querySelectorAll('.j-notify-status').forEach(el => { el.textContent = s.enabled ? '通知已开启' : '通知未开启'; });
     document.querySelectorAll('.j-precise-status').forEach(el => { el.textContent = s.exact ? '可按设定时间提醒' : '普通提醒可能延后，可授权准时提醒'; });
     document.querySelectorAll('.j-precise').forEach(el => { el.hidden = s.exact; });
+    document.querySelectorAll('.reminder-diagnostics').forEach(box => {
+      const at = stamp => new Date(stamp).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+      const mode = {clock:'系统闹钟',exact:'准时通知',normal:'普通通知'}[s.mode];
+      box.querySelector('.j-next-alarm').textContent = s.nextAt ? '下一次：' + at(s.nextAt) + (mode ? ' · ' + mode : '') : '暂无已排程的提醒';
+      box.querySelector('.j-last-alarm').textContent = s.lastFailure ? '上次提交通知失败，请检查通知设置'
+        : s.lastPosted ? '最近一次：原定 ' + at(s.lastDue) + '，提交通知 ' + at(s.lastPosted) : '';
+      box.querySelector('.j-background-status').textContent = s.restricted ? '系统已限制后台运行，请到电池设置中解除限制。'
+        : '锁屏时有延迟，可在应用信息里检查电池和后台运行设置。';
+      const toggle = box.querySelector('.j-clock-mode');
+      toggle.setAttribute('aria-checked',String(!!s.clockMode));
+      toggle.textContent = s.clockMode ? (s.exact ? '已开启' : '待授权') : '开启';
+      box.querySelector('.j-test-alarm').textContent = s.testAt ? '取消测试' : '一分钟测试';
+      box.querySelector('.j-test-alarm-status').textContent = s.testAt ? '原定 ' + at(s.testAt) + '。现在可回桌面并锁屏。'
+        : s.testPosted ? '上次测试原定 ' + at(s.testDue) + '，提交通知 ' + at(s.testPosted)
+        : s.testDue ? '上次测试未能提交通知，请检查通知权限。' : '开始后回到桌面并锁屏，观察通知是否到达。';
+    });
+  }
+
+  function bindDiagnostics(box) {
+    if (!box || !bridge().lockscreenTest) return;
+    box.querySelector('.j-background').onclick = () => bridge().backgroundSettings();
+    box.querySelector('.j-clock-mode').onclick = () => {
+      const s = status(), on = !s.clockMode;
+      if (!bridge().reminderClockMode(on)) { UI.toast('未能更改提醒方式，请重试','err'); return; }
+      paintStatus();
+      if (on && !s.exact) bridge().exactAlarmAccess();
+    };
+    box.querySelector('.j-test-alarm').onclick = () => {
+      const s = status(), start = !s.testAt;
+      if (start && !s.enabled) { bridge().notificationAccess(); UI.toast('允许通知后再开始测试'); return; }
+      if (!bridge().lockscreenTest(start)) UI.toast('测试未能排程，请检查提醒权限','err');
+      paintStatus();
+    };
+    // Refresh a visible test result even when the user elects to keep the screen on.
+    let timer;
+    box.ontoggle = () => {
+      clearTimeout(timer);
+      if (!box.open) return;
+      const tick = () => {
+        if (!box.isConnected || !box.open) return;
+        paintStatus();
+        timer=setTimeout(tick,5000);
+      };
+      tick();
+    };
   }
 
   function clockDate(time) {
@@ -124,6 +169,15 @@ window.Reminders = (() => {
     const pending = bridge().takeReminderLink();
     if (!pending) return;
     const [kind,id,date] = JSON.parse(pending);
+    if (kind === 'test') {
+      App.go('settings');
+      const reveal = () => {
+        const box = document.querySelector('.reminder-diagnostics');
+        if (box) { box.open=true; box.scrollIntoView({block:'center'}); }
+      };
+      if (App.route === 'settings') reveal(); else window.addEventListener('hashchange',reveal,{once:true});
+      return;
+    }
     const item = (kind==='task'?Store.data.tasks:Store.data.memos).find(x=>x.id===id);
     if (!item) { UI.toast('这条记录已删除'); return; }
     if (kind==='task') { Views.lifetasks.openList('all'); Views.lifetasks.openTaskSheet(item,null,date); }
@@ -136,5 +190,5 @@ window.Reminders = (() => {
     Store.on('change',()=>sync());
     resume();
   }
-  return {available, rules, fields, bind, valid, paintStatus, openPending, resume, init};
+  return {available, rules, fields, bind, valid, bindDiagnostics, paintStatus, openPending, resume, init};
 })();
