@@ -1,6 +1,6 @@
 {
-  "versionCode": 22,
-  "versionName": "2.2",
-  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=22",
-  "note": "彻底修复状态栏重叠：容器级安全区衬距（方案重写，覆盖全部机型）"
+  "versionCode": 23,
+  "versionName": "2.3",
+  "apkUrl": "https://raw.githubusercontent.com/Dear2You/remember/main/apk/nianxiatian.apk?v=23",
+  "note": "AI 对话入口加大加醒目：顶部带文字按钮 + 欢迎页大按钮（新建/历史对话）"
 }

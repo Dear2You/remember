@@ -238,14 +238,22 @@ Views.ai = (() => {
     box.innerHTML = '';
     if (!chats.length) {
       box.innerHTML =
-        '<div class="empty" style="padding:26px 0 10px"><span class="emoji">✨</span>' +
+        '<div class="empty" style="padding:22px 0 10px"><span class="emoji">✨</span>' +
         '<div style="font-size:15px;color:var(--text-2)">你好，我是你的 AI 助手</div>' +
-        '<div class="tip" style="margin-top:4px">记账 · 工时 · 备忘 · 打卡，都可以让我帮忙</div></div>' +
+        '<div class="tip" style="margin-top:4px">记账 · 工时 · 备忘 · 打卡，都可以让我帮忙</div>' +
+        '<div class="field-row" style="margin-top:14px;justify-content:center">' +
+        '  <button class="btn btn-grad j-big-new" style="flex:0 0 150px">＋ 新建对话</button>' +
+        '  <button class="btn btn-ghost j-big-list" style="flex:0 0 130px">📋 历史对话(' + Store.aiSessions().length + ')</button>' +
+        '</div></div>' +
         '<div class="quick-chips">' +
         ['这个月花了多少钱？', '帮我记一笔：午饭 25 元', '分析一下我的消费', '本月工时总结'].map(q =>
           '<button class="chip j-quick">' + U.escapeHtml(q) + '</button>').join('') +
         '</div>';
       box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.textContent));
+      const bigNew = box.querySelector('.j-big-new');
+      if (bigNew) bigNew.onclick = () => { Store.aiNewSession(); UI.toast('已开始新对话'); App.refresh(true); };
+      const bigList = box.querySelector('.j-big-list');
+      if (bigList) bigList.onclick = openSessionsSheet;
       return;
     }
     chats.forEach((msg, idx) => {
@@ -446,8 +454,8 @@ Views.ai = (() => {
       '  <div class="page-head">' +
       '    <div><div class="page-title">AI 助手</div><div class="page-sub">' + U.escapeHtml(Store.settings.aiModel || 'glm-5.3') + ' · 上下文已连接记账/工时/打卡</div></div>' +
       '    <div style="display:flex;gap:8px">' +
-      '    <button class="head-btn j-sessions" title="对话列表"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' +
-      '    <button class="head-btn j-new" title="新建对话"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>' +
+      '    <button class="chip j-sessions" style="padding:7px 13px">☰ 对话</button>' +
+      '    <button class="chip j-new" style="padding:7px 13px;background:var(--accent-weak);color:var(--accent);font-weight:700">＋ 新建</button>' +
       '    </div>' +
       '  </div>' +
       (!cfgOk
