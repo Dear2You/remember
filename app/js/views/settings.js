@@ -384,6 +384,9 @@ Views.settings = (() => {
       '      </div></div>' +
       '  </div>' +
 
+      (Reminders.available() ? '<div class="card"><div class="section-title">手机提醒</div>' +
+        '<div class="set-row"><div><div class="sr-lab">待办与备忘通知</div><div class="sr-desc j-notify-status"></div></div><button class="btn btn-ghost j-notify-access">通知设置</button></div>' +
+        '<div class="set-row"><div><div class="sr-lab">提醒时间</div><div class="sr-desc j-precise-status"></div></div><button class="btn btn-ghost j-precise">准时提醒</button></div></div>' : '') +
       '  <div class="card"><div class="section-title">数据</div>' +
       (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
       '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc">' + (Store.lastBackupText() || 'App 内自动把全部数据写到「下载/那年夏天备份/」，卸载 App 也不会丢') + '</div></div></div>' +
@@ -432,6 +435,11 @@ Views.settings = (() => {
     const aiSettings = root.querySelector('.settings-ai');
     aiSettings.open = showAI || wasOpen;
     if (showAI) { showAI = false; aiSettings.scrollIntoView({block:'start'}); }
+    if (Reminders.available()) {
+      root.querySelector('.j-notify-access').onclick = () => window.AndroidBridge.notificationAccess();
+      root.querySelector('.j-precise').onclick = () => window.AndroidBridge.exactAlarmAccess();
+      Reminders.paintStatus();
+    }
     const cloudButton = root.querySelector('.j-cloud');
     if (cloudButton) { Cloud.updateStatus(); cloudButton.onclick = Cloud.open; }
 

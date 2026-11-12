@@ -4,20 +4,18 @@ Views.lifetasks = (() => {
   let filter2 = 'today';   // today | week | overdue | done | all
   let view = 'list';       // list | quad
 
-  function openTaskSheet(edit, date) {
+  function openTaskSheet(edit, date, reminderDay) {
     let state = edit
       ? { title: edit.title, note: edit.note || '', dueDate: edit.dueDate || '', dueTime: edit.dueTime || '', important: !!edit.important, urgent: !!edit.urgent, repeat: edit.repeat || 'none' }
       : { title: '', note: '', dueDate: date || '', dueTime: '', important: false, urgent: false, repeat: 'none' };
+    state.phoneRemind = !!(edit && edit.phoneRemind);
     UI.sheet({
       title: edit ? '编辑事项' : '新建事项',
       content(body, close) {
         function render() {
           body.innerHTML =
             '<div class="field"><input class="j-title" placeholder="要做什么？" maxlength="50" value="' + U.escapeHtml(state.title) + '"></div>' +
-            '<div class="field field-row">' +
-            '  <input type="date" class="j-date" style="flex:1" value="' + state.dueDate + '" title="截止日期">' +
-            '  <input type="time" class="j-time" style="flex:0 0 110px" value="' + state.dueTime + '" title="时间（选填）">' +
-            '</div>' +
+            Reminders.fields(state,'task') +
             '<div class="field"><div class="field-row">' +
             '  <button class="chip j-imp ' + (state.important ? 'on' : '') + '" style="flex:1">⭐ 重要</button>' +
             '  <button class="chip j-urg ' + (state.urgent ? 'on' : '') + '" style="flex:1">🔥 紧急</button>' +
@@ -27,22 +25,25 @@ Views.lifetasks = (() => {
               '<button class="chip j-rep ' + (state.repeat === r ? 'on' : '') + '" data-v="' + r + '">' + ({ none: '不重复', daily: '每天', weekly: '每周', monthly: '每月' })[r] + '</button>').join('') +
             '</div></div>' +
             '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="100" value="' + U.escapeHtml(state.note) + '"></div>' +
+            (reminderDay && edit && Store.taskOccursOn(edit,reminderDay) && !Store.taskDoneOn(edit,reminderDay) ? '<button class="btn btn-ghost btn-block j-finish">标记这次待办为已完成</button>' : '') +
             '<div class="field-row">' +
             (edit ? '<button class="btn btn-danger j-del" style="flex:1">删除</button>' : '') +
             '  <button class="btn btn-primary j-ok" style="flex:2">保存</button>' +
             '</div>';
           const titleEl = body.querySelector('.j-title');
           titleEl.oninput = e => { state.title = e.target.value; };
-          body.querySelector('.j-date').onchange = e => { state.dueDate = e.target.value; };
-          body.querySelector('.j-time').onchange = e => { state.dueTime = e.target.value; };
+          Reminders.bind(body,state,'task');
+          const finish = body.querySelector('.j-finish');
+          if (finish) finish.onclick = () => { Store.toggleTask(edit.id,reminderDay); close(); UI.toast('已完成'); };
           body.querySelector('.j-imp').onclick = () => { state.important = !state.important; render(); };
           body.querySelector('.j-urg').onclick = () => { state.urgent = !state.urgent; render(); };
           body.querySelectorAll('.j-rep').forEach(b => b.onclick = () => { state.repeat = b.dataset.v; render(); });
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
           body.querySelector('.j-ok').onclick = () => {
             if (!state.title.trim()) { UI.toast('请输入标题', 'err'); return; }
-            if (edit) { Store.updateTask(edit.id, { title: state.title.trim(), note: state.note.trim(), dueDate: state.dueDate, dueTime: state.dueTime, important: state.important, urgent: state.urgent, repeat: state.repeat, repeatDay: state.dueDate ? parseInt(state.dueDate.slice(8), 10) : edit.repeatDay }); UI.toast('已保存'); }
-            else { Store.addTask({ title: state.title, note: state.note, dueDate: state.dueDate, dueTime: state.dueTime, important: state.important, urgent: state.urgent, repeat: state.repeat }); UI.toast('已添加 ✓'); }
+            if (!Reminders.valid(state,'task',edit)) return;
+            if (edit) { Store.updateTask(edit.id, { ...state, title: state.title.trim(), note: state.note.trim(), repeatDay: state.dueDate ? parseInt(state.dueDate.slice(8), 10) : edit.repeatDay }); UI.toast('已保存'); }
+            else { Store.addTask(state); UI.toast('已添加 ✓'); }
             close();
           };
           const del = body.querySelector('.j-del');
@@ -71,7 +72,7 @@ Views.lifetasks = (() => {
       '  <button class="td-box ' + (done ? 'on' : '') + ' j-check" data-id="' + t.id + '" style="width:24px;height:24px;margin-left:4px">' + (done ? '✓' : '') + '</button>' +
       '  <div class="c-main j-edit" data-id="' + t.id + '">' +
       '    <div class="c-title" style="' + (done ? 'text-decoration:line-through;opacity:.55' : '') + '">' + U.escapeHtml(t.title) + '</div>' +
-      '    <div class="c-sub">' + dueInfo + (qBadge ? ' · ' + qBadge : '') + (t.note ? ' · ' + U.escapeHtml(t.note) : '') + '</div>' +
+      '    <div class="c-sub">' + dueInfo + (t.phoneRemind ? ' · 通知' + (t.repeat && t.repeat !== 'none' ? ' ' + U.escapeHtml(t.dueTime) : '') : '') + (qBadge ? ' · ' + qBadge : '') + (t.note ? ' · ' + U.escapeHtml(t.note) : '') + '</div>' +
       '  </div>' +
       '</div>';
   }

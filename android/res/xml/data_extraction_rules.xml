@@ -1,4 +1,10 @@
 <data-extraction-rules>
-    <cloud-backup><exclude domain="sharedpref" path="nutstore.xml" /></cloud-backup>
-    <device-transfer><exclude domain="sharedpref" path="nutstore.xml" /></device-transfer>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="nutstore.xml" />
+        <exclude domain="sharedpref" path="reminders.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="nutstore.xml" />
+        <exclude domain="sharedpref" path="reminders.xml" />
+    </device-transfer>
 </data-extraction-rules>

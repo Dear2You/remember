@@ -1,3 +1,4 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="nutstore.xml" />
+    <exclude domain="sharedpref" path="reminders.xml" />
 </full-backup-content>

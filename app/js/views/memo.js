@@ -5,8 +5,7 @@ Views.memo = (() => {
 
   function snippet(m) {
     if (m.type === 'list') {
-      const done = m.items.filter(i => i.done).length;
-      return m.items.map(i => (i.done ? '☑ ' : '☐ ') + i.text).join('  ').slice(0, 90);
+      return (m.items || []).map(i => (i.done ? '☑ ' : '☐ ') + i.text).join('  ').slice(0, 90);
     }
     return m.content || '';
   }
@@ -14,9 +13,11 @@ Views.memo = (() => {
   /* ---------- 编辑弹层 ---------- */
   function openEditor(memo) {
     let state = memo
-      ? { title: memo.title, type: memo.type, content: memo.content || '', items: memo.items.map(i => ({ ...i })), pinned: !!memo.pinned, remindDate: memo.remindDate || '' }
+      ? { title: memo.title, type: memo.type, content: memo.content || '', items: (memo.items || []).map(i => ({ ...i })), pinned: !!memo.pinned, remindDate: memo.remindDate || '' }
       : { title: '', type: 'text', content: '', items: [], pinned: false, remindDate: '' };
 
+    state.phoneRemind = !!(memo && memo.phoneRemind);
+    state.remindTime = (memo && memo.remindTime) || '';
     UI.sheet({
       title: memo ? '编辑备忘' : '新建备忘',
       content(body, close) {
@@ -37,9 +38,8 @@ Views.memo = (() => {
                 '</div>'
                 ).join('') +
                 '<button class="btn btn-ghost btn-block j-add-item" style="margin:6px 0 4px">+ 添加一项</button></div>') +
-            '<div class="field field-row">' +
-            '  <input type="date" class="j-remind" style="flex:1" value="' + state.remindDate + '" title="提醒日期">' +
-            (state.remindDate ? '<button class="chip j-clear-remind">清除提醒</button>' : '') +
+            Reminders.fields(state,'memo') +
+            '<div class="field">' +
             '  <button class="chip j-pin ' + (state.pinned ? 'on' : '') + '">' + (state.pinned ? '📌 已置顶' : '置顶') + '</button>' +
             '</div>' +
             '<div class="field-row">' +
@@ -71,21 +71,19 @@ Views.memo = (() => {
               inp.oninput = e => { state.items[+e.target.dataset.i].text = e.target.value; };
             });
           }
-          const rem = body.querySelector('.j-remind');
-          rem.onchange = e => { state.remindDate = e.target.value; render(); };
-          const clr = body.querySelector('.j-clear-remind');
-          if (clr) clr.onclick = () => { state.remindDate = ''; render(); };
+          Reminders.bind(body,state,'memo');
           body.querySelector('.j-pin').onclick = () => { state.pinned = !state.pinned; render(); };
 
           body.querySelector('.j-save').onclick = () => {
             if (state.type === 'list') state.items = state.items.filter(i => i.text.trim());
             else state.content = state.content.trim();
             if (!state.title.trim() && !state.content && !state.items.length) { UI.toast('内容为空', 'err'); return; }
+            if (!Reminders.valid(state,'memo',memo)) return;
             if (memo) {
-              Store.updateMemo(memo.id, { title: state.title.trim() || '无标题', type: state.type, content: state.content, items: state.items, pinned: state.pinned, remindDate: state.remindDate });
+              Store.updateMemo(memo.id, { ...state, title: state.title.trim() || '无标题' });
               UI.toast('已保存');
             } else {
-              Store.addMemo({ title: state.title.trim(), type: state.type, content: state.content, items: state.items, pinned: state.pinned, remindDate: state.remindDate });
+              Store.addMemo(state);
               UI.toast('已保存 ✓');
             }
             close();
@@ -107,7 +105,7 @@ Views.memo = (() => {
   /* ---------- 页面 ---------- */
   function mount(root) {
     const memos = Store.memosSorted().filter(m =>
-      !keyword || (m.title + ' ' + (m.content || '') + ' ' + m.items.map(i => i.text).join(' ')).toLowerCase().includes(keyword.toLowerCase())
+      !keyword || (m.title + ' ' + (m.content || '') + ' ' + (m.items || []).map(i => i.text).join(' ')).toLowerCase().includes(keyword.toLowerCase())
     );
     const today = U.todayStr();
 
@@ -121,21 +119,22 @@ Views.memo = (() => {
       '  <div class="field"><input class="j-search" placeholder="🔍 搜索备忘…" value="' + U.escapeHtml(keyword) + '"></div>' +
       (memos.length
         ? memos.map(m => {
-          const done = m.items.filter(i => i.done).length;
-          const overdue = m.remindDate && m.remindDate < today;
-          const dueToday = m.remindDate === today;
+          const items = m.items || [], done = items.filter(i => i.done).length;
+          const complete = Store.memoComplete(m);
+          const overdue = !complete && m.remindDate && m.remindDate < today;
+          const dueToday = !complete && m.remindDate === today;
           return '<div class="card memo-card j-item" data-id="' + m.id + '">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
             '  <div style="font-weight:700;font-size:15.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (m.pinned ? '📌 ' : '') + U.escapeHtml(m.title) + '</div>' +
-            (m.type === 'list' ? '<span class="badge gray">' + done + '/' + m.items.length + '</span>' : '') +
+            (m.type === 'list' ? '<span class="badge gray">' + done + '/' + items.length + '</span>' : '') +
             '</div>' +
             (snippet(m) ? '<div class="memo-snippet">' + U.escapeHtml(snippet(m)) + '</div>' : '') +
             '<div class="memo-meta">' +
             '  <span>' + U.fmtRel(m.updatedAt) + '</span>' +
             (overdue ? '<span class="badge red">逾期 ' + (U.parseDate(m.remindDate).getMonth() + 1) + '月' + U.parseDate(m.remindDate).getDate() + '日</span>' : '') +
             (dueToday ? '<span class="badge red">今天</span>' : '') +
-            (!overdue && !dueToday && m.remindDate ? '<span class="badge green">' + U.fmtDay(m.remindDate) + '提醒</span>' : '') +
-            '</div></div>';
+            (!complete && !overdue && !dueToday && m.remindDate ? '<span class="badge green">' + U.fmtDay(m.remindDate) + '提醒</span>' : '') +
+            (!complete && m.phoneRemind && m.remindTime ? '<span>通知 ' + U.escapeHtml(m.remindTime) + '</span>' : '') + '</div></div>';
         }).join('')
         : '<div class="empty"><span class="emoji">📝</span><div>' + (keyword ? '没有匹配的备忘' : '还没有备忘') + '</div><div class="tip" style="margin-top:4px">点右上角 + 新建</div></div>') +
       '</div>';

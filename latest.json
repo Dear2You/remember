@@ -1,8 +1,8 @@
 {
-  "versionCode": 21600,
-  "versionName": "2.16",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.16/nianxiatian.apk",
-  "sha256": "2da1228c79494978a05401e13eb747aad361d1177cc9ab9c00aafff6f99c116e",
-  "apkBlob": "a68911617c59a467f425eb598353b46470a3ead6",
-  "note": "工时月历改为七列浅青色日格，每天直接显示工时和工资。支持日薪、半天与时薪混记，日薪可选填实际工时，按日期合计。"
+  "versionCode": 21700,
+  "versionName": "2.17",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.17/nianxiatian.apk",
+  "sha256": "adf3bc6196492838aa3c12192561b24ac269793cfd1dbac24820bc7cc286f6a1",
+  "apkBlob": "3584ecb5b8f86c5222c76a1acd6afc19050526d6",
+  "note": "待办、备忘录新增安卓到时通知与今天/明天快捷日期。点通知直达原事项，重复待办可完成当次；支持另设手机时钟闹钟。"
 }

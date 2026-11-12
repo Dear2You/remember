@@ -809,3 +809,16 @@ html[data-theme="dark"] { --report-in:#9ccab8; --report-out:#edab90; --report-ou
   .tile-value.compact { font-size: 8.5px; }
 }
 .compare-note { margin: 8px 0; }
+.reminder-fields { margin: 4px 0 14px; padding: 12px; background: var(--tint-surface); border-radius: 9px; }
+.reminder-dates { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 8px; }
+.reminder-dates label { min-width: 0; display: grid; gap: 4px; color: var(--text-2); font-size: 12px; }
+.reminder-dates input { min-width: 0; background: var(--card); }
+.reminder-shortcuts { display: flex; gap: 14px; margin: 4px 0; }
+.reminder-shortcuts button, .phone-permission, .phone-timing, .j-clock-alarm { font-size: 13px; color: var(--accent); padding: 6px 0; }
+.reminder-shortcuts .j-clear-remind { margin-left: auto; color: var(--text-3); }
+.notify-toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; font-weight: 600; }
+.notify-toggle input { width: 18px; height: 18px; accent-color: var(--solid); }
+.clock-handoff { border-top: 1px solid var(--hairline); padding-top: 3px; }
+.clock-handoff small, .reminder-fields > small { display: block; font-size: 12px; color: var(--text-2); }
+.reminder-fields [hidden], .j-precise[hidden] { display: none; }
+.j-finish { margin-bottom: 10px; }

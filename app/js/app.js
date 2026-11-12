@@ -53,6 +53,7 @@ const App = {
     };
     this.render(location.hash);
     Views.focus.restore();
+    Reminders.init();
   },
 
   go(route) {

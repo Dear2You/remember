@@ -24,12 +24,14 @@ public class MainActivity extends Activity {
     private static final int SAVE_DOCUMENT = 2;
     private android.webkit.ValueCallback<Uri[]> filePicker;
     private String pendingExport;
+    private String pendingReminder = "";
     private final java.util.concurrent.ExecutorService backupWriter = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        rememberTap(getIntent());
         webView = new WebView(this);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
@@ -119,6 +121,59 @@ public class MainActivity extends Activity {
         // 返回前台时重申请一次安全衬距（横竖屏/分屏切换后也会重算）
         android.widget.FrameLayout fl = (android.widget.FrameLayout) webView.getParent();
         if (fl != null && android.os.Build.VERSION.SDK_INT >= 30) fl.requestApplyInsets();
+        webView.evaluateJavascript("window.Reminders && Reminders.resume()",null);
+    }
+
+    private synchronized void rememberTap(Intent intent) {
+        if (intent == null || !ReminderReceiver.OPEN.equals(intent.getAction())) return;
+        Uri uri = intent.getData();
+        if (uri == null || !"nianxiatian".equals(uri.getScheme()) || !"reminder".equals(uri.getAuthority())) return;
+        java.util.List<String> path = uri.getPathSegments();
+        if (path.size()!=3 || !("task".equals(path.get(0)) || "memo".equals(path.get(0)))) return;
+        pendingReminder = new org.json.JSONArray(path).toString();
+    }
+
+    private synchronized String takeReminder() {
+        String result = pendingReminder;
+        pendingReminder = "";
+        return result;
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        rememberTap(intent);
+        webView.evaluateJavascript("window.Reminders && Reminders.openPending()",null);
+    }
+
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(code,permissions,results);
+        if (code == 41) {
+            webView.evaluateJavascript("window.Reminders && Reminders.resume()",null);
+            if (!ReminderReceiver.allowed(this)) documentNotice("通知未开启，可在「我的 → 手机提醒」中开启");
+        }
+    }
+
+    private void openNotificationAccess() {
+        ReminderReceiver.channel(this);
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            boolean asked = getSharedPreferences("reminders",MODE_PRIVATE).getBoolean("asked",false);
+            if (!asked || shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
+                getSharedPreferences("reminders",MODE_PRIVATE).edit().putBoolean("asked",true).apply();
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},41);
+                return;
+            }
+        }
+        Intent settings = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()));
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            boolean appEnabled = ReminderReceiver.notifications(this).areNotificationsEnabled();
+            settings = new Intent(appEnabled ? android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS : android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,getPackageName())
+                    .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID,ReminderReceiver.CHANNEL);
+        }
+        try { startActivity(settings); }
+        catch (android.content.ActivityNotFoundException e) { documentNotice("请在手机设置中打开本应用的通知权限"); }
     }
 
     private void documentNotice(String message) {
@@ -152,6 +207,39 @@ public class MainActivity extends Activity {
     }
 
     class NativeBridge {
+        @JavascriptInterface public boolean syncReminders(String rules) {
+            try { ReminderReceiver.replace(MainActivity.this,rules); return true; }
+            catch (Exception e) { android.util.Log.w("Reminders","Could not save reminders",e); return false; }
+        }
+        @JavascriptInterface public String reminderStatus() {
+            return "{\"enabled\":"+ReminderReceiver.allowed(MainActivity.this)+",\"exact\":"+ReminderReceiver.exact(MainActivity.this)+"}";
+        }
+        @JavascriptInterface public String takeReminderLink() { return takeReminder(); }
+        @JavascriptInterface public void notificationAccess() { runOnUiThread(() -> openNotificationAccess()); }
+        @JavascriptInterface public void exactAlarmAccess() {
+            if (android.os.Build.VERSION.SDK_INT >= 31) runOnUiThread(() -> {
+                try { startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getPackageName()))); }
+                catch (android.content.ActivityNotFoundException e) { documentNotice("请在手机设置中允许本应用使用闹钟和提醒"); }
+            });
+        }
+        @JavascriptInterface public void setClockAlarm(String title,String date,String time) {
+            runOnUiThread(() -> {
+                java.util.TimeZone zone = java.util.TimeZone.getDefault();
+                long now = System.currentTimeMillis();
+                String today = ReminderTime.dates(zone).format(new java.util.Date(now));
+                long at = ReminderTime.next(today,time,"daily",java.util.Collections.emptySet(),"",now,zone);
+                if (at == 0 || !date.equals(ReminderTime.dates(zone).format(new java.util.Date(at)))) {
+                    documentNotice("手机时钟只能接收最近一次这个时刻，其他日期可用到时通知"); return;
+                }
+                Intent clock = new Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
+                        .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE,title)
+                        .putExtra(android.provider.AlarmClock.EXTRA_HOUR,Integer.parseInt(time.substring(0,2)))
+                        .putExtra(android.provider.AlarmClock.EXTRA_MINUTES,Integer.parseInt(time.substring(3)))
+                        .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI,false);
+                try { startActivity(clock); }
+                catch (RuntimeException e) { documentNotice("这台手机没有支持接收闹钟的时钟应用"); }
+            });
+        }
         @JavascriptInterface
         public String cloudStatus() {
             try { return CloudBackup.get(MainActivity.this).status().toString(); }

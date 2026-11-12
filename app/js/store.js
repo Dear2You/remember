@@ -610,7 +610,7 @@ const Store = {
     const item = {
       id: U.id(), title: (o.title || '').trim() || '无标题', type: o.type === 'list' ? 'list' : 'text',
       content: o.content || '', items: Array.isArray(o.items) ? o.items.map(i => ({ text: i.text || '', done: !!i.done })) : [],
-      pinned: !!o.pinned, remindDate: o.remindDate || '', createdAt: now, updatedAt: now
+      pinned: !!o.pinned, remindDate: o.remindDate || '', remindTime:o.remindTime || '', phoneRemind:!!o.phoneRemind, createdAt: now, updatedAt: now
     };
     this.mutate(d => d.memos.unshift(item));
     return item;
@@ -618,9 +618,10 @@ const Store = {
   updateMemo(id, patch) { this.mutate(d => { const it = d.memos.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id, updatedAt: Date.now() }); }); },
   removeMemo(id) { this.mutate(d => { d.memos = d.memos.filter(x => x.id !== id); }); },
   memosSorted() { return [...this.data.memos].sort((a, b) => (b.pinned - a.pinned) || (b.updatedAt - a.updatedAt)); },
+  memoComplete(m) { return m.type === 'list' && !!(m.items && m.items.length) && m.items.every(i=>i.done); },
   dueMemos() {
     const today = U.todayStr();
-    return this.data.memos.filter(m => m.remindDate && m.remindDate <= today).sort((a, b) => a.remindDate.localeCompare(b.remindDate));
+    return this.data.memos.filter(m => m.remindDate && m.remindDate <= today && !this.memoComplete(m)).sort((a, b) => a.remindDate.localeCompare(b.remindDate));
   },
 
   addHabit(o) {
@@ -727,7 +728,7 @@ const Store = {
   addTask(o) {
     const item = {
       id: U.id(), title: (o.title || '').trim() || '新事项', note: o.note || '',
-      dueDate: o.dueDate || '', dueTime: o.dueTime || '',
+      dueDate: o.dueDate || '', dueTime: o.dueTime || '', phoneRemind:!!o.phoneRemind,
       important: !!o.important, urgent: !!o.urgent,
       repeat: ['daily', 'weekly', 'monthly'].includes(o.repeat) ? o.repeat : 'none',
       done: false, doneDates: [], completedAt: null, cancelled: false,
