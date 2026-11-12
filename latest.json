@@ -1,8 +1,8 @@
 {
-  "versionCode": 21400,
-  "versionName": "2.14",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.14/nianxiatian.apk",
-  "sha256": "7f15885cf0cac4ea82ddf63433b06bcf68399e8eeed8229d1b29dcb38915d97f",
-  "apkBlob": "8d0637ba8f03bca3d885cd66da8e76e2e507e0f1",
-  "note": "新增同期收支对比，可按分类核对两期流水。账单支持直达指定周、月、年。流水搜索支持备注、分类和账户，改善中文输入。"
+  "versionCode": 21500,
+  "versionName": "2.15",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.15/nianxiatian.apk",
+  "sha256": "f5143e4a7c088af749321a5269907b105bc901cc534e9d6e12a4430be912d611",
+  "apkBlob": "c2f8457873386188b5ecbbb90e173edc916edd65",
+  "note": "账单日历改为铺满的七列色块，暖红显示支出、青绿显示收入，可切换收支和结余。新增单日收支排行、本月预算剩余和每日可花金额。"
 }

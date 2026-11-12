@@ -175,46 +175,20 @@ Views.bills = (() => {
           ${rows.map(r=>`<button class="account-row j-mon" data-ym="${r.key}"><span>${r.label} ›</span>
           <span>¥${UI.amount(r.inc,true)}</span><span>¥${UI.amount(r.out,true)}</span></button>`).join('')}</div></section>`;
       } else {
-        const dayMap = {};
-        filtered.forEach(t => {
-          const d = dayMap[t.date] = dayMap[t.date] || { out: 0, inc: 0, list: [] };
-          if (t.type === 'out') d.out += t.amountMinor;
-          if (t.type === 'in') d.inc += t.amountMinor;
-          d.list.push(t);
-        });
-        let rows;
-        if (p.kind === 'week') {
-          rows = [[...Array(7)].map((_, i) => {
-            const ds = U.addDays(p.start, i);
-            const d = U.parseDate(ds);
-            return { date: ds, day: d.getDate(), inMonth: true, isToday: ds === U.todayStr() };
-          })];
-        } else {
-          const pp = U.ymParts(p.ym);
-          rows = U.monthMatrix(pp.y, pp.m);
-        }
-        const maxDayTotal = Math.max(1, ...Object.values(dayMap).map(d => d.out + d.inc));
-        calHtml =
-          '<div class="card"><table class="cal"><thead><tr>' +
-          ['一', '二', '三', '四', '五', '六', '日'].map(d => '<th>' + d + '</th>').join('') +
-          '</tr></thead><tbody>' +
-          rows.map(week => '<tr>' + week.map(c => {
-            const d = dayMap[c.date];
-            const intensity = d && !hidden ? (d.out + d.inc) / maxDayTotal : 0;
-            const hasBill = d && c.inMonth;
-              return '<td><div class="cal-cell j-day ' + (c.inMonth ? '' : 'dim ') + (c.isToday ? 'today' : '') + (hasBill ? ' fill' : '') + '" data-date="' + c.date + '" style="' + (hasBill ? '--fill-color:#68ac9b;--fill-opacity:' + (0.14 + intensity * 0.23).toFixed(3) : '') + (p.kind === 'week' ? ';min-height:72px' : '') + '">' +
-              '<span class="cal-num">' + c.day + '</span>' +
-              (hasBill
-                ? (d.out ? '<span class="cal-sub num">-' + UI.amount(d.out) + '</span>' : '<span class="cal-sub" style="visibility:hidden">·</span>') +
-                  (d.inc ? '<span class="cal-sub num">+' + UI.amount(d.inc) + '</span>' : '')
-                : '<span class="cal-sub" style="visibility:hidden">·</span><span class="cal-sub" style="visibility:hidden">·</span>') +
-              '</div></td>';
-          }).join('') + '</tr>').join('') +
-          '</tbody></table><div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:8px">底色越深当天收支越多 · 点击日期看账单/补记</div></div>';
+        calHtml = BillCalendar.render(p, rows, bookId, F, hasFilter);
       }
 
-      root.innerHTML = pageHead + summary + calHtml + '</div>';
+      root.innerHTML = pageHead + (p.kind === 'year' ? summary : '') + calHtml + '</div>';
       bindCommon();
+      root.querySelectorAll('.calendar-metrics button').forEach(btn => btn.onclick = () => {
+        Store.settings.billCalendarMetric = btn.dataset.metric;
+        Store.save(false);
+        App.refresh();
+        const active = root.querySelector('.calendar-metrics [aria-pressed="true"]');
+        if (active) active.focus({preventScroll:true});
+      });
+      const budget = root.querySelector('.j-budget');
+      if (budget) budget.onclick = () => Views.settings.openBudgetSheet(bookId);
       root.querySelectorAll('.j-day').forEach(el => el.onclick = () => {
         const date = el.dataset.date;
         const entries = date >= p.start && date <= p.end ? filtered : E.applyFilter(Store.txOfBook(bookId));
