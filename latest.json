@@ -1,8 +1,8 @@
 {
-  "versionCode": 22100,
-  "versionName": "2.21",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.21/nianxiatian.apk",
-  "sha256": "5cc8bf3ce1172affe1416f241f36cf0f1010db0db693f572f21a47296b7cfc2a",
-  "apkBlob": "72ecb3171dfa913764f9d52edac6dc8eeb001e88",
-  "note": "账单日历默认打开「收支」，可直接查看每天的支出和收入。"
+  "versionCode": 22200,
+  "versionName": "2.22",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.22/nianxiatian.apk",
+  "sha256": "f4bb46ff92f49611ca2ca99705c63468c0d2553aa2da35b4a7f738f9199d50dc",
+  "apkBlob": "5ed1b31819876c220945a5b167fd52f7eebc1dd5",
+  "note": "新增离线一句话记账，可核对、修改，助手内可撤销。支持查询本月或上月收支、最大支出和分类排行。账单和时光支持左右滑动切页。"
 }

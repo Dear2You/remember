@@ -7,7 +7,7 @@ Views.expense = (() => {
   const curBook = () => Store.settings.currentBookId;
 
   /* ---------- 记一笔 / 编辑弹层 ---------- */
-  function openEntrySheet(editItem, presetKind, presetDate) {
+  function openEntrySheet(editItem, presetKind, presetDate, draft, onSaved) {
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
@@ -31,10 +31,11 @@ Views.expense = (() => {
         accountId: lastAcc,
         fromId: assetAccs[0] ? assetAccs[0].id : '',
         toId: (accsAll.find(a => a.type === 'liability') || accsAll[1] || accsAll[0] || {}).id || '',
-        note: '', date: presetDate || U.todayStr()
+        note: '', date: presetDate || U.todayStr(), ...draft
       };
     }
-    let saving = false;
+    let saving = false, sentence = '', reviewing = !!draft;
+    let focusAmount = !editItem && !draft;
 
     UI.sheet({
       title: editItem ? '编辑账单' : '记一笔',
@@ -43,8 +44,9 @@ Views.expense = (() => {
           const isTransfer = state.type === 'transfer';
           const catKind = state.type === 'in' ? 'in' : 'out';
           const roots = Store.rootCategories(catKind);
-          if (!state.categoryId || !Store.category(state.categoryId) || Store.catRoot(state.categoryId).kind !== catKind) {
-            state.categoryId = roots.length ? roots[0].id : '';
+          if (!state.categoryId || Store.catRoot(state.categoryId)?.kind !== catKind) {
+            const first = roots[0];
+            state.categoryId = first ? (Store.subCategories(first.id)[0] || first).id : '';
           }
           const root = Store.category(state.categoryId);
           const rootCat = root ? Store.catRoot(state.categoryId) : null;
@@ -53,9 +55,16 @@ Views.expense = (() => {
           if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
 
-          if (!editItem && !isTransfer && rootCat && subs.length && (!root || !root.parentId)) state.categoryId = subs[0].id;
-
           body.innerHTML =
+            (reviewing ? '<section class="entry-review"><div class="review-kind">' + (catKind === 'in' ? '收入' : '支出') +
+              ' · ' + U.escapeHtml((root || {}).name || '未分类') + '</div><strong class="num ' + (catKind === 'in' ? 'money-in' : 'money-out') + '">' +
+              (catKind === 'in' ? '+' : '−') + '¥' + U.escapeHtml(state.amount) + '</strong><dl>' +
+              '<dt>日期</dt><dd>' + U.escapeHtml(U.fmtFull(state.date)) + '</dd><dt>账户</dt><dd>' + U.escapeHtml(Store.accountName(state.accountId)) +
+              '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(state.bookId)?.name || '未选择') + '</dd></dl></section>' : '') +
+            '<div class="entry-fields"' + (reviewing ? ' hidden' : '') + '>' +
+            (!editItem ? '<details class="sentence-entry"><summary>一句话记账</summary><form class="sentence-form">' +
+              '<label for="sentenceText">描述一笔收入或支出</label><div><input id="sentenceText" maxlength="120" autocomplete="off" placeholder="昨天微信午饭 28 元" value="' + U.escapeHtml(sentence) + '">' +
+              '<button class="btn btn-primary" type="submit">填入账单</button></div><small role="status"></small></form></details>' : '') +
             '<div class="field"><label>账本</label><div class="acct-chips j-book">' +
             books.map(b => '<button class="chip ' + (state.bookId === b.id ? 'on' : '') + '" data-id="' + b.id + '">' + b.icon + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
             '</div></div>' +
@@ -96,11 +105,32 @@ Views.expense = (() => {
             '  <button class="chip j-yest">昨天</button>' +
             '  <input type="date" class="j-date" style="flex:1" value="' + state.date + '">' +
             '</div>' +
-            '<div class="field-row">' +
+            '</div><div class="field-row">' +
+            (reviewing ? '<button class="btn btn-ghost j-amend" style="flex:1">修改</button>' : '') +
             (editItem ? '<button class="btn btn-danger j-del" style="flex:1">删除</button>' : '') +
-            '  <button class="btn btn-primary j-save" style="flex:2">' + (saving ? '保存中…' : '保存') + '</button>' +
+            '  <button class="btn btn-primary j-save" style="flex:2">' + (reviewing ? '确认记账' : '保存') + '</button>' +
             '</div>';
 
+          const quick = body.querySelector('.sentence-entry');
+          if (quick) {
+            const input=quick.querySelector('input');
+            quick.ontoggle = () => { if (quick.open) input.focus(); };
+            input.oninput = () => { sentence=input.value; };
+            quick.querySelector('form').onsubmit = e => {
+              e.preventDefault();
+              const result=QuickEntry.parse(input.value,state.date);
+              if (!result.draft) {
+                quick.querySelector('small').textContent = result.error || '试试“午饭 28 元”。转账或还款可用下方表单。';
+                return;
+              }
+              Object.assign(state,result.draft);
+              reviewing = true;
+              render();
+              body.scrollTop=0;
+            };
+          }
+          const amend = body.querySelector('.j-amend');
+          if (amend) amend.onclick = () => { reviewing = false; render(); };
           body.querySelector('.j-book').onclick = e => {
             const b = e.target.closest('button[data-id]');
             if (!b) return;
@@ -131,7 +161,7 @@ Views.expense = (() => {
           if (catsBox) catsBox.onclick = e => {
             const b = e.target.closest('.cat-item');
             if (!b) return;
-            state.categoryId = b.dataset.id;
+            state.categoryId = Store.subCategories(b.dataset.id)[0]?.id || b.dataset.id;
             render();
           };
           const subsBox = body.querySelector('.j-subs');
@@ -143,7 +173,10 @@ Views.expense = (() => {
           };
           const amt = body.querySelector('.j-amount');
           amt.oninput = e => { state.amount = e.target.value; };
-          if (!editItem) setTimeout(() => amt.focus(), 250);
+          if (focusAmount) {
+            focusAmount=false;
+            setTimeout(() => { if (amt.isConnected && !quick.open && !body.contains(document.activeElement)) amt.focus(); },250);
+          }
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
           body.querySelector('.j-date').onchange = e => { state.date = e.target.value || U.todayStr(); syncChips(); };
           body.querySelector('.j-today').onclick = () => { state.date = U.todayStr(); body.querySelector('.j-date').value = state.date; syncChips(); };
@@ -169,16 +202,19 @@ Views.expense = (() => {
               toId: state.type === 'transfer' ? state.toId : '',
               categoryId: state.type === 'transfer' ? '' : state.categoryId
             };
-            setTimeout(() => {
-              try {
-                if (editItem) { Store.updateTransaction(editItem.id, payload); UI.toast('已保存'); }
-                else {
-                  Store.addTransaction(payload);
-                  UI.toast(payload.type === 'in' ? '已记收入 ✓' : payload.type === 'transfer' ? (Store.isRepay(payload) ? '已还款 ✓' : '已转账 ✓') : '已记支出 ✓');
-                }
-              } catch (e) { UI.toast('保存失败：' + e.message, 'err'); saving = false; body.querySelector('.j-save').textContent = '保存'; return; }
-              close();
-            }, 120);
+            let item;
+            try {
+              if (editItem) Store.updateTransaction(editItem.id, payload);
+              else item = Store.addTransaction(payload);
+            } catch (e) {
+              UI.toast('保存失败：' + e.message, 'err');
+              saving = false;
+              body.querySelector('.j-save').textContent = '保存';
+              return;
+            }
+            close();
+            UI.toast(editItem ? '已保存' : payload.type === 'in' ? '已记收入 ✓' : payload.type === 'transfer' ? (Store.isRepay(payload) ? '已还款 ✓' : '已转账 ✓') : '已记支出 ✓');
+            if (item && onSaved) onSaved(item);
           };
           const delBtn = body.querySelector('.j-del');
           if (delBtn) delBtn.onclick = async () => {

@@ -244,7 +244,7 @@ Views.ai = (() => {
     if (!chats.length) {
       box.innerHTML =
         '<div class="quick-chips">' +
-        ['这个月花了多少钱？', '帮我记一笔：午饭 25 元', '分析一下我的消费', '本月工时总结'].map(q =>
+        ['昨天微信午饭 28 元', '这个月花了多少钱？', '本月哪类花得最多？', ...(Store.settings.aiKey ? ['本月工时总结'] : [])].map(q =>
           '<button class="chip j-quick">' + U.escapeHtml(q) + '</button>').join('') +
         '</div>';
       box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.textContent));
@@ -254,16 +254,32 @@ Views.ai = (() => {
       if (msg.role === 'user') {
         const d = document.createElement('div');
         d.className = 'bubble user';
-        d.textContent = msg.content;
+        d.textContent = msg.localEntry && Store.settings.hideAmount ? '记一笔（金额已隐藏）' : msg.content;
         box.appendChild(d);
       } else {
         const d = document.createElement('div');
         d.className = 'bubble ai';
-        d.innerHTML = '<div class="md">' + mdToHtml(msg.content || '…') + '</div>';
-        box.appendChild(d);
+        d.innerHTML = '<div class="md">' + mdToHtml(msg.localReport && Store.settings.hideAmount ? '收支查询结果已隐藏' : msg.content || '…') + '</div>';
+        if (!(msg.actions || []).some(ac => ac.kind === 'quick-entry')) box.appendChild(d);
         (msg.actions || []).forEach((ac, ai2) => {
           const card = document.createElement('div');
           card.className = 'action-card' + (ac.revoked ? ' revoked' : '');
+          if (ac.kind === 'quick-entry') {
+            const item = Store.data.transactions.find(t=>t.id===ac.itemId);
+            const summary = item && Views.expense.tSummary(item);
+            card.classList.add('ledger-receipt');
+            card.innerHTML = item && !ac.revoked
+              ? '<div class="receipt-head"><b>' + U.escapeHtml(summary.title) + '</b>' + Views.expense.tAmountHtml(item) + '</div>' +
+                '<p>' + U.escapeHtml(item.date+' · '+Store.accountName(item.accountId)+' · '+(Store.book(item.bookId)?.name || '已删除账本')) + '</p>' +
+                '<div class="receipt-tools"><button class="ac-edit">编辑账单</button><button class="ac-undo">撤销</button></div>'
+              : '<span>' + (ac.revoked ? '这笔账已撤销' : '这笔账已删除') + '</span>';
+            if (item && !ac.revoked) {
+              card.querySelector('.ac-edit').onclick = () => Views.expense.openEntrySheet(item);
+              card.querySelector('.ac-undo').onclick = () => undoAction(idx,ai2);
+            }
+            box.appendChild(card);
+            return;
+          }
           card.innerHTML = '<span>' + (ac.revoked ? '↩️' : '✅') + '</span>' +
             '<span class="ac-txt">' + U.escapeHtml(ac.revoked ? ac.label + '（已撤销）' : ac.label) + '</span>' +
             (ac.revoked || (!ac.itemId && !ac.uncheck) ? '' : '<button class="ac-undo">撤销</button>');
@@ -284,7 +300,13 @@ Views.ai = (() => {
   function undoAction(msgIdx, actIdx) {
     const msg = Store.aiEnsure().messages[msgIdx];
     const ac = msg && msg.actions && msg.actions[actIdx];
-    if (!ac) return;
+    if (!ac || ac.revoked) return;
+    if (ac.kind === 'quick-entry') {
+      ac.revoked = true;
+      Store.removeTransaction(ac.itemId);
+      UI.toast('已撤销');
+      return;
+    }
     if (ac.itemId) {
       Store.data.transactions = Store.data.transactions.filter(x => x.id !== ac.itemId);
       Store.data.worktimes = Store.data.worktimes.filter(x => x.id !== ac.itemId);
@@ -308,16 +330,38 @@ Views.ai = (() => {
     text = (text || '').trim();
     if (!text || sending) return;
     const cfg = Store.settings;
-    if (!cfg.aiKey) {
+    const answer = QuickEntry.monthAnswer(text);
+    const result = answer ? {} : QuickEntry.parse(text);
+    const localError = !cfg.aiKey && result.error;
+    if (!answer && !result.draft && !localError && !cfg.aiKey) {
       UI.toast('请先在设置中填写 API Key', 'err');
-      setTimeout(() => Views.settings.openAI(), 600);
       return;
     }
     const box = document.getElementById('chatBox');
     const input = document.getElementById('aiInput');
-    if (input) input.value = '';
+    if (input && !result.draft) input.value = '';
 
     const sess = Store.aiEnsure();
+    if (result.draft || answer || localError) {
+      const record = item => {
+        if (!Store.data.aiSessions.includes(sess)) return;
+        sess.messages.push({role:'user',content:text,localEntry:!!item,ts:Date.now()},{
+          role:'assistant',content:item ? '已记入账本。' : answer || localError,
+          localReport:!!answer, actions:item ? [{kind:'quick-entry',itemId:item.id}] : [],ts:Date.now()
+        });
+        if (sess.messages.length>80) sess.messages.splice(0,sess.messages.length-80);
+        if (sess.title==='新对话') sess.title=item ? '一句话记账' : text.slice(0,14);
+        Store.aiTouch(sess);
+        if (item && input && input.value.trim() === text) input.value='';
+        if (App.route==='ai') {
+          const current=document.getElementById('chatBox');
+          if (current) { renderMsgs(current); current.lastElementChild?.scrollIntoView({block:'nearest'}); }
+        }
+      };
+      if (result.draft) Views.expense.openEntrySheet(null,null,null,result.draft,record);
+      else record();
+      return;
+    }
     sess.messages.push({ role: 'user', content: text, ts: Date.now() });
     if (sess.messages.length > 80) sess.messages.splice(0, sess.messages.length - 80);
     if (sess.title === '新对话') sess.title = text.slice(0, 14);
@@ -433,6 +477,7 @@ Views.ai = (() => {
     const btn = document.getElementById('aiSend');
     if (!btn) return;
     btn.classList.toggle('stop', stopped);
+    btn.setAttribute('aria-label',stopped ? '停止回答' : '发送');
     btn.innerHTML = stopped
       ? '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>'
       : '<svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.5-7.5z"/></svg>';
@@ -443,23 +488,20 @@ Views.ai = (() => {
   function mount(root) {
     const cfgOk = !!Store.settings.aiKey;
     root.innerHTML =
-      '<div class="page" style="display:flex;flex-direction:column;min-height:100%">' +
+      '<div class="page assistant-page">' +
       '  <div class="page-head">' +
-      '    <div><div class="page-title">AI 助手</div><div class="page-sub">' + U.escapeHtml(Store.settings.aiModel || 'glm-5.3') + '</div></div>' +
+      '    <div><div class="page-title">AI 助手</div><div class="page-sub">' + (cfgOk ? U.escapeHtml(Store.settings.aiModel || 'glm-5.3') : '本机记账与查账') + '</div></div>' +
       '    <div style="display:flex;gap:8px">' +
-      '    <button class="chip j-sessions" style="padding:7px 13px">☰ 对话</button>' +
+      '    <button class="chip j-sessions" style="padding:7px 13px">历史对话</button>' +
       '    <button class="chip j-new" style="padding:7px 13px;background:var(--accent-weak);color:var(--accent);font-weight:700">＋ 新建</button>' +
       '    </div>' +
       '  </div>' +
       (!cfgOk
-        ? '<div class="card" style="border:1px dashed var(--warn)">' +
-          '<div style="font-size:14px;font-weight:600">连接 AI 服务</div>' +
-          '<div style="font-size:12.5px;color:var(--text-3);margin:4px 0 10px">在设置中填写 API Key 后，即可用对话记账或查看工时。</div>' +
-          '<button class="btn btn-primary j-goset" style="width:100%">去设置</button></div>'
+        ? '<div class="assistant-connect"><span>连接 AI 后可分析消费、整理待办</span><button class="j-goset">去设置 ›</button></div>'
         : '') +
       '  <div id="chatBox" class="chat-wrap"></div>' +
       '  <div class="ai-input-bar">' +
-      '    <textarea id="aiInput" rows="1" placeholder="输入消息…"></textarea>' +
+      '    <textarea id="aiInput" aria-label="输入消息" rows="1" placeholder="记一笔，或问问这个月的收支"></textarea>' +
       '    <button id="aiSend" class="ai-send"><svg viewBox="0 0 24 24"><path d="M3 11.5 21 3l-8.5 18-2.5-7.5z"/></svg></button>' +
       '  </div>' +
       '</div>';
@@ -474,7 +516,7 @@ Views.ai = (() => {
       input.style.height = Math.min(input.scrollHeight, 110) + 'px';
     });
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(input.value); }
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode!==229) { e.preventDefault(); doSend(input.value); }
     });
     setSendBtn(sending);
 

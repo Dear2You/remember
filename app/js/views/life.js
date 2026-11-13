@@ -6,7 +6,7 @@ Views.life = (() => {
   function mount(root) {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page life-page">' +
       '  <div class="page-head"><div><div class="page-title">时光 · ' + ({ today: '今日', tasks: '事项', cal: '日历', more: '更多' })[sub] + '</div><div class="page-sub j-sub"></div></div></div>' +
       '  <div class="seg j-subnav" style="margin-bottom:14px">' +
       '    <button data-s="cal" class="' + (sub === 'cal' ? 'on' : '') + '">日历</button>' +
@@ -19,7 +19,9 @@ Views.life = (() => {
 
     const ctx = { refresh: () => mount(document.getElementById('pageBody')) };
     const subbody = root.querySelector('.j-subbody');
-    root.querySelectorAll('.j-subnav button').forEach(b => b.onclick = () => { sub = b.dataset.s; ctx.refresh(); });
+    const tabs=root.querySelectorAll('.j-subnav button');
+    tabs.forEach(b => b.onclick = () => { sub=b.dataset.s; ctx.refresh(); root.scrollTop=0; });
+    UI.swipeTabs(root.querySelector('.life-page'),tabs,root.querySelector('.j-subnav .on'));
 
     if (sub === 'today') mountToday(subbody, ctx);
     else if (sub === 'tasks') Views.lifetasks.mount(subbody, ctx);

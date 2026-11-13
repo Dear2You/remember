@@ -130,6 +130,35 @@ const UI = {
   icon(name) {
     return '<svg class="journal-icon" aria-hidden="true" viewBox="0 0 24 24">' + iconPaths[name] + '</svg>';
   },
+  swipeTabs(page, tabs, active) {
+    const buttons = Array.from(tabs);
+    let start = null;
+    page.addEventListener('touchstart', e => {
+      start=null;
+      if (e.touches.length!==1 || e.target.closest('input,textarea,select,[contenteditable="true"],.flow-plot,canvas,.category-heading,.acct-chips')) return;
+      const point=e.touches[0];
+      if (point.clientX < 24 || innerWidth-point.clientX < 24) return;
+      start={x:point.clientX,y:point.clientY,id:point.identifier};
+    },{passive:true});
+    page.addEventListener('touchmove', e => {
+      if (!start) return;
+      const point=e.touches[0];
+      if (e.touches.length!==1 || Math.abs(point.clientY-start.y)>Math.max(18,Math.abs(point.clientX-start.x))) start=null;
+    },{passive:true});
+    page.addEventListener('touchcancel',()=>{start=null;},{passive:true});
+    page.addEventListener('touchend', e => {
+      const first=start;
+      start=null;
+      if (!first || e.touches.length || !page.isConnected || String(window.getSelection() || '')) return;
+      const point=e.changedTouches[0];
+      if (point.identifier!==first.id) return;
+      const dx=point.clientX-first.x, dy=point.clientY-first.y;
+      if (Math.abs(dx)<60 || Math.abs(dx)<2*Math.abs(dy)) return;
+      const adjacent=buttons[buttons.indexOf(active)+(dx<0 ? 1 : -1)];
+      if (e.cancelable) e.preventDefault();
+      if (adjacent) adjacent.click();
+    },{passive:false});
+  },
   toast(msg, type) {
     const root = document.getElementById('toastRoot');
     const t = document.createElement('div');

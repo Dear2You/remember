@@ -115,7 +115,9 @@ Views.bills = (() => {
         <button class="mn-btn j-prev" aria-label="上一周期">‹</button><button class="mn-btn j-next" aria-label="下一周期">›</button></div>`;
   }
   function bindHeader(root, mode) {
-    root.querySelectorAll('.j-top button').forEach(b => b.onclick = () => { topMode = b.dataset.t; App.refresh(true); });
+    const tabs=root.querySelectorAll('.j-top button');
+    tabs.forEach(b => b.onclick = () => { topMode = b.dataset.t; App.refresh(true); });
+    UI.swipeTabs(root.querySelector('.bill-report'),tabs,root.querySelector('.j-top [aria-pressed="true"]'));
     root.querySelector('.j-period').onclick = () => openPeriodSheet(mode);
     root.querySelector('.j-prev').onclick = () => { shiftAnchor(mode, -1); App.refresh(true); };
     root.querySelector('.j-next').onclick = () => { shiftAnchor(mode, 1); App.refresh(true); };
