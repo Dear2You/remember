@@ -19,6 +19,8 @@ fi
 PATCH_PART="${BASH_REMATCH[4]:-0}"
 VERSION_CODE=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#$PATCH_PART))
 
+node "$ROOT/tools/build-ai-guide.js" "$VERSION_NAME"
+
 OUT_APK="$ROOT/那年夏天-v$VERSION_NAME.apk"
 KEYSTORE="$ROOT/android/keystore.jks"
 KS_PASS="nianxiatian-sign-2026"

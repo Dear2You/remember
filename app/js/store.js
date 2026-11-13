@@ -84,7 +84,7 @@ const Store = {
         aiKey: '', aiModel: 'glm-5.3',
         theme: 'auto', hideAmount: false,
         currentBookId: 'book-life',   // '' = 全部账本
-        lastAccountId: '', lastBookId: 'book-life',
+        lastAccountId: '', lastBookId: 'book-life', lastReceiptAccountId: '',
         activeTripId: '',
         sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
         subscriptionRates: {},         // 其他外币，1 单位原币对应的人民币
@@ -436,9 +436,12 @@ const Store = {
     if (o.tripId) item.tripId = o.tripId;
     this.validateTransaction(item);
     this.checkTripChange(null,item);
-    this.mutate(d => d.transactions.push(item));
-    if (item.type !== 'transfer' && item.accountId) { this.data.settings.lastAccountId = item.accountId; this.save(); }
-    if (item.bookId && !item.tripId) { this.data.settings.lastBookId = item.bookId; this.save(); }
+    this.mutate(d => {
+      d.transactions.push(item);
+      if (item.type === 'reimbursement') d.settings.lastReceiptAccountId = item.accountId;
+      else if (item.type !== 'transfer' && item.accountId) d.settings.lastAccountId = item.accountId;
+      if (item.bookId && !item.tripId) d.settings.lastBookId = item.bookId;
+    });
     return item;
   },
   validateTransaction(item, previousId) {
@@ -468,7 +471,10 @@ const Store = {
     const next = Object.assign({}, it, patch, { id, updatedAt: Date.now() });
     this.validateTransaction(next, id);
     this.checkTripChange(it,next);
-    this.mutate(() => Object.assign(it, next));
+    this.mutate(d => {
+      if (next.type === 'reimbursement' && next.accountId !== it.accountId) d.settings.lastReceiptAccountId = next.accountId;
+      Object.assign(it,next);
+    });
   },
   removeTransaction(id) {
     this.checkTripChange(this.data.transactions.find(t => t.id === id),null);

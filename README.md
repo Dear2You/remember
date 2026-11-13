@@ -50,13 +50,16 @@
 
 ## 五、开发与发布
 
+每次更新都维护 [AI 功能手册](app/ai-guide.md)。按界面上的按钮名称写清入口、操作和结果，区分助手能直接执行的动作和需要用户点选的步骤。在「版本记录」最上面加一条本版变化，只有修复也写明修复内容。离线操作指引和联网助手共用这份 Markdown。
+
+改完手册运行 `node tools/build-ai-guide.js`，将生成的 `app/js/ai-guide.generated.js` 一起提交，直接打开网页也能使用。APK 构建会按发布版本校验最新记录并重新生成。联网请求只携带当前版本说明和现行用法，完整历史留在 Markdown 中。
+
 ```bash
 node tools/serve.js 8765                     # 本地网页调试
-UPDATE_NOTE="更新说明" bash tools/build-apk.sh 2.1   # 构建（自动注入版本+生成更新包）
-git add -A && git commit -m "v2.1" && git push       # 发布（App 内即可检查到更新）
+USE_RELEASE_ASSET=1 UPDATE_NOTE="更新说明" bash tools/build-apk.sh 2.25   # 版本与手册首条记录一致
 ```
 
-- 构建产物：`那年夏天-v2.1.apk`（本地安装）+ `apk/nianxiatian.apk`（更新包）+ `latest.json`（版本清单）
+- 构建生成对应版本的本地 APK、`apk/nianxiatian.apk` 更新包和 `latest.json` 版本清单。
 - 应用内检查更新会在 GitHub Raw 与 GitHub API 之间回退。下载时会校验成品 APK 的 SHA-256、包名、签名与版本。若使用 GitHub Release 分发，构建时设置 `USE_RELEASE_ASSET=1`，并在更新 main 分支清单前，将同一份签名 APK 以 `nianxiatian.apk` 上传到对应的 `v版本号` Release。
 - 工具链在 `build/toolchain/`（JDK17 + Android SDK 35，不入库）
 - ⚠️ `android/keystore.jks` 已被 .gitignore 排除——**绝不能上传，请异地备份**（丢失后无法覆盖升级）

@@ -3,6 +3,35 @@
 Views.ai = (() => {
   let sending = false;
   let aborter = null;
+  const guideSections = new Map(AI_GUIDE.split(/^## /m).slice(1).map(section => {
+    const end = section.indexOf('\n');
+    return [section.slice(0,end),section.slice(end).trim()];
+  }));
+
+  function guideAnswer(text, offline) {
+    if (/^(?:(?:这个|这款)?(?:app|应用)|你)?(?:都)?(?:有(?:哪些|什么)功能|能(?:做|帮我做)什么)[呢吗？?。]*$/i.test(text) || /^(?:打开|查看)?功能手册[？?。]*$/.test(text)) {
+      const titles = [...guideSections.keys()].filter(t => t !== '版本记录');
+      return 'v'+window.__APP_VERSION+' 功能手册\n'+titles.map(t=>'· '+t).join('\n')+'\n\n发送其中一个标题可查看步骤，例如“删除报销到账”。';
+    }
+    if (guideSections.has(text)) return guideSections.get(text);
+    const tripTopics = [
+      [/(?:删除|删掉|撤销|删).*(?:到账|报销)|(?:到账|报销).*(?:删除|删掉|撤销|删)/,'删除报销到账'],
+      [/收款账户|到账账户|(?:到账|报销).*(?:账户|银行卡|零钱)|(?:换|改).*(?:收款|到账)/,'选择或更改收款账户'],
+      [/(?:结束|退出|关闭|取消).*(?:行程|出差)|出差.*(?:结束|退出|关闭)/,'结束出差模式']
+    ];
+    const tripMatch = tripTopics.find(([words]) => words.test(text));
+    if (tripMatch) return guideSections.get(tripMatch[1]) || '';
+    if (!offline || !/在哪|哪里|哪儿|怎么|如何|点哪|找不到|为啥|为什么|能不能|可不可以|可以.*吗|能.*吗|不会用/.test(text)) return '';
+    const topics = [
+      [/出差|报销|垫付/,'出差垫付与报销'], [/闹钟|通知|提醒/,'手机提醒、闹钟与日历'],
+      [/工时|时薪|日薪/,'工时与薪资'], [/汇率|订阅|会员|预算|净资产|账户管理/,'资产、预算与会员订阅'],
+      [/备份|坚果云|恢复|更新|主题|隐藏金额|CSV/i,'数据、显示与更新'],
+      [/日程|备忘|习惯|待办|专注|倒数|纪念日/,'时光、备忘与习惯'], [/记账|查账|账单|转账|还款/,'记账与查账'],
+      [/助手|api key|模型|对话/i,'AI 助手与操作范围']
+    ];
+    const match = topics.find(([words]) => words.test(text));
+    return match ? guideSections.get(match[1]) || '' : '';
+  }
 
   /* ---------- Markdown 极简渲染 ---------- */
   function mdToHtml(text) {
@@ -58,6 +87,7 @@ Views.ai = (() => {
     const todayWork = Store.workDaySummary(Store.dayWorktimes(today));
 
     return '你是「那年夏天」App 内置的 AI 助手，帮用户管理记账、工时、备忘录和打卡习惯。用中文回答，简洁友好，适当用 emoji。\n' +
+      AI_GUIDE + '\n\n用户询问功能或操作步骤时，只解释，不输出 action。只有用户明确要执行下面列出的动作时才使用对应的 action。手册中由用户在界面操作的功能，给出路径，不能用普通收支动作代记报销。\n' +
       '【当前时间】' + U.fmtFull(today) + ' ' + new Date().toTimeString().slice(0, 5) + '\n' +
       '【用户数据】（当前视角：' + (book ? '账本「' + book.name + '」' : '全部账本') + '）\n' +
       '- 账本：' + books.map(b => b.name).join('、') + '\n' +
@@ -72,7 +102,7 @@ Views.ai = (() => {
       '【执行操作】当用户要求记录/添加时，在回复中输出 action 代码块（app 会自动执行并允许撤销）：\n' +
       '```action\n{"type":"add_expense","kind":"out","amount":25.5,"category":"午餐","account":"微信零钱","note":"午饭","date":"' + today + '"}\n```\n' +
       '支持的操作：\n' +
-      '{"type":"add_expense","kind":"out或in","amount":数字(元)","category":"分类名(可用二级如午餐)","book":"账本名(可选)","account":"账户名(可选)","note":"备注","date":"YYYY-MM-DD"}\n' +
+      'add_expense 的 kind 取 out 或 in，amount 是以人民币元为单位的数字；book、account、category、note、date 按用户提供的信息填写。\n' +
       '{"type":"add_transfer","from":"转出账户","to":"转入账户(负债账户=还款)","amount":数字(元),"note":"备注"}\n' +
       '{"type":"add_task","title":"事项名","date":"YYYY-MM-DD或空","important":bool,"urgent":bool}\n' +
       '{"type":"add_memo","title":"标题","content":"内容"}\n' +
@@ -244,7 +274,7 @@ Views.ai = (() => {
     if (!chats.length) {
       box.innerHTML =
         '<div class="quick-chips">' +
-        ['昨天微信午饭 28 元', '这个月花了多少钱？', '本月哪类花得最多？', ...(Store.settings.aiKey ? ['本月工时总结'] : [])].map(q =>
+      ['昨天微信午饭 28 元', '这个月花了多少钱？', '本月哪类花得最多？', '功能手册', ...(Store.settings.aiKey ? ['本月工时总结'] : [])].map(q =>
           '<button class="chip j-quick">' + U.escapeHtml(q) + '</button>').join('') +
         '</div>';
       box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.textContent));
@@ -261,6 +291,12 @@ Views.ai = (() => {
         d.className = 'bubble ai';
         d.innerHTML = '<div class="md">' + mdToHtml(msg.localReport && Store.settings.hideAmount ? '收支查询结果已隐藏' : msg.content || '…') + '</div>';
         if (!(msg.actions || []).some(ac => ac.kind === 'quick-entry')) box.appendChild(d);
+        if (msg.tripGuide) {
+          const open = document.createElement('button');
+          open.className = 'chip'; open.textContent = '打开出差报销';
+          open.onclick = Views.trips.list;
+          d.appendChild(open);
+        }
         (msg.actions || []).forEach((ac, ai2) => {
           const card = document.createElement('div');
           card.className = 'action-card' + (ac.revoked ? ' revoked' : '');
@@ -331,7 +367,9 @@ Views.ai = (() => {
     text = (text || '').trim();
     if (!text || sending) return;
     const cfg = Store.settings;
-    const answer = QuickEntry.monthAnswer(text);
+    const report = QuickEntry.monthAnswer(text);
+    const guide = report ? '' : guideAnswer(text,!cfg.aiKey);
+    const answer = report || guide;
     const result = answer ? {} : QuickEntry.parse(text);
     const localError = (result.tripHelp || !cfg.aiKey) && result.error;
     if (!answer && !result.draft && !localError && !cfg.aiKey) {
@@ -348,7 +386,8 @@ Views.ai = (() => {
         if (!Store.data.aiSessions.includes(sess)) return;
         sess.messages.push({role:'user',content:text,localEntry:!!item,ts:Date.now()},{
           role:'assistant',content:item ? '已记入账本。' : answer || localError,
-          localReport:!!answer, actions:item ? [{kind:'quick-entry',itemId:item.id}] : [],ts:Date.now()
+          localReport:!!report, tripGuide:!!(result.tripHelp || (guide && /资产 → 出差报销/.test(guide))),
+          actions:item ? [{kind:'quick-entry',itemId:item.id}] : [],ts:Date.now()
         });
         if (sess.messages.length>80) sess.messages.splice(0,sess.messages.length-80);
         if (sess.title==='新对话') sess.title=item ? '一句话记账' : text.slice(0,14);

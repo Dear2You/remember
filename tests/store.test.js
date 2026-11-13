@@ -88,6 +88,8 @@ test('同一行程的现金和信用卡垫付可合并回款，预算、收入�
   assert.equal(store.tripTotals(trip.id).pending,68000);
   assert.equal(store.netWorth(),0);
   const part = post('reimbursement','acc-bank',50000,'2026-11-01');
+  assert.equal(store.settings.lastAccountId,'acc-credit');
+  assert.equal(store.settings.lastReceiptAccountId,'acc-bank');
   assert.equal(store.tripTotals(trip.id).pending,18000);
   assert.equal(store.accountBalance('acc-bank'),50000);
   assert.equal(store.accountBalance('acc-credit'),8000);
@@ -105,6 +107,28 @@ test('同一行程的现金和信用卡垫付可合并回款，预算、收入�
   assert.throws(()=>store.updateTransaction(taxi.id,{amountMinor:7000}));
   store.removeTransaction(part.id);
   assert.equal(store.tripTotals(trip.id).pending,50000);
+  assert.equal(store.accountBalance('acc-bank'),18000);
+  assert.equal(store.netWorth(),0);
+});
+
+test('改到账账户只移动该笔到账，收款偏好独立保存，失败或取消不改变余额', () => {
+  const {store} = fixture();
+  const trip = store.startTrip('广州','book-life');
+  const fields = {tripId:trip.id,bookId:trip.bookId,amountMinor:12000};
+  const custom = store.addAccount({name:'工资卡',type:'asset'});
+  store.addTransaction({...fields,type:'advance',accountId:'acc-wx'});
+  const paid = store.addTransaction({...fields,type:'reimbursement',accountId:'acc-cash'});
+  store.updateTransaction(paid.id,{accountId:custom.id});
+  assert.equal(store.accountBalance('acc-cash'),0);
+  assert.equal(store.accountBalance(custom.id),12000);
+  assert.throws(()=>store.updateTransaction(paid.id,{accountId:'acc-credit'}));
+  store.init();
+  assert.equal(store.settings.lastReceiptAccountId,custom.id);
+  assert.equal(store.settings.lastAccountId,'acc-wx');
+  assert.equal(store.tripTotals(trip.id).pending,0);
+  store.removeTransaction(paid.id);
+  assert.equal(store.accountBalance(custom.id),0);
+  assert.equal(store.tripTotals(trip.id).pending,12000);
 });
 
 test('活动行程和跨账本垫付在重启、导出恢复后仍独立，错误的报销备份不覆盖现有数据', () => {
