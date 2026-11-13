@@ -107,25 +107,27 @@ Views.bills = (() => {
   }
 
   /* ---------- 通用头部（一级切换 + 周期选择 + 导航） ---------- */
-  function headerHtml(p) {
+  function headerHtml(p, selected) {
     const names = [['report','收支分析'],['detail','流水明细'],['calendar','账单日历']];
     return `<div class="report-tabs j-top">${names.map(([key,title]) =>
-      `<button data-t="${key}" aria-pressed="${topMode===key}">${title}</button>`).join('')}</div>
+      `<button data-t="${key}" aria-pressed="${selected===key}">${title}</button>`).join('')}</div>
+      <div class="swipe-panel">
       <div class="report-period"><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
         <button class="mn-btn j-prev" aria-label="上一周期">‹</button><button class="mn-btn j-next" aria-label="下一周期">›</button></div>`;
   }
   function bindHeader(root, mode) {
     const tabs=root.querySelectorAll('.j-top button');
     tabs.forEach(b => b.onclick = () => { topMode = b.dataset.t; App.refresh(true); });
-    UI.swipeTabs(root.querySelector('.bill-report'),tabs,root.querySelector('.j-top [aria-pressed="true"]'));
+    UI.swipeTabs(root.querySelector('.bill-report'),tabs,root.querySelector('.j-top [aria-pressed="true"]'),
+      (host,button) => mount(host,false,button.dataset.t,true));
     root.querySelector('.j-period').onclick = () => openPeriodSheet(mode);
     root.querySelector('.j-prev').onclick = () => { shiftAnchor(mode, -1); App.refresh(true); };
     root.querySelector('.j-next').onclick = () => { shiftAnchor(mode, 1); App.refresh(true); };
   }
 
-  function mount(root, updatingSearch = false) {
+  function mount(root, updatingSearch = false, selected = topMode, preview = false) {
     const E = Views.expense;
-    const mode = topMode === 'calendar' ? 'calendar' : 'report';
+    const mode = selected === 'calendar' ? 'calendar' : 'report';
     const p = periodOf(mode);
     const bookId = E.curBook();
     const books = Store.books();
@@ -136,7 +138,7 @@ Views.bills = (() => {
     const fOut = filtered.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
     const fInc = filtered.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
     const hidden = Store.settings.hideAmount;
-    const rows = topMode === 'detail' ? [] : FinanceReport.buckets(p, filtered);
+    const rows = selected === 'detail' ? [] : FinanceReport.buckets(p, filtered);
     const filterLabels = [
       ({out:'支出', in:'收入', transfer:'转账/还款'})[F.type],
       F.accountId && Store.accountName(F.accountId),
@@ -149,9 +151,9 @@ Views.bills = (() => {
       <option data-manage="1">管理账本…</option></select>
       <button class="head-btn j-eye" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button>
       <button class="head-btn j-filter" aria-label="筛选账单"><svg viewBox="0 0 24 24"><path d="M4 5h16M7 12h10M10 19h4"/></svg></button></div></div>`
-      + headerHtml(p)
+      + headerHtml(p,selected)
       + `<div class="j-filters">${filterBar}</div>`;
-    const comparison = topMode === 'report' ? PeriodComparison.collect(p, bookId, filtered) : null;
+    const comparison = selected === 'report' ? PeriodComparison.collect(p, bookId, filtered) : null;
     const comparisonKind = F.type === 'in' || (comparison && !comparison.now.out && !comparison.before.out) ? 'in' : 'out';
     const summary = FinanceReport.summary(fOut, fInc, p, filtered.length, PeriodComparison.button(comparison, comparisonKind));
     function bindCommon() {
@@ -172,7 +174,7 @@ Views.bills = (() => {
 
     if (mode === 'calendar') {
       // 进入日历时先看收支，翻页和筛选时沿用本次选择。
-      if (!root.querySelector('.j-top [data-t="calendar"][aria-pressed="true"]')) calendarMetric = 'both';
+      if (!preview && !root.querySelector('.j-top [data-t="calendar"][aria-pressed="true"]')) calendarMetric = 'both';
       let calHtml;
       if (p.kind === 'year') {
         calHtml = `<section class="card report-card"><header><h2>逐月收支</h2></header>
@@ -180,10 +182,11 @@ Views.bills = (() => {
           ${rows.map(r=>`<button class="account-row j-mon" data-ym="${r.key}"><span>${r.label} ›</span>
           <span>¥${UI.amount(r.inc,true)}</span><span>¥${UI.amount(r.out,true)}</span></button>`).join('')}</div></section>`;
       } else {
-        calHtml = BillCalendar.render(p, rows, bookId, F, hasFilter, calendarMetric);
+        calHtml = BillCalendar.render(p, rows, bookId, F, hasFilter, preview ? 'both' : calendarMetric);
       }
 
-      root.innerHTML = pageHead + (p.kind === 'year' ? summary : '') + calHtml + '</div>';
+      root.innerHTML = pageHead + (p.kind === 'year' ? summary : '') + calHtml + '</div></div>';
+      if (preview) return;
       bindCommon();
       root.querySelectorAll('.calendar-metrics button').forEach(btn => btn.onclick = () => {
         calendarMetric = btn.dataset.metric;
@@ -207,7 +210,7 @@ Views.bills = (() => {
     }
 
     /* ================= 账单报表 ================= */
-    if (topMode === 'detail') {
+    if (selected === 'detail') {
       const byDay = {};
       filtered.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
       const days = Object.keys(byDay).sort().reverse();
@@ -238,7 +241,8 @@ Views.bills = (() => {
       }
       root.innerHTML = pageHead + summary +
         `<div class="report-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}"></div>
-        <div class="j-results">${listHtml}</div></div>`;
+        <div class="j-results">${listHtml}</div></div></div>`;
+      if (preview) return;
       bindCommon();
       const search = root.querySelector('.j-search');
       const applySearch = () => {
@@ -267,8 +271,8 @@ Views.bills = (() => {
     root.innerHTML = pageHead + summary +
       (showCharts ? `<div class="report-grid"><section class="card report-card j-trend"></section><div class="j-categories"></div></div>${accountTable}`
       : `<section class="card report-blank"><h2>${emptyText}</h2><button class="btn btn-ghost j-empty-action">
-        ${hidden ? '显示金额' : hasFilter ? '清除筛选' : filtered.length ? '查看流水' : '记一笔'}</button></section>`) + '</div>';
-    bindCommon();
+        ${hidden ? '显示金额' : hasFilter ? '清除筛选' : filtered.length ? '查看流水' : '记一笔'}</button></section>`) + '</div></div>';
+    if (!preview) bindCommon();
     if (!showCharts) {
       root.querySelector('.j-empty-action').onclick=()=>{
         if (hidden) root.querySelector('.j-eye').click();

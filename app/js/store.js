@@ -11,6 +11,10 @@ const Store = {
   LEGACY_KEYS: [],
   data: null,
   _listeners: {},
+  subscriptionCurrencies: {
+    SGD:'新加坡元', USD:'美元', CNY:'人民币', EUR:'欧元', GBP:'英镑', HKD:'港元',
+    JPY:'日元', AUD:'澳元', CAD:'加元', MYR:'马来西亚林吉特', TWD:'新台币', THB:'泰铢'
+  },
 
   /* ---------- 默认数据 ---------- */
   DEFAULT_BOOK() {
@@ -70,7 +74,7 @@ const Store = {
       events: [],          // {id, title, start:'YYYY-MM-DD HH:mm', end, allDay, location, note, color, repeat:'none'|'weekly', createdAt}
       countdowns: [],      // {id, title, date:'YYYY-MM-DD', icon, yearly, archived, createdAt}
       focusSessions: [],   // {id, taskId, mode:'pomodoro'|'countup'|'countdown', targetMin, actualSec, pausedSec, startedAt, endedAt, status:'done'|'broken', createdAt}
-      subscriptions: [],   // {id, name, amount, currency:'SGD'|'CNY', note, createdAt} 每月固定支出
+      subscriptions: [],   // amount 为每月订阅原币金额
       wageProjects: [],   // {id, name, rate(元/小时)} 项目时薪表
       worktimes: [], memos: [], habits: [], habitLogs: {}, chats: [],
       aiSessions: [],   // {id, title, messages:[{role,content,actions,ts}], createdAt, updatedAt}
@@ -81,6 +85,7 @@ const Store = {
         currentBookId: 'book-life',   // '' = 全部账本
         lastAccountId: '', lastBookId: 'book-life',
         sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
+        subscriptionRates: {},         // 其他外币，1 单位原币对应的人民币
         defaultRate: 0,                // 默认时薪（元/小时），项目未单独设置时使用
         aiActiveSessionId: ''          // 当前 AI 会话
       }
@@ -119,6 +124,9 @@ const Store = {
     if (!Array.isArray(data.countdowns)) data.countdowns = [];
     if (!Array.isArray(data.focusSessions)) data.focusSessions = [];
     if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
+    for (const sub of data.subscriptions) {
+      if (!sub.currency) sub.currency = 'CNY'; // 旧版未标币种的订阅按人民币展示
+    }
     if (!Array.isArray(data.aiSessions)) data.aiSessions = [];
     // 老版本单聊天记录 → 迁移为一个会话
     if (!data.aiSessions.length && Array.isArray(data.chats) && data.chats.length) {
@@ -131,7 +139,13 @@ const Store = {
       data.chats = [];
     }
     if (!Array.isArray(data.wageProjects)) data.wageProjects = [];
-    if (typeof data.settings.sgdRate !== 'number' || !(data.settings.sgdRate > 0)) data.settings.sgdRate = 5.30;
+    data.settings.sgdRate = this.parseSubscriptionRate(data.settings.sgdRate) || def.settings.sgdRate;
+    const savedRates = data.settings.subscriptionRates;
+    data.settings.subscriptionRates = {};
+    for (const code of Object.keys(this.subscriptionCurrencies)) {
+      const rate = this.parseSubscriptionRate(savedRates?.[code]);
+      if (rate && code !== 'SGD' && code !== 'CNY') data.settings.subscriptionRates[code] = rate;
+    }
     if (typeof data.settings.defaultRate !== 'number' || data.settings.defaultRate < 0) data.settings.defaultRate = 0;
     if (data.version < 4) { data.version = 4; }
     data.accounts.forEach(a => { if (!a.type) a.type = a.id === 'acc-credit' ? 'liability' : 'asset'; });
@@ -888,27 +902,45 @@ const Store = {
   addSubscription(o) {
     const item = {
       id: U.id(), name: (o.name || '').trim() || '新订阅', amount: Math.round((Number(o.amount) || 0) * 100) / 100,
-      currency: o.currency === 'SGD' ? 'SGD' : 'CNY', note: o.note || '', createdAt: Date.now()
+      currency: o.currency || 'SGD', note: o.note || '', createdAt: Date.now()
     };
     this.mutate(d => d.subscriptions.push(item));
     return item;
   },
   updateSubscription(id, patch) { this.mutate(d => { const it = d.subscriptions.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
   removeSubscription(id) { this.mutate(d => { d.subscriptions = d.subscriptions.filter(x => x.id !== id); }); },
-  // 全部折算为 CNY 的每月合计（分）
-  subscriptionsTotalCNY() {
-    const rate = this.settings.sgdRate || 5.30;
-    return this.data.subscriptions.reduce((s, x) => {
-      const cny = x.currency === 'SGD' ? x.amount * rate : x.amount;
-      return s + Math.round(cny * 100);
-    }, 0);
+  parseSubscriptionRate(value) {
+    if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+(?:\.\d+)?$/.test(value.trim()))) return null;
+    const scaled = Math.round(Number(value) * 1e6);
+    return Number.isSafeInteger(scaled) && scaled > 0 ? scaled / 1e6 : null;
   },
-  setSgdRate(rate) {
-    const v = Math.round(Number(rate) * 10000) / 10000;
-    if (!Number.isFinite(v)) return false;
-    if (!(v > 0 && v < 100)) return false;
-    this.settings.sgdRate = v;
-    this.save();
+  subscriptionRate(code) {
+    if (code === 'CNY') return 1;
+    if (code === 'SGD') return this.settings.sgdRate;
+    return Object.prototype.hasOwnProperty.call(this.settings.subscriptionRates, code) ? this.settings.subscriptionRates[code] : null;
+  },
+  subscriptionCnyMinor(amount, code) {
+    const rate = this.subscriptionRate(code);
+    if (!rate) return null;
+    return Math.round(Math.round(amount * 100) * Math.round(rate * 1e6) / 1e6);
+  },
+  // 合计以人民币分计。缺少任一原币汇率时，保留原价，待补齐汇率再显示合计。
+  subscriptionsTotalCNY() {
+    let total = 0;
+    for (const sub of this.data.subscriptions) {
+      const minor = this.subscriptionCnyMinor(sub.amount, sub.currency);
+      if (minor === null) return null;
+      total += minor;
+    }
+    return total;
+  },
+  setSubscriptionRate(code, value) {
+    const rate = this.parseSubscriptionRate(value);
+    if (!rate || code === 'CNY' || !Object.prototype.hasOwnProperty.call(this.subscriptionCurrencies,code)) return false;
+    this.mutate(d => {
+      if (code === 'SGD') d.settings.sgdRate = rate;
+      else d.settings.subscriptionRates[code] = rate;
+    });
     return true;
   },
 

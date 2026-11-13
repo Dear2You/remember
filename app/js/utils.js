@@ -130,33 +130,106 @@ const UI = {
   icon(name) {
     return '<svg class="journal-icon" aria-hidden="true" viewBox="0 0 24 24">' + iconPaths[name] + '</svg>';
   },
-  swipeTabs(page, tabs, active) {
+  swipeTabs(page, tabs, active, renderPreview) {
     const buttons = Array.from(tabs);
-    let start = null;
+    const index = buttons.indexOf(active);
+    const panel = page.querySelector('.swipe-panel');
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const translate = x => 'translate3d('+x+'px,0,0)';
+    const timing = {duration:210,easing:'cubic-bezier(.2,.76,.27,1)'};
+    let start = null, neighbor = null, preview = null, offset = 0, settling = false;
+    let rebound = null, returningPreview = null;
+
+    function clearPreview() {
+      if (preview) preview.remove();
+      preview = neighbor = null;
+    }
+    function drag(dx) {
+      const next = buttons[index + (dx < 0 ? 1 : -1)];
+      if (motion.matches) return;
+      const width = page.clientWidth;
+      if (next !== neighbor) {
+        clearPreview();
+        if (next) {
+          const host = document.createElement('div');
+          renderPreview(host,next);
+          preview = host.querySelector('.swipe-panel');
+          preview.classList.add('swipe-preview');
+          preview.setAttribute('aria-hidden','true');
+          preview.inert = true;
+          preview.style.top = panel.offsetTop+'px';
+          page.appendChild(preview);
+          neighbor = next;
+        }
+      }
+      offset = next ? Math.sign(dx)*Math.min(Math.abs(dx),width) : Math.sign(dx)*Math.min(Math.abs(dx)*.2,32);
+      panel.style.transform = translate(offset);
+      if (preview) preview.style.transform = translate(offset + (dx < 0 ? width : -width));
+    }
+    function cancel() {
+      start = null;
+      if (offset && !motion.matches) {
+        rebound = panel.animate([{transform:translate(offset)},{transform:translate(0)}],timing);
+        if (preview) {
+          const target = offset < 0 ? page.clientWidth : -page.clientWidth;
+          const leaving = preview;
+          returningPreview = leaving;
+          leaving.animate([{transform:translate(target+offset)},{transform:translate(target)}],
+            {...timing,fill:'forwards'}).onfinish = () => {
+              leaving.remove();
+              if (returningPreview === leaving) returningPreview = null;
+            };
+          preview = null;
+        }
+      }
+      clearPreview();
+      panel.style.transform = '';
+      offset = 0;
+    }
     page.addEventListener('touchstart', e => {
-      start=null;
-      if (e.touches.length!==1 || e.target.closest('input,textarea,select,[contenteditable="true"],.flow-plot,canvas,.category-heading,.acct-chips')) return;
+      if (settling) return;
+      if (start) cancel();
+      if (e.touches.length!==1 || e.target.closest('input,textarea,select,[contenteditable="true"],.flow-plot,canvas,.category-heading,.acct-chips') || String(window.getSelection() || '')) return;
       const point=e.touches[0];
       if (point.clientX < 24 || innerWidth-point.clientX < 24) return;
-      start={x:point.clientX,y:point.clientY,id:point.identifier};
+      start={x:point.clientX,y:point.clientY,id:point.identifier,locked:false,time:e.timeStamp};
     },{passive:true});
     page.addEventListener('touchmove', e => {
       if (!start) return;
       const point=e.touches[0];
-      if (e.touches.length!==1 || Math.abs(point.clientY-start.y)>Math.max(18,Math.abs(point.clientX-start.x))) start=null;
+      if (e.touches.length !== 1 || point.identifier !== start.id) { cancel(); return; }
+      const dx = point.clientX-start.x, dy = point.clientY-start.y;
+      if (!start.locked) {
+        if (Math.abs(dy)>10 && Math.abs(dy)>=Math.abs(dx)) { cancel(); return; }
+        if (Math.abs(dx)<9 || Math.abs(dx)<1.5*Math.abs(dy)) return;
+        if (rebound) { rebound.cancel(); rebound = null; }
+        if (returningPreview) { returningPreview.remove(); returningPreview = null; }
+        start.locked = true;
+      }
+      drag(dx);
     },{passive:true});
-    page.addEventListener('touchcancel',()=>{start=null;},{passive:true});
+    page.addEventListener('touchcancel',() => { if (!settling) cancel(); },{passive:true});
     page.addEventListener('touchend', e => {
+      if (settling) return;
       const first=start;
-      start=null;
-      if (!first || e.touches.length || !page.isConnected || String(window.getSelection() || '')) return;
+      if (!first || !first.locked || e.touches.length || !page.isConnected) { cancel(); return; }
       const point=e.changedTouches[0];
-      if (point.identifier!==first.id) return;
       const dx=point.clientX-first.x, dy=point.clientY-first.y;
-      if (Math.abs(dx)<60 || Math.abs(dx)<2*Math.abs(dy)) return;
-      const adjacent=buttons[buttons.indexOf(active)+(dx<0 ? 1 : -1)];
+      const speed = Math.abs(dx)/Math.max(1,e.timeStamp-first.time);
+      const farEnough = Math.abs(dx)>=Math.min(88,page.clientWidth*.22) || (Math.abs(dx)>=42 && speed>.45);
+      const adjacent = buttons[index+(dx<0 ? 1 : -1)];
       if (e.cancelable) e.preventDefault();
-      if (adjacent) adjacent.click();
+      if (point.identifier!==first.id || Math.abs(dx)<1.5*Math.abs(dy) || !farEnough || !adjacent) { cancel(); return; }
+      start = null;
+      if (motion.matches) { adjacent.click(); return; }
+      drag(dx);
+      settling = true;
+      const end = dx < 0 ? -page.clientWidth : page.clientWidth;
+      const duration = Math.max(110,Math.round(220*(1-Math.abs(offset/end))));
+      const settle = {...timing,duration,fill:'forwards'};
+      panel.animate([{transform:translate(offset)},{transform:translate(end)}],settle);
+      const slide = preview.animate([{transform:translate(offset-end)},{transform:translate(0)}],settle);
+      slide.onfinish = () => { if (page.isConnected) adjacent.click(); };
     },{passive:false});
   },
   toast(msg, type) {

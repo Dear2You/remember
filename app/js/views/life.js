@@ -3,31 +3,34 @@
 Views.life = (() => {
   let sub = 'cal';   // 默认进日历；cal | today | tasks | more
 
-  function mount(root) {
+  function mount(root, selected = sub, preview = false) {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
       '<div class="page life-page">' +
-      '  <div class="page-head"><div><div class="page-title">时光 · ' + ({ today: '今日', tasks: '事项', cal: '日历', more: '更多' })[sub] + '</div><div class="page-sub j-sub"></div></div></div>' +
+      '  <div class="page-head"><div><div class="page-title">时光 · ' + ({ today: '今日', tasks: '事项', cal: '日历', more: '更多' })[selected] + '</div><div class="page-sub j-sub"></div></div></div>' +
       '  <div class="seg j-subnav" style="margin-bottom:14px">' +
-      '    <button data-s="cal" class="' + (sub === 'cal' ? 'on' : '') + '">日历</button>' +
-      '    <button data-s="today" class="' + (sub === 'today' ? 'on' : '') + '">今日</button>' +
-      '    <button data-s="tasks" class="' + (sub === 'tasks' ? 'on' : '') + '">事项</button>' +
-      '    <button data-s="more" class="' + (sub === 'more' ? 'on' : '') + '">更多</button>' +
+      '    <button data-s="cal" class="' + (selected === 'cal' ? 'on' : '') + '">日历</button>' +
+      '    <button data-s="today" class="' + (selected === 'today' ? 'on' : '') + '">今日</button>' +
+      '    <button data-s="tasks" class="' + (selected === 'tasks' ? 'on' : '') + '">事项</button>' +
+      '    <button data-s="more" class="' + (selected === 'more' ? 'on' : '') + '">更多</button>' +
       '  </div>' +
-      '  <div class="j-subbody"></div>' +
+      '  <div class="swipe-panel j-subbody"></div>' +
       '</div>';
 
     const ctx = { refresh: () => mount(document.getElementById('pageBody')) };
     const subbody = root.querySelector('.j-subbody');
-    const tabs=root.querySelectorAll('.j-subnav button');
-    tabs.forEach(b => b.onclick = () => { sub=b.dataset.s; ctx.refresh(); root.scrollTop=0; });
-    UI.swipeTabs(root.querySelector('.life-page'),tabs,root.querySelector('.j-subnav .on'));
+    if (!preview) {
+      const tabs=root.querySelectorAll('.j-subnav button');
+      tabs.forEach(b => b.onclick = () => { sub=b.dataset.s; ctx.refresh(); root.scrollTop=0; });
+      UI.swipeTabs(root.querySelector('.life-page'),tabs,root.querySelector('.j-subnav .on'),
+        (host,button) => mount(host,button.dataset.s,true));
+    }
 
-    if (sub === 'today') mountToday(subbody, ctx);
-    else if (sub === 'tasks') Views.lifetasks.mount(subbody, ctx);
-    else if (sub === 'cal') Views.lifecal.mount(subbody, ctx);
+    if (selected === 'today') mountToday(subbody, ctx);
+    else if (selected === 'tasks') Views.lifetasks.mount(subbody, ctx);
+    else if (selected === 'cal') Views.lifecal.mount(subbody, ctx);
     else mountMore(subbody);
-    root.querySelector('.j-sub').textContent = ({ today: U.fmtFull(U.todayStr()), tasks: '待办 · 四象限 · 重复', cal: '日程 · 待办 · 打卡叠加', more: '全部生活模块' })[sub];
+    root.querySelector('.j-sub').textContent = ({ today: U.fmtFull(U.todayStr()), tasks: '待办 · 四象限 · 重复', cal: '日程 · 待办 · 打卡叠加', more: '全部生活模块' })[selected];
   }
 
   /* ---------- 今日工作台（只读引用各模块，不建副本） ---------- */
@@ -154,8 +157,7 @@ Views.life = (() => {
         '  <div class="c-ico" >' + UI.icon(ic) + '</div>' +
         '  <div class="c-main"><div class="c-title">' + name + '</div><div class="c-sub">' + desc + '</div></div>' +
         '  <div class="c-right" style="color:var(--text-3)">›</div></div>').join('') +
-      '</div>' +
-      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">打开应用即可查看当天安排和逾期事项，提醒仅在应用内显示。</div>';
+      '</div>';
     root.querySelectorAll('.j-mod').forEach(el => el.onclick = () => App.go(el.dataset.r));
   }
 

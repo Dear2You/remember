@@ -20,6 +20,7 @@ Views.assets = (() => {
     const totalA = Store.totalAssets(), totalL = Store.totalLiabilities();
     const subsTotal = Store.subscriptionsTotalCNY();
     const subsCount = Store.data.subscriptions.length;
+    const subsMonthly = subsTotal === null ? '待补汇率' : '¥' + UI.amount(subsTotal) + '/月';
 
     // 预算卡
     let budgetCard = '';
@@ -90,7 +91,7 @@ Views.assets = (() => {
       '      <div><div class="lab">结余</div><div class="val" style="color:' + (stat.net >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (hide ? '✱✱✱' : (stat.net >= 0 ? '+' : '-') + UI.amount(Math.abs(stat.net), true)) + '</div></div>' +
       '    </div>' +
       '    <div style="text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--text-2)">今日支出 <b class="money-out num">' + amt(todayOut) + '</b>' +
-      (subsCount ? ' · 固定订阅 <b class="money-out num">¥' + UI.amount(subsTotal) + '</b>/月' : '') + '</div>' +
+      (subsCount ? ' · 固定订阅 <b class="money-out num">' + subsMonthly + '</b>' : '') + '</div>' +
       '  </div>' +
 
       budgetCard +
@@ -113,7 +114,7 @@ Views.assets = (() => {
 
       '  <div class="field-row" style="margin-bottom:14px">' +
       '    <button class="btn btn-primary j-transfer" style="flex:1">🔁 转账 / 还款</button>' +
-      '    <button class="btn btn-grad j-subscribe" style="flex:1">💳 会员支出' + (subsCount ? ' ¥' + UI.amount(subsTotal) + '/月' : '') + '</button>' +
+      '    <button class="btn btn-grad j-subscribe" style="flex:1">💳 会员支出' + (subsCount ? ' ' + subsMonthly : '') + '</button>' +
       '  </div>' +
 
       // 资产账户
@@ -137,7 +138,7 @@ Views.assets = (() => {
     const toggleDebt = root.querySelector('.j-toggle-debt');
     if (toggleDebt) toggleDebt.onclick = () => { showDebts = !showDebts; App.refresh(true); };
     root.querySelector('.j-transfer').onclick = () => Views.expense.openEntrySheet(null, 'transfer');
-    root.querySelector('.j-subscribe').onclick = () => App.go('subs');
+    root.querySelector('.j-subscribe').onclick = () => Views.subs.open('assets');
     root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId));
   }
 

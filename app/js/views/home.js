@@ -10,13 +10,14 @@ Views.home = (() => {
     const hidden = Store.settings.hideAmount;
     const amount = n => hidden ? '••••' : '¥' + Store.fmtMinorThousand(n);
     const minutes = Math.floor(digest.focusSec / 60);
+    const subsTotal = Store.subscriptionsTotalCNY();
     const tools = [
       ['life', 'calendar', '时光日历', '日程与待办'],
       ['memo', 'memo', '备忘录', Store.data.memos.length + ' 条笔记'],
       ['focus', 'focus', '番茄专注', '今日 ' + minutes + ' 分钟'],
       ['habit', 'habit', '习惯打卡', '今日已完成 ' + digest.habitsDone + ' 项'],
       ['countdown', 'countdown', '倒数日', digest.countdowns.length ? digest.countdowns[0].title : '纪念日与重要日期'],
-      ['subs', 'subs', '会员订阅', Store.data.subscriptions.length ? amount(Store.subscriptionsTotalCNY()) + ' / 月' : '管理每月固定支出']
+      ['subs', 'subs', '会员订阅', !Store.data.subscriptions.length ? '管理每月固定支出' : subsTotal === null ? '待补汇率' : amount(subsTotal) + ' / 月']
     ];
     const metrics = [
       ['tasks', 'check', '待办', digest.tasksOpen, '项'],
@@ -66,6 +67,7 @@ Views.home = (() => {
         else if (dest === 'tasks' || dest === 'overdue') Views.lifetasks.openList(dest === 'tasks' ? 'today' : 'overdue');
         else if (dest === 'today') Views.life.go(dest);
         else if (dest === 'life') Views.life.go('cal');
+        else if (dest === 'subs') Views.subs.open('home');
         else App.go(dest);
       };
     });

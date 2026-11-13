@@ -30,6 +30,45 @@ test('重启和旧备份迁移保留全部账本、模型与缺省设置', () =>
   assert.equal(store.settings.theme, 'auto');
 });
 
+test('旧订阅沿用原币和新币汇率，新订阅默认新加坡元', () => {
+  const {store,storage} = fixture();
+  const old = store.defaults();
+  delete old.settings.subscriptionRates;
+  old.settings.sgdRate = 5.1234;
+  old.subscriptions = [{id:'s',name:'会员',amount:10,currency:'SGD'},{id:'c',name:'书刊',amount:2.50}];
+  storage.setItem(store.KEY,JSON.stringify(old));
+  store.init();
+  assert.equal(store.subscriptionRate('SGD'),5.1234);
+  assert.equal(store.data.subscriptions[1].currency,'CNY');
+  assert.equal(store.subscriptionsTotalCNY(),5373);
+  assert.equal(store.addSubscription({name:'音乐',amount:1}).currency,'SGD');
+  assert.equal(store.subscriptionsTotalCNY(),5885);
+});
+
+test('多币种分别保存汇率，逐项折分，缺失、非法报价和恢复都不会错算合计', () => {
+  const {store} = fixture();
+  const usd = store.addSubscription({name:'美元会员',amount:9.99,currency:'USD'});
+  store.addSubscription({name:'日本杂志',amount:1500,currency:'JPY'});
+  assert.equal(store.subscriptionsTotalCNY(),null);
+  assert.equal(store.setSubscriptionRate('USD','7.15'),true);
+  assert.equal(store.subscriptionsTotalCNY(),null);
+  assert.equal(store.setSubscriptionRate('JPY','0.048125'),true);
+  assert.equal(store.subscriptionsTotalCNY(),7143+7219);
+  assert.equal(store.subscriptionCnyMinor(.10,'JPY'),0);
+  for (const bad of [-1,0,'','abc',Infinity,'0.00000001',{}]) assert.equal(store.setSubscriptionRate('USD',bad),false);
+  assert.equal(store.subscriptionRate('USD'),7.15);
+  assert.equal(store.setSubscriptionRate('CNY',2),false);
+  assert.equal(store.setSubscriptionRate('FAKE',1),false);
+  assert.equal(store.subscriptionRate('CNY'),1);
+  assert.equal(store.subscriptionRate('SGD'),5.30);
+  const backup = store.exportData();
+  assert(store.clearAll());
+  assert(store.importData(backup).ok);
+  assert.equal(store.subscriptionsTotalCNY(),14362);
+  store.updateSubscription(usd.id,{currency:'CNY'});
+  assert.equal(store.subscriptionsTotalCNY(),999+7219);
+});
+
 test('编辑还款时扣除原还款影响，超额编辑不会修改余额', () => {
   const { store } = fixture();
   store.addTransaction({ type: 'out', accountId: 'acc-credit', amountMinor: 10000 });

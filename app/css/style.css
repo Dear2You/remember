@@ -451,7 +451,26 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .ledger-receipt p { margin: 5px 0 8px; color: var(--text-2); font-size: 12px; overflow-wrap: anywhere; }
 .receipt-tools { border-top: 1px solid var(--hairline); }
 .receipt-tools button { color: var(--accent); padding: 7px 0; font-size: 13px; }
-.bill-report, .life-page { touch-action: pan-y pinch-zoom; }
+.bill-report, .life-page { touch-action: pan-y pinch-zoom; position: relative; overflow: hidden; overflow: clip; animation: none; min-height: 100%; }
+.swipe-panel { display: flow-root; }
+.swipe-preview { position: absolute; left: 0; width: 100%; pointer-events: none; user-select: none; }
+.subs-page .sub-total { background: var(--tint-surface); border: 1px solid var(--hairline); }
+.sub-total strong { display: block; margin: 4px 0; font-size: clamp(26px,8vw,36px); color: var(--text); overflow-wrap: anywhere; }
+.sub-total small, .fx-card small, .sub-empty { color: var(--text-2); }
+.fx-card header, .fx-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fx-card h2 { margin: 0; font-size: 16px; }
+.fx-card select { width: auto; max-width: 62%; font-size: 14px; padding: 7px; }
+.fx-value { margin: 12px 0; font-size: 19px; font-weight: 600; }
+.fx-tools button { flex: 1; font-size: 14px; }
+.fx-card small { display: block; margin-top: 9px; font-size: 11px; }
+.fx-card a { color: inherit; }
+.sub-amount-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 10px; }
+.sub-quote { margin: 0 0 12px; padding: 9px; background: var(--tint-surface); border-radius: 8px; font-size: 13px; }
+.sub-item { width: 100%; text-align: left; }
+.sub-item .c-title, .sub-item .c-sub { display: block; }
+.sub-item .c-val { color: var(--text); }
+.sub-code { min-width: 38px; padding: 8px 3px; text-align: center; color: var(--accent); background: var(--tint-surface); font-size: 12px; font-weight: 650; border-radius: 8px; }
+.subs-page .j-add { margin-top: 12px; }
 
 /* ---------- 设置 ---------- */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; }
