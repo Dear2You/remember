@@ -14,6 +14,7 @@ const FinanceReport = (() => {
       const row = byKey.get(annual ? t.date.slice(0, 7) : t.date);
       if (!row) return;
       row.count++;
+      if (t.tripId) row.hasTrip = true;
       if (t.type === 'in') row.inc += t.amountMinor;
       if (t.type === 'out') row.out += t.amountMinor;
     });

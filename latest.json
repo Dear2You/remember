@@ -1,8 +1,8 @@
 {
-  "versionCode": 22300,
-  "versionName": "2.23",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.23/nianxiatian.apk",
-  "sha256": "26c6a96b9e2da74fadd897360975a3b7025d0ef2934ff7a1557e57c0bdd091ff",
-  "apkBlob": "42592148c370e6e02ea2eee347dc51bc5e67036f",
-  "note": "账单与时光支持跟手滑动、相邻页预览和短拖回弹。会员订阅支持美元等 12 种币种，默认新加坡元，可逐币种在线更新或手动设置汇率。修正订阅返回入口和缺汇率时的合计显示。"
+  "versionCode": 22400,
+  "versionName": "2.24",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.24/nianxiatian.apk",
+  "sha256": "c294e8274d7d7c05538fa37235073a7d8916125d83e7fa8569868dabf6ec4f52",
+  "apkBlob": "ae20b394f051c2e5721f13633079d0097eb10117",
+  "note": "新增出差报销。开始行程后记一笔自动归入垫付，可切回个人支出。支持整趟或分次登记到账，保留应收余额，个人收支与预算独立统计。"
 }

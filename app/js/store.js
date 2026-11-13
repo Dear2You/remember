@@ -67,7 +67,8 @@ const Store = {
       books: this.DEFAULT_BOOK(),
       accounts: this.DEFAULT_ACCOUNTS(),
       categories: this.DEFAULT_CATS(),
-      transactions: [], // {id, bookId, type:'out'|'in'|'transfer', amountMinor, accountId, fromId, toId, categoryId, note, date, createdAt, updatedAt}
+      transactions: [],
+      trips: [], // {id, name, bookId}，垫付和到账流水通过 tripId 归入行程
       budgets: [],      // {id, bookId, month:'YYYY-MM', categoryId:''|一级id, amountMinor}
       // ===== 时光模块（life_，独立于财务）=====
       tasks: [],           // {id, title, note, dueDate:'YYYY-MM-DD', dueTime:'HH:mm', important, urgent, repeat:'none'|'daily'|'weekly'|'monthly', done(bool 非重复), doneDates:[], completedAt, cancelled, createdAt}
@@ -84,6 +85,7 @@ const Store = {
         theme: 'auto', hideAmount: false,
         currentBookId: 'book-life',   // '' = 全部账本
         lastAccountId: '', lastBookId: 'book-life',
+        activeTripId: '',
         sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
         subscriptionRates: {},         // 其他外币，1 单位原币对应的人民币
         defaultRate: 0,                // 默认时薪（元/小时），项目未单独设置时使用
@@ -117,6 +119,8 @@ const Store = {
     if (!Array.isArray(data.accounts) || !data.accounts.length) data.accounts = this.DEFAULT_ACCOUNTS();
     if (!Array.isArray(data.categories) || !data.categories.length) data.categories = this.DEFAULT_CATS();
     if (!Array.isArray(data.transactions)) data.transactions = [];
+    if (!Array.isArray(data.trips)) data.trips = [];
+    if (!data.trips.some(t => t.id === data.settings.activeTripId)) data.settings.activeTripId = '';
     if (!Array.isArray(data.budgets)) data.budgets = [];
     // v4 时光模块集合（旧版本无这些 key 时补空）
     if (!Array.isArray(data.tasks)) data.tasks = [];
@@ -292,7 +296,7 @@ const Store = {
   removeBook(id) {
     const b = this.book(id);
     if (!b || b.isDefault) return false;
-    if (this.data.transactions.some(t => t.bookId === id)) return false; // 有账单只能归档
+    if (this.data.transactions.some(t => t.bookId === id) || this.data.trips.some(t => t.bookId === id)) return false;
     this.mutate(d => {
       d.books = d.books.filter(x => x.id !== id);
       d.budgets = d.budgets.filter(x => x.bookId !== id);
@@ -321,19 +325,19 @@ const Store = {
     this.data.transactions.forEach(t => {
       if (skipId && t.id === skipId) return;
       if (a.type === 'liability') {
-        if (t.type === 'out' && t.accountId === id) bal += t.amountMinor;      // 刷卡 → 欠款增加
+        if ((t.type === 'out' || t.type === 'advance') && t.accountId === id) bal += t.amountMinor;
         if (t.type === 'transfer' && t.toId === id) bal -= t.amountMinor;      // 还款 → 欠款减少
         if (t.type === 'transfer' && t.fromId === id) bal += t.amountMinor;    // 首版不支持，防御性处理
       } else {
-        if (t.type === 'in' && t.accountId === id) bal += t.amountMinor;
-        if (t.type === 'out' && t.accountId === id) bal -= t.amountMinor;
+        if ((t.type === 'in' || t.type === 'reimbursement') && t.accountId === id) bal += t.amountMinor;
+        if ((t.type === 'out' || t.type === 'advance') && t.accountId === id) bal -= t.amountMinor;
         if (t.type === 'transfer' && t.toId === id) bal += t.amountMinor;
         if (t.type === 'transfer' && t.fromId === id) bal -= t.amountMinor;
       }
     });
     return bal;
   },
-  totalAssets() { return this.accounts().filter(a => a.type !== 'liability').reduce((s, a) => s + this.accountBalance(a.id), 0); },
+  totalAssets() { return this.accounts().filter(a => a.type !== 'liability').reduce((s, a) => s + this.accountBalance(a.id), this.tripTotals().pending); },
   totalLiabilities() { return this.accounts().filter(a => a.type === 'liability').reduce((s, a) => s + Math.max(this.accountBalance(a.id), 0), 0); },
   netWorth() { return this.totalAssets() - this.totalLiabilities(); },
   addAccount(o) {
@@ -379,6 +383,44 @@ const Store = {
   },
   updateCategory(id, patch) { this.mutate(d => { const it = d.categories.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
 
+  /* ---------- 出差报销 ---------- */
+  trip(id) { return this.data.trips.find(t => t.id === id); },
+  startTrip(name, bookId) {
+    name = String(name || '').trim();
+    if (!name || name.length > 40 || !this.book(bookId) || this.book(bookId).archived) throw new Error('请填写行程名称并选择有效账本');
+    const trip = {id:U.id(),name,bookId};
+    this.mutate(d => { d.trips.unshift(trip); d.settings.activeTripId = trip.id; });
+    return trip;
+  },
+  tripTotals(id) {
+    let advanced = 0, received = 0;
+    for (const t of this.data.transactions) {
+      if (!t.tripId || (id && t.tripId !== id)) continue;
+      if (t.type === 'advance') advanced += t.amountMinor;
+      if (t.type === 'reimbursement') received += t.amountMinor;
+    }
+    return {advanced,received,pending:advanced-received};
+  },
+  // 按日校验，防止修改、删除或回填日期后，到账金额超过当时的垫付。
+  tripCovered(rows) {
+    const daily = new Map();
+    for (const t of rows) daily.set(t.date,(daily.get(t.date) || 0) + (t.type === 'advance' ? t.amountMinor : -t.amountMinor));
+    let pending = 0;
+    for (const date of [...daily.keys()].sort()) {
+      pending += daily.get(date);
+      if (pending < 0) return false;
+    }
+    return true;
+  },
+  checkTripChange(previous, next) {
+    for (const id of new Set([previous?.tripId,next?.tripId])) {
+      if (!id) continue;
+      const rows = this.data.transactions.filter(t => t.tripId === id && t.id !== previous?.id);
+      if (next?.tripId === id) rows.push(next);
+      if (!this.tripCovered(rows)) throw new Error('到账不能早于垫付，也不能超过当时的待报销金额');
+    }
+  },
+
   /* ---------- 交易 ---------- */
   // o: {bookId, type, amountMinor, accountId?, fromId?, toId?, categoryId?, note, date}
   // 校验：in 只能资产账户；还款额 ≤ 当前负债
@@ -391,17 +433,23 @@ const Store = {
       categoryId: o.categoryId || '', note: o.note || '', date: o.date || U.todayStr(),
       createdAt: now, updatedAt: now
     };
+    if (o.tripId) item.tripId = o.tripId;
     this.validateTransaction(item);
+    this.checkTripChange(null,item);
     this.mutate(d => d.transactions.push(item));
     if (item.type !== 'transfer' && item.accountId) { this.data.settings.lastAccountId = item.accountId; this.save(); }
-    if (item.bookId) { this.data.settings.lastBookId = item.bookId; this.save(); }
+    if (item.bookId && !item.tripId) { this.data.settings.lastBookId = item.bookId; this.save(); }
     return item;
   },
   validateTransaction(item, previousId) {
     if (!Number.isSafeInteger(item.amountMinor) || item.amountMinor <= 0) throw new Error('请输入有效金额');
-    if (!['in', 'out', 'transfer'].includes(item.type) || !this.book(item.bookId)) throw new Error('无效的账本或交易类型');
+    if (!['in','out','transfer','advance','reimbursement'].includes(item.type) || !this.book(item.bookId)) throw new Error('无效的账本或交易类型');
+    if (item.type === 'advance' || item.type === 'reimbursement') {
+      if (this.trip(item.tripId)?.bookId !== item.bookId) throw new Error('请选择这次出差所属的行程');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date) || U.dateStr(U.parseDate(item.date)) !== item.date) throw new Error('请选择有效日期');
+    } else if (item.tripId) throw new Error('只有垫付与报销到账可归入行程');
     if (item.type !== 'transfer' && !this.account(item.accountId)) throw new Error('请选择有效账户');
-    if (item.type === 'in') {
+    if (item.type === 'in' || item.type === 'reimbursement') {
       const acc = this.account(item.accountId);
       if (acc && acc.type === 'liability') throw new Error('收入不能记入负债账户');
     }
@@ -419,9 +467,13 @@ const Store = {
     if (!it) throw new Error('找不到这条账单');
     const next = Object.assign({}, it, patch, { id, updatedAt: Date.now() });
     this.validateTransaction(next, id);
+    this.checkTripChange(it,next);
     this.mutate(() => Object.assign(it, next));
   },
-  removeTransaction(id) { this.mutate(d => { d.transactions = d.transactions.filter(x => x.id !== id); }); },
+  removeTransaction(id) {
+    this.checkTripChange(this.data.transactions.find(t => t.id === id),null);
+    this.mutate(d => { d.transactions = d.transactions.filter(x => x.id !== id); });
+  },
   isRepay(t) { return t.type === 'transfer' && this.account(t.toId) && this.account(t.toId).type === 'liability'; },
 
   /* ---------- 统计（账本维度） ---------- */
@@ -477,7 +529,7 @@ const Store = {
   accountBreakdown(bookId, ymOrList) {
     const map = {};
     const list = Array.isArray(ymOrList) ? ymOrList : this.monthTransactions(bookId, ymOrList);
-    list.filter(t => t.type !== 'transfer').forEach(t => {
+    list.filter(t => t.type === 'out' || t.type === 'in').forEach(t => {
       const accId = t.accountId;
       const acc = this.account(accId) || { name: '已删除账户', icon: '❔' };
       const m = (map[accId] = map[accId] || { id: accId, name: acc.name, icon: acc.icon, out: 0, inc: 0 });
@@ -1017,8 +1069,8 @@ const Store = {
   },
   exportCSV() {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    const typeLabel = { out: '支出', in: '收入', transfer: '转账/还款' };
-    const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注']];
+    const typeLabel = { out: '支出', in: '收入', transfer: '转账/还款', advance:'出差垫付', reimbursement:'报销到账' };
+    const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注', '出差行程']];
     [...this.data.transactions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
       const cat = this.category(t.categoryId);
       const root = cat ? this.catRoot(t.categoryId) : null;
@@ -1033,7 +1085,7 @@ const Store = {
         typeLabel[t.type] || t.type,
         root && !cat.parentId ? root.name : (root ? root.name : ''),
         cat && cat.parentId ? cat.name : '',
-        acc, (t.amountMinor / 100).toFixed(2), t.note || ''
+        acc, (t.amountMinor / 100).toFixed(2), t.note || '', this.trip(t.tripId)?.name || ''
       ]);
     });
     return '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
@@ -1058,9 +1110,21 @@ const Store = {
         (d.aiSessions || []).some(s => !Array.isArray(s.messages) || !s.messages.every(object))) {
       return { ok: false, msg: '备份中的设置或记录格式错误，已中止导入' };
     }
-    for (const t of d.transactions) {
-      if (typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date) || !['out','in','transfer'].includes(t.type) || !Number.isSafeInteger(t.amountMinor) || t.amountMinor <= 0 || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
+    const trips = new Map(), tripRows = new Map();
+    for (const trip of d.trips || []) {
+      if (typeof trip.id !== 'string' || !trip.id || trips.has(trip.id) || typeof trip.name !== 'string' || !trip.name.trim() || !d.books.some(b => b.id === trip.bookId)) return {ok:false,msg:'备份中的出差行程无效'};
+      trips.set(trip.id,trip);
+      tripRows.set(trip.id,[]);
     }
+    for (const t of d.transactions) {
+      if (typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date) || !['out','in','transfer','advance','reimbursement'].includes(t.type) || !Number.isSafeInteger(t.amountMinor) || t.amountMinor <= 0 || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
+      if (t.type === 'advance' || t.type === 'reimbursement') {
+        const acc = d.accounts.find(a => a.id === t.accountId);
+        if (trips.get(t.tripId)?.bookId !== t.bookId || !acc || (t.type === 'reimbursement' && acc.type === 'liability')) return {ok:false,msg:'报销记录的行程或账户无效'};
+        tripRows.get(t.tripId).push(t);
+      } else if (t.tripId) return {ok:false,msg:'报销记录类型无效'};
+    }
+    for (const rows of tripRows.values()) if (!this.tripCovered(rows)) return {ok:false,msg:'备份中的报销到账超过了当时的垫付'};
     const isDate = date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date;
     const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' &&
       (w.payMode === 'day' ? this.validDailyPay(w) && (w.hours == null || (Number.isFinite(w.hours) && w.hours > 0 && w.hours <= 24 && +w.hours.toFixed(2) === w.hours))

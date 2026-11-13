@@ -267,7 +267,7 @@ Views.bills = (() => {
       <div class="account-table"><div class="account-row table-labels"><span>账户</span><span>收入</span><span>支出</span></div>
       ${accounts.map(a=>`<div class="account-row"><span>${U.escapeHtml(a.name)}</span><span>¥${UI.amount(a.inc,true)}</span><span>¥${UI.amount(a.out,true)}</span></div>`).join('')}</div></details>`;
     const emptyText = hidden ? '金额已隐藏' : hasFilter ? '筛选范围内没有收支记录' :
-      filtered.length ? '本期只有转账或还款，未计入收入与支出' : '这段时间还没有账单';
+      filtered.length ? '本期有资金往来，个人收支为零' : '这段时间还没有账单';
     root.innerHTML = pageHead + summary +
       (showCharts ? `<div class="report-grid"><section class="card report-card j-trend"></section><div class="j-categories"></div></div>${accountTable}`
       : `<section class="card report-blank"><h2>${emptyText}</h2><button class="btn btn-ghost j-empty-action">

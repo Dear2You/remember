@@ -28,8 +28,8 @@ const BillCalendar = (() => {
     } else {
       const {out, inc, count} = row, net = inc - out;
       if (!out && !inc && count) {
-        value = '<small>转账</small>';
-        description = '，转账或还款';
+        value = row.hasTrip ? '<small>报销</small>' : '<small>转账</small>';
+        description = row.hasTrip ? '，含出差垫付或报销到账' : '，转账或还款';
       } else if (metric === 'both' && out && inc) {
         classes.push('two-flows');
         value = `<span class="tile-band heat-out level-${heat(out,peaks.out)}">${figure(-out)}</span>

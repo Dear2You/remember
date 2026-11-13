@@ -471,6 +471,16 @@ html[data-theme="dark"] .toast, html[data-theme=auto] .toast { background: rgba(
 .sub-item .c-val { color: var(--text); }
 .sub-code { min-width: 38px; padding: 8px 3px; text-align: center; color: var(--accent); background: var(--tint-surface); font-size: 12px; font-weight: 650; border-radius: 8px; }
 .subs-page .j-add { margin-top: 12px; }
+.trip-link, .trip-entry { background: var(--tint-surface); border: 1px solid var(--hairline); border-radius: 9px; padding: 10px 12px; margin-bottom: 12px; }
+.trip-entry { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; overflow-wrap: anywhere; }
+.trip-entry label { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.trip-entry input { width: 18px; height: 18px; accent-color: var(--accent); }
+.trip-form p { color: var(--text-2); }
+.trip-form .field-row button, .trip-actions button { flex: 1; }
+.trip-mode { padding: 10px 0; color: var(--accent); font-size: 14px; }
+.trip-list-item { margin-top: 8px; }
+.trip-personal { display: flex; align-items: center; gap: 7px; margin: 0 0 14px; }
+.trip-personal input { width: 18px; height: 18px; accent-color: var(--accent); }
 
 /* ---------- 设置 ---------- */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; }

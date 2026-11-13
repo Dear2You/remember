@@ -8,6 +8,9 @@ Views.expense = (() => {
 
   /* ---------- 记一笔 / 编辑弹层 ---------- */
   function openEntrySheet(editItem, presetKind, presetDate, draft, onSaved) {
+    if (editItem?.tripId) { Views.trips.edit(editItem); return; }
+    const activeTrip = Store.trip(Store.settings.activeTripId);
+    let tripExpense = !editItem && !!activeTrip;
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
@@ -42,6 +45,7 @@ Views.expense = (() => {
       content(body, close) {
         function render() {
           const isTransfer = state.type === 'transfer';
+          const advance = tripExpense && state.type === 'out';
           const catKind = state.type === 'in' ? 'in' : 'out';
           const roots = Store.rootCategories(catKind);
           if (!state.categoryId || Store.catRoot(state.categoryId)?.kind !== catKind) {
@@ -51,21 +55,22 @@ Views.expense = (() => {
           const root = Store.category(state.categoryId);
           const rootCat = root ? Store.catRoot(state.categoryId) : null;
           const subs = rootCat ? Store.subCategories(rootCat.id) : [];
-          const accs = state.type === 'in' ? assetAccs : accsAll;   // 收入限资产账户
+          const accs = state.type === 'in' ? assetAccs : accsAll;
           if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
 
           body.innerHTML =
-            (reviewing ? '<section class="entry-review"><div class="review-kind">' + (catKind === 'in' ? '收入' : '支出') +
+            (reviewing ? '<section class="entry-review"><div class="review-kind">' + (advance ? '出差垫付 · '+U.escapeHtml(activeTrip.name) : catKind === 'in' ? '收入' : '支出') +
               ' · ' + U.escapeHtml((root || {}).name || '未分类') + '</div><strong class="num ' + (catKind === 'in' ? 'money-in' : 'money-out') + '">' +
               (catKind === 'in' ? '+' : '−') + '¥' + U.escapeHtml(state.amount) + '</strong><dl>' +
               '<dt>日期</dt><dd>' + U.escapeHtml(U.fmtFull(state.date)) + '</dd><dt>账户</dt><dd>' + U.escapeHtml(Store.accountName(state.accountId)) +
-              '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(state.bookId)?.name || '未选择') + '</dd></dl></section>' : '') +
+              '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(advance ? activeTrip.bookId : state.bookId)?.name || '未选择') + '</dd></dl></section>' : '') +
             '<div class="entry-fields"' + (reviewing ? ' hidden' : '') + '>' +
             (!editItem ? '<details class="sentence-entry"><summary>一句话记账</summary><form class="sentence-form">' +
               '<label for="sentenceText">描述一笔收入或支出</label><div><input id="sentenceText" maxlength="120" autocomplete="off" placeholder="昨天微信午饭 28 元" value="' + U.escapeHtml(sentence) + '">' +
               '<button class="btn btn-primary" type="submit">填入账单</button></div><small role="status"></small></form></details>' : '') +
-            '<div class="field"><label>账本</label><div class="acct-chips j-book">' +
+            (activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
+            '<div class="field"'+(advance?' hidden':'')+'><label>账本</label><div class="acct-chips j-book">' +
             books.map(b => '<button class="chip ' + (state.bookId === b.id ? 'on' : '') + '" data-id="' + b.id + '">' + b.icon + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
             '</div></div>' +
             '<div class="seg j-type" style="margin-bottom:14px">' +
@@ -131,6 +136,8 @@ Views.expense = (() => {
           }
           const amend = body.querySelector('.j-amend');
           if (amend) amend.onclick = () => { reviewing = false; render(); };
+          const toggleTrip = body.querySelector('.j-trip-expense');
+          if (toggleTrip) toggleTrip.onchange = () => { tripExpense = toggleTrip.checked; render(); };
           body.querySelector('.j-book').onclick = e => {
             const b = e.target.closest('button[data-id]');
             if (!b) return;
@@ -196,7 +203,8 @@ Views.expense = (() => {
             saving = true;
             body.querySelector('.j-save').textContent = '保存中…';
             const payload = {
-              bookId: state.bookId, type: state.type, amountMinor: minor, note: state.note.trim(), date: state.date,
+              bookId: advance ? activeTrip.bookId : state.bookId, type: advance ? 'advance' : state.type,
+              tripId: advance ? activeTrip.id : '', amountMinor: minor, note: state.note.trim(), date: state.date,
               accountId: state.type === 'transfer' ? '' : state.accountId,
               fromId: state.type === 'transfer' ? state.fromId : '',
               toId: state.type === 'transfer' ? state.toId : '',
@@ -213,7 +221,7 @@ Views.expense = (() => {
               return;
             }
             close();
-            UI.toast(editItem ? '已保存' : payload.type === 'in' ? '已记收入 ✓' : payload.type === 'transfer' ? (Store.isRepay(payload) ? '已还款 ✓' : '已转账 ✓') : '已记支出 ✓');
+            UI.toast(advance ? '已记垫付 · '+activeTrip.name : editItem ? '已保存' : payload.type === 'in' ? '已记收入 ✓' : payload.type === 'transfer' ? (Store.isRepay(payload) ? '已还款 ✓' : '已转账 ✓') : '已记支出 ✓');
             if (item && onSaved) onSaved(item);
           };
           const delBtn = body.querySelector('.j-del');
@@ -300,6 +308,8 @@ Views.expense = (() => {
 
   /* ---------- 共享展示工具 ---------- */
   function tSummary(t) {
+    if (t.tripId) return {icon:'🧳',title:(t.type==='advance'?'出差垫付':'报销到账')+' · '+(Store.trip(t.tripId)?.name || '出差'),
+      sub:[t.note,Store.category(t.categoryId)?.name,Store.accountName(t.accountId)].filter(Boolean).join(' · ')};
     if (t.type === 'transfer') {
       const repay = Store.isRepay(t);
       return { icon: repay ? '💳' : '🔁', title: repay ? '还款' : '转账', sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.fromId) + ' → ' + Store.accountName(t.toId) };
@@ -310,7 +320,7 @@ Views.expense = (() => {
     return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + ((Store.book(t.bookId) || {}).name || '')) };
   }
   function tAmountHtml(t) {
-    const sign = t.type === 'out' ? '−' : t.type === 'in' ? '+' : '';
+    const sign = t.type === 'out' || t.type === 'advance' ? '−' : t.type === 'in' || t.type === 'reimbursement' ? '+' : '';
     const cls = t.type === 'out' ? 'money-out' : (t.type === 'in' ? 'money-in' : '');
     const color = t.type === 'transfer' ? 'style="color:var(--text-2)"' : '';
     return '<span class="num ' + cls + '" ' + color + '>' + sign + '¥' + UI.amount(t.amountMinor) + '</span>';

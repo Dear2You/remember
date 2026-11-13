@@ -118,6 +118,9 @@ Views.assets = (() => {
       '  </div>' +
 
       // 资产账户
+      '<button class="cell sub-item trip-link j-trips"><span class="c-main"><b class="c-title">出差报销</b><span class="c-sub">' +
+      (Store.settings.activeTripId ? '当前行程 · '+U.escapeHtml(Store.trip(Store.settings.activeTripId)?.name || '') : '按行程记垫付和到账') +
+      '</span></span><span>待报销 ' + amt(Store.tripTotals().pending) + ' ›</span></button>' +
       '<div class="section-title" style="padding:0 2px">资产账户</div>' +
       (assets.length
         ? '<div class="cell-list" style="margin-bottom:14px">' + assets.map(accRow).join('') + '</div>'
@@ -138,6 +141,7 @@ Views.assets = (() => {
     const toggleDebt = root.querySelector('.j-toggle-debt');
     if (toggleDebt) toggleDebt.onclick = () => { showDebts = !showDebts; App.refresh(true); };
     root.querySelector('.j-transfer').onclick = () => Views.expense.openEntrySheet(null, 'transfer');
+    root.querySelector('.j-trips').onclick = Views.trips.list;
     root.querySelector('.j-subscribe').onclick = () => Views.subs.open('assets');
     root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId));
   }

@@ -14,6 +14,8 @@ const QuickEntry = (() => {
     const text = input.trim().normalize('NFKC');
     const command = /^(?:帮我|给我)?(?:记一笔|记账|记下|记录)/.test(text);
     if (!text || /[?？]|吗[。!\s]*$|多少|查询|统计|总结|分析|预算|能否|是否|怎么|如果|打算|计划|预计|比如|假设|提醒|待办|备忘|工时|时薪|日薪|删除|撤销|改成|改为|修改|取消|(?:不要|不用|不想|别|不)(?:帮我)?记|没(?:有)?(?:花|买|付|吃|收|记)/.test(text)) return {};
+    if (/报销/.test(text) && /收[到款]|到账|打款|入账/.test(text)) return {tripHelp:true,error:'请到「资产 → 出差报销」选择行程，点「登记到账」。可一次收回，也可填本次实际到账金额。'};
+    if (/垫付|待报销/.test(text) && !Store.settings.activeTripId) return {tripHelp:true,error:'请先到「资产 → 出差报销」开始行程，再记这笔垫付款。'};
     if (/转账|转入|转出|还款|还信用卡|还贷|还钱|转给|借给|借入|借款|提现|取现|换汇|[美欧港新日]元|[美港台新]币|美金|SGD|USD|EUR|JPY|[$€]/i.test(text)) return {};
     const today = U.todayStr();
     let date = defaultDate, dateCount = 0, badDate = false;

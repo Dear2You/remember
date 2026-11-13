@@ -285,7 +285,7 @@ Views.ai = (() => {
             (ac.revoked || (!ac.itemId && !ac.uncheck) ? '' : '<button class="ac-undo">撤销</button>');
           const undoBtn = card.querySelector('.ac-undo');
           if (undoBtn) undoBtn.onclick = () => {
-            undoAction(idx, ai2);
+            if (!undoAction(idx, ai2)) return;
             card.classList.add('revoked');
             card.querySelector('.ac-txt').textContent = ac.label + '（已撤销）';
             undoBtn.remove();
@@ -301,14 +301,14 @@ Views.ai = (() => {
     const msg = Store.aiEnsure().messages[msgIdx];
     const ac = msg && msg.actions && msg.actions[actIdx];
     if (!ac || ac.revoked) return;
-    if (ac.kind === 'quick-entry') {
+    if (ac.kind === 'quick-entry' || Store.data.transactions.some(t => t.id === ac.itemId)) {
       ac.revoked = true;
-      Store.removeTransaction(ac.itemId);
+      try { Store.removeTransaction(ac.itemId); }
+      catch (err) { ac.revoked = false; UI.toast(err.message,'err'); return false; }
       UI.toast('已撤销');
-      return;
+      return true;
     }
     if (ac.itemId) {
-      Store.data.transactions = Store.data.transactions.filter(x => x.id !== ac.itemId);
       Store.data.worktimes = Store.data.worktimes.filter(x => x.id !== ac.itemId);
       Store.data.memos = Store.data.memos.filter(x => x.id !== ac.itemId);
       delete Store.data.habitLogs[ac.itemId];
@@ -323,6 +323,7 @@ Views.ai = (() => {
     Store.save();
     Store.emit('change');
     UI.toast('已撤销');
+    return true;
   }
 
   /* ---------- 发送 ---------- */
@@ -332,7 +333,7 @@ Views.ai = (() => {
     const cfg = Store.settings;
     const answer = QuickEntry.monthAnswer(text);
     const result = answer ? {} : QuickEntry.parse(text);
-    const localError = !cfg.aiKey && result.error;
+    const localError = (result.tripHelp || !cfg.aiKey) && result.error;
     if (!answer && !result.draft && !localError && !cfg.aiKey) {
       UI.toast('请先在设置中填写 API Key', 'err');
       return;

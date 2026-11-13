@@ -79,6 +79,58 @@ test('编辑还款时扣除原还款影响，超额编辑不会修改余额', ()
   assert.equal(store.monthStats('', repayment.date.slice(0, 7)).out, 10000);
 });
 
+test('同一行程的现金和信用卡垫付可合并回款，预算、收入和净资产不虚增', () => {
+  const {store} = fixture();
+  const trip = store.startTrip('杭州出差','book-life');
+  const post = (type,accountId,amountMinor,date) => store.addTransaction({type,bookId:trip.bookId,tripId:trip.id,accountId,amountMinor,date});
+  post('advance','acc-wx',60000,'2026-10-30');
+  const taxi = post('advance','acc-credit',8000,'2026-10-31');
+  assert.equal(store.tripTotals(trip.id).pending,68000);
+  assert.equal(store.netWorth(),0);
+  const part = post('reimbursement','acc-bank',50000,'2026-11-01');
+  assert.equal(store.tripTotals(trip.id).pending,18000);
+  assert.equal(store.accountBalance('acc-bank'),50000);
+  assert.equal(store.accountBalance('acc-credit'),8000);
+  assert.equal(store.accountBalance('acc-wx'),-60000);
+  assert.equal(store.budgetUsed(trip.bookId,'2026-10',''),0);
+  assert.equal(store.monthStats(trip.bookId,'2026-11').inc,0);
+  assert.equal(store.accountBreakdown(trip.bookId,'2026-11').length,0);
+  assert.equal(store.netWorth(),0);
+  assert.throws(()=>post('reimbursement','acc-bank',18001,'2026-11-02'));
+  assert.throws(()=>post('reimbursement','acc-credit',100,'2026-11-02'));
+  assert.throws(()=>store.updateTransaction(part.id,{date:'2026-10-29'}));
+  post('reimbursement','acc-bank',18000,'2026-11-02');
+  assert.equal(store.tripTotals(trip.id).pending,0);
+  assert.throws(()=>store.removeTransaction(taxi.id));
+  assert.throws(()=>store.updateTransaction(taxi.id,{amountMinor:7000}));
+  store.removeTransaction(part.id);
+  assert.equal(store.tripTotals(trip.id).pending,50000);
+});
+
+test('活动行程和跨账本垫付在重启、导出恢复后仍独立，错误的报销备份不覆盖现有数据', () => {
+  const {store} = fixture();
+  const book = store.addBook({name:'工作'});
+  const first = store.startTrip('杭州','book-life');
+  const second = store.startTrip('苏州',book.id);
+  assert.equal(store.removeBook(book.id),false);
+  const normal = store.addTransaction({type:'out',bookId:'book-life',accountId:'acc-wx',amountMinor:2400});
+  store.updateTransaction(normal.id,{type:'advance',tripId:second.id,bookId:second.bookId});
+  assert.equal(store.tripTotals(first.id).pending,0);
+  assert.equal(store.tripTotals(second.id).pending,2400);
+  store.init();
+  assert.equal(store.settings.activeTripId,second.id);
+  const backup = store.exportData();
+  assert.match(store.exportCSV(),/出差垫付.*苏州/);
+  assert(store.clearAll()); assert(store.importData(backup).ok);
+  assert.equal(store.tripTotals(second.id).pending,2400);
+  const damaged = JSON.parse(backup);
+  damaged.data.transactions[0].type='reimbursement';
+  assert.equal(store.importData(JSON.stringify(damaged)).ok,false);
+  damaged.data.transactions[0].tripId='missing';
+  assert.equal(store.importData(JSON.stringify(damaged)).ok,false);
+  assert.equal(store.tripTotals(second.id).pending,2400);
+});
+
 test('未来的每周任务只在实际日期出现，打卡按发生日保存', () => {
   const { store, dates } = fixture();
   const today = dates.todayStr();
