@@ -1,8 +1,8 @@
 {
-  "versionCode": 22000,
-  "versionName": "2.20",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.20/nianxiatian.apk",
-  "sha256": "7a6f002a35f65e26f686203f481ef27a3ca48ee3ad15c309adb497793503cc09",
-  "apkBlob": "218a7aa5c77c0fd86d8f81a7854c0215fce6cd94",
-  "note": "待办和备忘可保存并交给手机日历，在日历选好提醒后由日历独立通知。新增手机时钟试响入口，方便核对后台延迟。"
+  "versionCode": 22100,
+  "versionName": "2.21",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.21/nianxiatian.apk",
+  "sha256": "5cc8bf3ce1172affe1416f241f36cf0f1010db0db693f572f21a47296b7cfc2a",
+  "apkBlob": "72ecb3171dfa913764f9d52edac6dc8eeb001e88",
+  "note": "账单日历默认打开「收支」，可直接查看每天的支出和收入。"
 }

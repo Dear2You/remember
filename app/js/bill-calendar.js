@@ -1,7 +1,7 @@
 'use strict';
 
 const BillCalendar = (() => {
-  const labels = {out:'支出', inc:'收入', both:'收支', net:'结余'};
+  const labels = {both:'收支', out:'支出', inc:'收入', net:'结余'};
   const money = minor => (minor < 0 ? '−¥' : '¥') + UI.amount(Math.abs(minor), true);
 
   function heat(value, peak) {
@@ -77,9 +77,7 @@ const BillCalendar = (() => {
       <small>按已记入本月的支出计算，含今天还剩 ${days} 天。</small></section>`;
   }
 
-  function render(period, rows, bookId, filter, hasFilter) {
-    const stored = Store.settings.billCalendarMetric;
-    let metric = Object.keys(labels).includes(stored) ? stored : 'out';
+  function render(period, rows, bookId, filter, hasFilter, metric = 'both') {
     const excluded = {in:'out',out:'inc'}[filter.type];
     if (metric === excluded) metric = metric === 'out' ? 'inc' : 'out';
     const hidden = Store.settings.hideAmount, today = U.todayStr();

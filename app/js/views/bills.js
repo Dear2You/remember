@@ -2,6 +2,7 @@
 /* ============ 账单页：账单报表 | 日历报表（各自独立 周/月/年 周期，点击选择） ============ */
 Views.bills = (() => {
   let topMode = 'report';             // report | calendar
+  let calendarMetric = 'both';
   // 两种报表各自的周期状态（独立记忆，默认月账单）
   const periods = {
     report: { kind: 'month', anchor: U.todayStr() },
@@ -168,6 +169,8 @@ Views.bills = (() => {
     }
 
     if (mode === 'calendar') {
+      // 进入日历时先看收支，翻页和筛选时沿用本次选择。
+      if (!root.querySelector('.j-top [data-t="calendar"][aria-pressed="true"]')) calendarMetric = 'both';
       let calHtml;
       if (p.kind === 'year') {
         calHtml = `<section class="card report-card"><header><h2>逐月收支</h2></header>
@@ -175,14 +178,13 @@ Views.bills = (() => {
           ${rows.map(r=>`<button class="account-row j-mon" data-ym="${r.key}"><span>${r.label} ›</span>
           <span>¥${UI.amount(r.inc,true)}</span><span>¥${UI.amount(r.out,true)}</span></button>`).join('')}</div></section>`;
       } else {
-        calHtml = BillCalendar.render(p, rows, bookId, F, hasFilter);
+        calHtml = BillCalendar.render(p, rows, bookId, F, hasFilter, calendarMetric);
       }
 
       root.innerHTML = pageHead + (p.kind === 'year' ? summary : '') + calHtml + '</div>';
       bindCommon();
       root.querySelectorAll('.calendar-metrics button').forEach(btn => btn.onclick = () => {
-        Store.settings.billCalendarMetric = btn.dataset.metric;
-        Store.save(false);
+        calendarMetric = btn.dataset.metric;
         App.refresh();
         const active = root.querySelector('.calendar-metrics [aria-pressed="true"]');
         if (active) active.focus({preventScroll:true});

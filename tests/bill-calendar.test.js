@@ -22,11 +22,20 @@ function fixture() {
   const rows = vm.runInContext('FinanceReport',ctx).buckets(period,transactions);
   const cal = vm.runInContext('BillCalendar',ctx);
   function render(metric, filter = {}, bookId = 'book-life') {
-    store.settings.billCalendarMetric = metric;
-    return cal.render(period,rows,bookId,filter,!!Object.keys(filter).length);
+    return cal.render(period,rows,bookId,filter,!!Object.keys(filter).length,metric);
   }
   return {store,render};
 }
+
+test('升级后账单日历的第一个标签默认选中收支', () => {
+  const {store,render} = fixture();
+  store.settings.billCalendarMetric = 'out';
+  const html = render();
+  assert.match(html, /class="card ledger-calendar" data-metric="both"/);
+  const tabs = [...html.matchAll(/<button data-metric="(\w+)" aria-pressed="(true|false)"/g)];
+  assert.deepEqual(tabs.map(m=>[m[1],m[2]]), [['both','true'],['out','false'],['inc','false'],['net','false']]);
+  assert.match(html,/class="ledger-day j-day two-flows" data-date="2024-02-01"/);
+});
 
 test('日历按每日收支着色，收支相抵显示零，转账不计收支', () => {
   const {render} = fixture();
