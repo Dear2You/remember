@@ -13,32 +13,11 @@ html[data-visual-style] .ledger-calendar[data-metric="both"] .calendar-totals sp
 html[data-visual-style] .bill-report { --report-in: var(--income); }
 html[data-visual-style] .lc-cell.is-today .lc-day-top b { background: var(--accent); color: var(--on-accent); }
 
-/* Four compact illustrated choices, followed by independent colour swatches. */
-.visual-style-picker { gap: 10px; margin: 12px 0 16px; }
-.visual-style-art { height: 66px; }
-.visual-style-option b { margin-top: 6px; }
-.visual-style-option.coast .visual-style-art { background: #cdeffc url('../images/coastal-sky.png') center 31% / cover; }
-.visual-style-option.future .visual-style-art { background: #10273c url('../images/future-horizon.png') center 83% / cover; }
-.visual-style-option i { background: #ffffffeb; color: #334b51; }
-.visual-style-option:is(.starry,.future) i { background: #0b172be6; color: #eaf6ff; }
-.palette-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
-.palette-heading small { font-size: 10px; color: var(--text-2); }
-.palette-picker { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 7px; margin: 10px 0 6px; }
-.palette-option { min-width: 0; min-height: 59px; display: flex; flex-direction: column; align-items: center; gap: 6px; border-radius: 7px; padding: 3px 0; }
-.palette-option>span { width: 30px; height: 30px; border-radius: 50%; background: var(--swatch,var(--solid)); position: relative; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--hairline); }
-.palette-option i { position: absolute; inset: 2px 2px 50% 2px; border-radius: 24px 24px 0 0; background: #ffffff3a; }
-.palette-option b { position: relative; color: #fff; font: 600 15px/26px var(--ui-font); visibility: hidden; }
-.palette-option small { font-size: 10px; color: var(--text-2); }
-.palette-option[aria-pressed="true"]>span { box-shadow: 0 0 0 2px var(--accent); }
-.palette-option[aria-pressed="true"] b { visibility: visible; }
-.palette-option[aria-pressed="true"] small { color: var(--accent); font-weight: 600; }
-.palette-option.original { --swatch: #276f61; }
-html[data-visual-style="starry"] .palette-option.original { --swatch: #505f99; }
-html[data-visual-style="coast"] .palette-option.original { --swatch: #286e97; }
-html[data-visual-style="future"] .palette-option.original { --swatch: #23728b; }
-.palette-option.ocean { --swatch: #326e9d; } .palette-option.jade { --swatch: #2b735e; }
-.palette-option.violet { --swatch: #746096; } .palette-option.rose { --swatch: #a45170; } .palette-option.sand { --swatch: #946832; }
-.appearance-card .theme-note { margin: 5px 0 7px; font-size: 10px; min-height: 34px; }
+/* Native dropdowns keep the full theme library out of the daily settings layout. */
+.appearance-card .appearance-select { margin: 0; gap: 12px; cursor: pointer; }
+.appearance-select select { width: min(180px,64%); min-width: 0; min-height: 40px; padding: 8px 30px 8px 11px; border: 1px solid var(--hairline); border-radius: 8px; font: 13px/1.5 var(--ui-font); color: var(--accent); background-color: var(--input-bg); }
+.appearance-description { margin: -2px 0 6px; color: var(--text-2); font-size: 10px; line-height: 1.6; text-align: right; }
+.appearance-card .theme-note { margin: 4px 0 7px; font-size: 10px; min-height: 0; }
 .appearance-card .set-row { padding-block: 9px; }
 
 /* 碧海晴空: cool paper, sea-glass edges and an open coastal sky. */
@@ -122,6 +101,70 @@ html[data-visual-style="future"] .hb-fill::after { content: ''; display: block; 
 html[data-visual-style="future"] .ledger-day { border-radius: 5px; }
 html[data-visual-style="future"] .ledger-day.selected { box-shadow: inset 0 0 0 1.5px var(--accent); }
 
+/* 松间晨雾: botanical paper, fine ruled charts and tree-ring details. */
+html[data-visual-style="forest"] {
+  --scene-image: url('../images/forest-mist.png'); --scene-cover-position: center 15%;
+  --bg: #f1f6ed; --card: #fbfdf7; --paper-glass: #fbfdf7f2; --nav-paper: #f7faf2f5;
+  --text: #354333; --text-2: #52634d; --text-3: #5c6c55; --hairline: #ccd9c1;
+  --accent: #41653d; --solid: #4b7046; --accent-grad: var(--solid); --accent-weak: #e1ebd7;
+  --input-bg: #edf3e7; --tint-surface: #e5eedb; --cover-wash: #a2bb8d24; --card-glaze: #edf3e6;
+  --blue-wash: #e4eef0; --rose-wash: #f7e9e7; --gold-wash: #f1ebd6;
+  --tile-blue: var(--blue-wash); --tile-sand: var(--gold-wash); --tile-rose: var(--rose-wash);
+  --info: #416d79; --warn: #8a642e; --scene-fade: #f1f6ed; --tab-bg: #f7faf2;
+  --landscape-opacity: .82; --scene-opacity: .86; --surface-shadow: 0 3px 16px #3f503320;
+  --chart-1: #779b68; --chart-2: #9db48c; --chart-3: #c3ad76; --chart-4: #8aa9a4; --chart-5: #ac9d83; --chart-6: #9caaa0;
+}
+html[data-visual-style="forest"][data-tone="dark"] {
+  --bg: #19271f; --card: #26382c; --paper-glass: #26382cf2; --nav-paper: #1f2f25f5;
+  --text: #eaf1e4; --text-2: #cbd5c1; --text-3: #b3c1a6; --hairline: #4d6348;
+  --accent: #c3dda9; --solid: #4a7044; --accent-weak: #3b5132;
+  --input-bg: #324730; --tint-surface: #384e32; --cover-wash: #86aa5820; --card-glaze: #30462f;
+  --blue-wash: #2b4241; --rose-wash: #473537; --gold-wash: #45402c;
+  --info: #b1d1d5; --warn: #dec48e; --scene-fade: #26382c; --tab-bg: #1f2f25;
+  --landscape-opacity: .17; --scene-opacity: .2; --surface-shadow: 0 4px 16px #0003;
+}
+html[data-visual-style="forest"] .home-refined.handpage .home-book { border-radius: 7px 20px 7px 7px; border-top: 2px solid var(--accent); }
+html[data-visual-style="forest"] #tabbar .tab.on { border-radius: 14px 4px 14px 4px; }
+html[data-visual-style="forest"] .report-card h2::before { width: 7px; height: 10px; border-radius: 8px 0 8px 0; transform: rotate(25deg); }
+html[data-visual-style="forest"] .flow-plot { background: repeating-linear-gradient(0deg,transparent 0 22px,var(--hairline) 22px 22.5px); border-bottom: 1px solid var(--hairline); }
+html[data-visual-style="forest"] .plot-rule { stroke-dasharray: 1 5; }
+html[data-visual-style="forest"] .plot-line { stroke-width: 2.1; }
+html[data-visual-style="forest"] .plot-area { opacity: .55; }
+html[data-visual-style="forest"] .category-heading { border: 1px solid var(--hairline); border-radius: 8px 18px 8px 8px; }
+html[data-visual-style="forest"] .category-dot { border-radius: 5px 0 5px 0; }
+
+/* 落日余温: apricot postcards, soft area plots and a fine double ring. */
+html[data-visual-style="sunset"] {
+  --scene-image: url('../images/sunset-glow.png'); --scene-cover-position: center 85%;
+  --bg: #fcf3ed; --card: #fffbf7; --paper-glass: #fffbf7f2; --nav-paper: #fff8f2f5;
+  --text: #513d36; --text-2: #735b53; --text-3: #7a6259; --hairline: #e4cdbf;
+  --accent: #94513b; --solid: #9d583f; --accent-grad: var(--solid); --accent-weak: #f4dfd1;
+  --input-bg: #f8ede4; --tint-surface: #f6e6d8; --cover-wash: #e3a5741b; --card-glaze: #faebdf;
+  --blue-wash: #e9edf2; --rose-wash: #f9e4e7; --gold-wash: #f5e8cb;
+  --tile-blue: var(--blue-wash); --tile-sand: var(--gold-wash); --tile-rose: var(--rose-wash);
+  --info: #5c738b; --warn: #8c632d; --scene-fade: #fff8f2; --tab-bg: #fff8f2;
+  --landscape-opacity: .76; --scene-opacity: .8; --surface-shadow: 0 4px 18px #7e47321a;
+  --chart-1: #d2a071; --chart-2: #cc9ab1; --chart-3: #cbb781; --chart-4: #a69cbe; --chart-5: #9ab6a6; --chart-6: #aaa19b;
+}
+html[data-visual-style="sunset"][data-tone="dark"] {
+  --bg: #2c2025; --card: #3c2c32; --paper-glass: #3c2c32f2; --nav-paper: #32242bf5;
+  --text: #f7eee8; --text-2: #dfccc6; --text-3: #c8afaa; --hairline: #72524f;
+  --accent: #efc09b; --solid: #94513d; --accent-weak: #573c32;
+  --input-bg: #4b353b; --tint-surface: #503b3c; --cover-wash: #c87f6220; --card-glaze: #493336;
+  --blue-wash: #323b4c; --rose-wash: #523440; --gold-wash: #514231;
+  --info: #c1cfe7; --warn: #e3c68e; --scene-fade: #3c2c32; --tab-bg: #32242b;
+  --landscape-opacity: .17; --scene-opacity: .24; --surface-shadow: 0 4px 16px #0003;
+}
+html[data-visual-style="sunset"] .home-refined.handpage .home-book { border-radius: 16px 16px 7px 7px; border-top: 2px solid var(--accent); }
+html[data-visual-style="sunset"] #tabbar { border-radius: 20px; }
+html[data-visual-style="sunset"] .report-card { border-top: 2px solid var(--hairline); }
+html[data-visual-style="sunset"] .report-card h2::before { border-radius: 50%; transform: none; }
+html[data-visual-style="sunset"] .category-heading { border: 1px solid var(--hairline); border-radius: 16px 16px 7px 7px; }
+html[data-visual-style="sunset"] .plot-area { opacity: .88; }
+html[data-visual-style="sunset"] .plot-line { stroke-width: 2.3; }
+html[data-visual-style="sunset"] .plot-point { stroke-width: 2; }
+html[data-visual-style="sunset"] .trend-inspect { border: 1px solid var(--hairline); border-radius: 10px; }
+
 /* Optional colourways: strong labels on softly tinted paper, luminous accents at night. */
 html[data-visual-style][data-palette="ocean"] { --accent: #2b628e; --solid: #326e9d; --accent-weak: #daeaf5; --bg: #edf5fb; --card: #fbfdff; --tint-surface: #e2eef8; --input-bg: #eaf2f9; --hairline: #c5d8e8; --chart-1: #629ec2; --chart-2: #8caadb; }
 html[data-visual-style][data-palette="jade"] { --accent: #25654e; --solid: #2b735e; --accent-weak: #d8ece0; --bg: #f0f8f3; --card: #fbfffc; --tint-surface: #e1f0e6; --input-bg: #eaf4ee; --hairline: #c5ddce; --chart-1: #73ac94; --chart-2: #94bfad; }
@@ -143,4 +186,3 @@ html[data-visual-style][data-tone="dark"][data-palette="sand"] { --accent: #e8cf
 html[data-visual-style][data-tone="dark"][data-palette]:not([data-palette="original"]) {
   --text: #f0f0f7; --text-2: #d0cfd8; --text-3: #b9b7c5;
 }
-@media(max-width:350px) { .palette-picker { gap: 3px; } .visual-style-picker { gap: 8px; } .visual-style-option b { margin-inline: 8px; } .visual-style-option small { margin-inline: 8px; } }

@@ -15,7 +15,7 @@ Views.ai = (() => {
     }
     if (guideSections.has(text)) return guideSections.get(text);
     if(/自动续期|工资.*自动生成|自动生成.*工资/.test(text))return guideSections.get('工资自动续期') || '';
-    if(/星空|主题|外观|水墨|碧海|海洋|海岸|未来回响|未来科技|科技风|配色|色系/.test(text)&&/怎么|如何|在哪|哪里|设置|切换|换|打开|选择/.test(text))return guideSections.get('主题与外观') || '';
+    if(/星空|主题|外观|水墨|碧海|海洋|海岸|未来回响|未来科技|科技风|松间晨雾|落日余温|森林风|配色|色系/.test(text)&&/怎么|如何|在哪|哪里|设置|切换|换|打开|选择/.test(text))return guideSections.get('主题与外观') || '';
     if(/预算|存钱|攒钱|存入|取出/.test(text)&&/怎么|如何|在哪|哪里|设置|修改|删除|操作/.test(text))return guideSections.get('预算与存钱') || '';
     if(/月薪|工资|出勤|计薪/.test(text)&&/怎么|如何|在哪|哪里|设置|改|选|操作/.test(text))return guideSections.get('工时与薪资') || '';
     const tripTopics = [

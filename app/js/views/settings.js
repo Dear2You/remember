@@ -399,10 +399,10 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card appearance-card"><div class="section-title">显示</div>' +
-      '<div class="visual-style-picker" role="group" aria-label="界面风格">'+Appearance.styles.map(({id,name,description})=>'<button class="visual-style-option '+id+' '+(s.visualStyle===id?'on':'')+'" data-visual-style="'+id+'" aria-pressed="'+(s.visualStyle===id)+'"><span class="visual-style-art" aria-hidden="true"></span><b>'+name+'</b><small>'+description+'</small><i>'+(s.visualStyle===id?'使用中':'选择')+'</i></button>').join('')+'</div>'+
-      '<div class="palette-heading"><span>主题配色</span><small class="j-palette-name">'+appearance.style.name+'</small></div>'+
-      '<div class="palette-picker" role="group" aria-label="主题配色">'+Appearance.palettes.map(({id,name})=>'<button class="palette-option '+id+'" data-palette-choice="'+id+'" aria-pressed="'+(appearance.palette===id)+'"><span aria-hidden="true"><i></i><b>✓</b></span><small>'+name+'</small></button>').join('')+'</div>'+
-      '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题采用夜间外观；切回水墨或海岸后恢复你的明暗设置。':'点选即保存，配色按主题分别记住。')+'</p>'+
+      '<label class="set-row appearance-select"><span class="sr-lab">界面主题</span><select class="j-visual-style" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
+      '<p class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</p>'+
+      '<label class="set-row appearance-select"><span class="sr-lab">主题配色</span><select class="j-palette">'+Appearance.palettes.map(({id,name})=>'<option value="'+id+'" '+(appearance.palette===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
+      '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。')+'</p>'+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
       '    <div class="set-row appearance-mode" '+(appearance.style.night?'hidden':'')+'><div class="sr-lab">明暗</div>' +
       '      <div class="seg" style="width:190px">' +
@@ -553,22 +553,24 @@ Views.settings = (() => {
     const changeAppearance = patch => {
       const before = JSON.stringify(Store.settings);
       Object.assign(Store.settings,patch);
-      if(!Store.save()){Object.assign(Store.settings,JSON.parse(before));return false;}
+      if(!Store.save()){
+        Object.assign(Store.settings,JSON.parse(before));
+        const previous=Appearance.resolve(Store.settings);
+        root.querySelector('.j-visual-style').value=previous.style.id;
+        root.querySelector('.j-palette').value=previous.palette;
+        return false;
+      }
       App.applyTheme();
       const current=Appearance.resolve(Store.settings);
-      root.querySelectorAll('[data-visual-style]').forEach(b=>{
-        const selected=b.dataset.visualStyle===current.style.id;
-        b.classList.toggle('on',selected);b.setAttribute('aria-pressed',String(selected));
-        b.querySelector('i').textContent=selected?'使用中':'选择';
-      });
-      root.querySelectorAll('[data-palette-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.paletteChoice===current.palette)));
-      root.querySelector('.j-palette-name').textContent=current.style.name;
+      root.querySelector('.j-visual-style').value=current.style.id;
+      root.querySelector('.j-palette').value=current.palette;
+      root.querySelector('.appearance-description').textContent=current.style.description;
       root.querySelector('.appearance-mode').hidden=current.style.night;
-      root.querySelector('.j-appearance-note').textContent=current.style.night?'此主题采用夜间外观；切回水墨或海岸后恢复你的明暗设置。':'点选即保存，配色按主题分别记住。';
+      root.querySelector('.j-appearance-note').textContent=current.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。';
       return true;
     };
-    root.querySelectorAll('[data-visual-style]').forEach(b=>b.onclick=()=>changeAppearance({visualStyle:b.dataset.visualStyle}));
-    root.querySelectorAll('[data-palette-choice]').forEach(b=>b.onclick=()=>changeAppearance({themePalettes:{...Store.settings.themePalettes,[Store.settings.visualStyle]:b.dataset.paletteChoice}}));
+    root.querySelector('.j-visual-style').onchange=e=>changeAppearance({visualStyle:e.target.value});
+    root.querySelector('.j-palette').onchange=e=>changeAppearance({themePalettes:{...Store.settings.themePalettes,[Store.settings.visualStyle]:e.target.value}});
 
     root.querySelector('.j-csv').onclick = () => {
       const csv = Store.exportCSV();

@@ -37,7 +37,8 @@ const Charts = {
     const cx = w / 2, cy = h / 2;
     const scene = document.documentElement.dataset.visualStyle;
     const tech = scene === 'future';
-    const R = Math.min(w, h) / 2 - (tech ? 8 : 4);
+    const botanical = scene === 'forest', sunset = scene === 'sunset';
+    const R = Math.min(w, h) / 2 - (tech ? 8 : botanical || sunset ? 6 : 4);
     const LW = Math.min(26, R * (tech ? 0.3 : 0.4));
     const css = getComputedStyle(document.documentElement);
     // The instrument ticks sit outside the data ring and never alter sector proportions.
@@ -48,6 +49,15 @@ const Charts = {
         ctx.lineTo(cx+Math.cos(angle)*outer,cy+Math.sin(angle)*outer);
         ctx.strokeStyle=css.getPropertyValue(i%5===0?'--accent':'--hairline').trim();ctx.lineWidth=.8;ctx.stroke();
       }
+    }
+    if (botanical || sunset) {
+      // Decorative rings remain outside the data arcs and do not change their angles.
+      [R+2,R+4].forEach((radius,i)=>{
+        ctx.beginPath();ctx.arc(cx,cy,radius,0,Math.PI*2);
+        ctx.strokeStyle=css.getPropertyValue(i===0?'--hairline':'--accent').trim();
+        ctx.lineWidth=botanical?.6:.75;ctx.globalAlpha=i===0?.85:.4;
+        ctx.stroke();ctx.globalAlpha=1;
+      });
     }
     if (!total) {
       ctx.beginPath();

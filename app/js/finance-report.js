@@ -113,7 +113,7 @@ const FinanceReport = (() => {
       for (const kind of visible) {
         if (chartType==='line') {
           const points=rows.map((r,i)=>x(i)+','+y(r[kind])).join(' ');
-          if (scene==='coast') {
+          if (scene==='coast' || scene==='sunset') {
             // Endpoint tangents remain horizontal, so a smooth segment stays between its real values.
             const path=rows.reduce((d,r,i)=>i ? d+` C${(x(i-1)+x(i))/2},${y(rows[i-1][kind])} ${(x(i-1)+x(i))/2},${y(r[kind])} ${x(i)},${y(r[kind])}` : `M${x(0)},${y(r[kind])}`,'');
             areas+=`<path class="plot-area ${kind}" d="${path} L${x(rows.length-1)},${bottom} L${x(0)},${bottom} Z" fill="url(#${paintId}-area-${kind})"/>`;

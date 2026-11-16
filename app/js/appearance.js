@@ -6,7 +6,9 @@ const Appearance = (() => {
     {id:'ink', name:'水墨清夏', description:'青山淡墨 · 日常账页', night:false},
     {id:'starry', name:'星空彼岸', description:'夜蓝星河 · 静谧远岸', night:true},
     {id:'coast', name:'碧海晴空', description:'晴云海浪 · 清透海蓝', night:false},
-    {id:'future', name:'未来回响', description:'深蓝银线 · 青光远城', night:true}
+    {id:'future', name:'未来回响', description:'深蓝银线 · 青光远城', night:true},
+    {id:'forest', name:'松间晨雾', description:'松影薄雾 · 苔绿纸页', night:false},
+    {id:'sunset', name:'落日余温', description:'杏橙晚霞 · 暖粉暮光', night:false}
   ];
   const palettes = [
     {id:'original',name:'原配'}, {id:'ocean',name:'海蓝'}, {id:'jade',name:'青绿'},

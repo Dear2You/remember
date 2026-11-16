@@ -14,16 +14,16 @@ test('旧主题和旧备份回退原配，不改变已有账单和明暗偏好',
   const result=s.normalizeData(old);
   assert.equal(result.settings.visualStyle,'starry');assert.equal(result.settings.theme,'light');
   assert.deepEqual(clean(result.transactions),old.transactions);
-  assert.deepEqual(clean(result.settings.themePalettes),{ink:'original',starry:'original',coast:'original',future:'original'});
+  assert.deepEqual(clean(result.settings.themePalettes),{ink:'original',starry:'original',coast:'original',future:'original',forest:'original',sunset:'original'});
   old.settings.themePalettes={ink:'jade',starry:'bad',coast:null,future:'violet',unknown:'rose'};
   old.settings.visualStyle='invalid';old.settings.theme='invalid';
   const normalized=s.normalizeData(old).settings;
   assert.equal(normalized.visualStyle,'ink');assert.equal(normalized.theme,'auto');
-  assert.deepEqual(clean(normalized.themePalettes),{ink:'jade',starry:'original',coast:'original',future:'violet'});
+  assert.deepEqual(clean(normalized.themePalettes),{ink:'jade',starry:'original',coast:'original',future:'violet',forest:'original',sunset:'original'});
 });
 test('每个主题单独保存配色，重启和完整备份恢复一致',()=>{
   const c=fixture(),s=c.Store;
-  s.settings.visualStyle='coast';s.settings.theme='dark';s.settings.themePalettes={ink:'sand',starry:'violet',coast:'ocean',future:'jade'};s.save(false);
+  s.settings.visualStyle='coast';s.settings.theme='dark';s.settings.themePalettes={ink:'sand',starry:'violet',coast:'ocean',future:'jade',forest:'sand',sunset:'rose'};s.save(false);
   s.init();const expected=clean(s.settings),backup=s.exportData();
   s.settings.visualStyle='ink';s.settings.themePalettes={};
   assert.equal(s.importData(backup).ok,true);

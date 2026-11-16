@@ -1,12 +1,4 @@
 /* 星空彼岸 — a painted night sky, restrained violet details and legible paper-like panels. */
-.visual-style-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 14px 0; }
-.visual-style-option { position: relative; min-width: 0; text-align: left; border: 1px solid var(--hairline); border-radius: 11px; overflow: hidden; background: var(--card); padding-bottom: 10px; }
-.visual-style-option.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.visual-style-art { display: block; height: 78px; background: url('../images/summer-mist.png') center 60% / cover; }
-.visual-style-option.starry .visual-style-art { background: #151f38 url('../images/starry-shore.png') center 15% / cover; }
-.visual-style-option b { display: block; font: 600 14px/1.8 var(--book-serif); margin: 8px 10px 0; }
-.visual-style-option small { display: block; margin: 0 10px; font-size: 9px; color: var(--text-2); }
-.visual-style-option i { position: absolute; right: 7px; top: 7px; padding: 3px 6px; border-radius: 12px; font: 9px/1.5 var(--ui-font); color: var(--text); background: var(--paper-glass); }
 .theme-note { font-size: 11px; line-height: 1.7; color: var(--text-2); }
 .appearance-mode[hidden] { display: none; }
 .salary-renew-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 16px; }
@@ -85,4 +77,3 @@ html[data-visual-style]:not([data-visual-style="ink"]) .asset-overview { border-
 html[data-visual-style]:not([data-visual-style="ink"]) .salary-card { border-top-color: var(--accent); }
 html[data-visual-style]:not([data-visual-style="ink"]) .bill-report { --report-out-line: var(--calendar-expense); }
 html[data-visual-style]:not([data-visual-style="ink"]) .art-bank, html[data-visual-style]:not([data-visual-style="ink"]) .art-coin, html[data-visual-style]:not([data-visual-style="ink"]) .art-sprout { color: var(--warn); }
-@media(max-width:350px) { .visual-style-picker { gap: 9px; } .visual-style-option small { font-size: 8px; } .visual-style-option b { font-size: 13px; } }
