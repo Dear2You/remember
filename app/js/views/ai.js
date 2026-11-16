@@ -94,8 +94,8 @@ Views.ai = (() => {
       '- 账本：' + books.map(b => b.name).join('、') + '\n' +
       '- 本月(' + U.ymLabel(ym) + ')支出：¥' + (stat.out / 100).toFixed(2) + '（一级分类：' + catStr + '）；收入：¥' + (stat.inc / 100).toFixed(2) + '；预算：' + budgetStr + '\n' +
       '- 账户：' + accStr + '；总资产 ¥' + (Store.totalAssets() / 100).toFixed(2) + '；总负债 ¥' + (Store.totalLiabilities() / 100).toFixed(2) + '；净资产 ¥' + (Store.netWorth() / 100).toFixed(2) + '\n' +
-      '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；本月工时收入：' + workPayStr + '（' + ws.days + ' 天出勤）；今日已填工时：' + U.fmtHours(todayWork.hours) + (todayWork.missingHours ? '，另有日薪记录未填工时' : '') + '\n' +
-      '- 本月月薪方案：'+Store.salaryPlans(ym).map(p=>{const s=Store.salarySummary(p);return p.project+' 整月 '+Store.fmtMinor(p.baseMinor)+' 元，应出勤 '+s.days+' 天，已确认 '+s.paidDays+' 天，缺勤 '+s.absentDays+' 天，待确认 '+s.unconfirmed+' 天，预计 '+Store.fmtMinor(s.expected)+' 元';}).join('；')+'。已计工资不代表实际到账。月薪项目的出勤由用户在工时日历确认，不能再用普通时薪或日薪动作重复计入。\n'+
+      '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；自然月已计工资（非实收）：' + workPayStr + '（' + ws.days + ' 天出勤）；今日已填工时：' + U.fmtHours(todayWork.hours) + (todayWork.missingHours ? '，另有日薪记录未填工时' : '') + '\n' +
+      '- 当前计薪方案（发薪日每月 '+Store.nextPayday().day+' 日，不代表计薪起止）：'+Store.salaryPlansOn(today).map(p=>{const s=Store.salarySummary(p);return p.project+' ['+Store.salaryRangeLabel(p)+(p.cycleConfirmed?'':'，区间待确认')+'] 入职起算 '+(p.employmentStart || '未设置')+'，完整一期 '+Store.fmtMinor(p.baseMinor)+' 元，应出勤 '+s.days+' 天，已确认 '+s.paidDays+' 天，缺勤 '+s.absentDays+' 天，待确认 '+s.unconfirmed+' 天，预计 '+Store.fmtMinor(s.expected)+' 元';}).join('；')+'。已计工资不代表实际到账。月薪项目的出勤由用户在工时日历确认，不能再用普通时薪或日薪动作重复计入。\n'+
       '- 待报销：'+Store.fmtMinor(Store.tripTotals().pending)+' 元。\n'+
       '- 打卡习惯：' + habits + '\n' +
       '- 今日待办(' + dg.tasksOpen + '项)：' + taskStr + '；逾期：' + overdueStr + '\n' +

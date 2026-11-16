@@ -23,23 +23,55 @@ const WorkCalendar = window.WorkCalendar = (() => {
     }
     return result;
   }
-  return {dates,validMonth,hasYear:y => !!schedules[y]};
+  function period(month,startDay=1) {
+    if(!validMonth(month)||!Number.isInteger(startDay)||startDay<1||startDay>28)throw new Error('请选择有效计薪周期');
+    return startDay===1?{start:month+'-01',end:U.addDays(U.ymShift(month,1)+'-01',-1)}:
+      {start:U.ymShift(month,-1)+'-'+U.pad(startDay),end:U.addDays(month+'-'+U.pad(startDay),-1)};
+  }
+  function monthFor(date,startDay=1){return startDay===1||Number(date.slice(8))<startDay?date.slice(0,7):U.ymShift(date.slice(0,7),1);}
+  function rangeDates(start,end,kind='cn') {
+    const result=[];
+    for(let m=start.slice(0,7);m<=end.slice(0,7);m=U.ymShift(m,1))result.push(...dates(m,kind).filter(d=>d>=start&&d<=end));
+    return result;
+  }
+  function matrix(start,end) {
+    const first=U.weekStart(start),last=U.weekRange(end).end,rows=[];
+    for(let d=first;d<=last;d=U.addDays(d,7))rows.push(Array.from({length:7},(_,i)=>{const date=U.addDays(d,i);return {date,day:Number(date.slice(8)),inMonth:date>=start&&date<=end,isToday:date===U.todayStr()};}));
+    return rows;
+  }
+  return {dates,validMonth,period,monthFor,rangeDates,matrix,hasYear:y => !!schedules[y]};
 })();
 
 Object.assign(Store, {
   salaryPlan(id) { return this.data.salaryMonths.find(p => p.id === id); },
   salaryPlans(month) { return this.data.salaryMonths.filter(p => p.month === month); },
   salaryPlanFor(project,month) { return this.salaryPlans(month).find(p => p.project === project); },
+  salaryRange(p) {return WorkCalendar.period(p.month,p.cycleStartDay || 1);},
+  salaryRangeLabel(p) {const r=this.salaryRange(p);return r.start.replace(/-/g,'.')+' — '+r.end.replace(/-/g,'.');},
+  salaryPlansOn(date) {return this.data.salaryMonths.filter(p=>{const r=this.salaryRange(p);return date>=r.start&&date<=r.end;});},
+  salaryPlanAt(project,date) {return this.salaryPlansOn(date).find(p=>p.project===project);},
+  salaryPlansBetween(start,end) {return this.data.salaryMonths.filter(p=>{const r=this.salaryRange(p);return r.start<=end&&r.end>=start;});},
+  primarySalaryPlan(date=U.todayStr()) {return this.salaryPlansOn(date).find(p=>p.project===this.settings.salaryProject) || this.salaryPlansOn(date)[0];},
+  nextPayday(today=U.todayStr()) {
+    const day=Number.isInteger(this.settings.salaryPayDay)&&this.settings.salaryPayDay>=1&&this.settings.salaryPayDay<=31?this.settings.salaryPayDay:21;
+    const inMonth=m=>{const {y,m:mo}=U.ymParts(m);return m+'-'+U.pad(Math.min(day,U.daysInMonth(y,mo)));};
+    let date=inMonth(today.slice(0,7));if(date<today)date=inMonth(U.ymShift(today.slice(0,7),1));
+    return {date,days:U.daysBetween(today,date)-1,day};
+  },
   salaryPlanValid(p) {
-    return p && typeof p.id === 'string' && !!p.id && WorkCalendar.validMonth(p.month) &&
+    if(!p||!WorkCalendar.validMonth(p.month)||!Number.isInteger(p.cycleStartDay ?? 1)||(p.cycleStartDay ?? 1)<1||(p.cycleStartDay ?? 1)>28)return false;
+    const range=this.salaryRange(p);
+    if(p.employmentStart && (!/^\d{4}-\d{2}-\d{2}$/.test(p.employmentStart)||U.dateStr(U.parseDate(p.employmentStart))!==p.employmentStart))return false;
+    return typeof p.id === 'string' && !!p.id &&
       typeof p.project === 'string' && !!p.project.trim() && p.project.length <= 40 &&
       Number.isSafeInteger(p.baseMinor) && p.baseMinor > 0 && p.baseMinor <= 1000000000 &&
       ['cn','weekdays','custom'].includes(p.calendar) && Array.isArray(p.dates) && p.dates.length > 0 &&
       new Set(p.dates).size === p.dates.length && p.dates.every(date => typeof date === 'string' &&
-        date.startsWith(p.month+'-') && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date);
+        date>=range.start&&date<=range.end && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date);
   },
   salaryTerms(w, plan = this.salaryPlan(w.salaryMonthId)) {
-    if (!plan || w.project !== plan.project || !plan.dates.includes(w.date)) throw new Error('请选择本月方案中的应出勤日期');
+    if (!plan || w.project !== plan.project || !plan.dates.includes(w.date)) throw new Error('请选择本期方案中的应出勤日期');
+    if(plan.employmentStart&&w.date<plan.employmentStart)throw new Error('入职起算日前不能记录此项目出勤');
     const units = w.paidDays;
     if (![0,0.5,1].includes(units)) throw new Error('请选择出勤一天、半天或缺勤');
     return {payMode:'month',salaryMonthId:plan.id,paidDays:units,rate:null,dailyRateMinor:null,
@@ -47,7 +79,7 @@ Object.assign(Store, {
   },
   salaryEntryPay(w, plan = this.salaryPlan(w.salaryMonthId)) {
     if (!plan) return 0;
-    if (!plan.dates.includes(w.date)) return 0;
+    if (!plan.dates.includes(w.date)||(plan.employmentStart&&w.date<plan.employmentStart)) return 0;
     const before=this.data.worktimes.filter(x=>x.salaryMonthId===plan.id&&x.date<w.date).reduce((s,x)=>s+x.paidDays,0);
     // Round cumulative confirmed units, so both the calendar sum and monthly total agree.
     return Math.round(plan.baseMinor*(before+w.paidDays)/plan.dates.length) - Math.round(plan.baseMinor*before/plan.dates.length);
@@ -55,23 +87,28 @@ Object.assign(Store, {
   salarySummary(plan, today = U.todayStr()) {
     const entries = this.data.worktimes.filter(w => w.salaryMonthId === plan.id);
     const confirmed = new Set(entries.map(w => w.date));
+    const eligible=plan.dates.filter(date=>!plan.employmentStart||date>=plan.employmentStart);
     const earned = entries.reduce((s,w) => s+this.salaryEntryPay(w,plan),0);
     const absentDays=entries.reduce((s,w)=>s+1-w.paidDays,0);
-    const deducted = plan.baseMinor-Math.round(plan.baseMinor*(plan.dates.length-absentDays)/plan.dates.length);
-    return {entries,earned,deducted,expected:plan.baseMinor-deducted,days:plan.dates.length,
+    const fullEligible=Math.round(plan.baseMinor*eligible.length/plan.dates.length);
+    const expected=Math.round(plan.baseMinor*(eligible.length-absentDays)/plan.dates.length),deducted=fullEligible-expected;
+    return {entries,earned,deducted,expected,days:plan.dates.length,eligibleDays:eligible.length,
       paidDays:entries.reduce((s,w)=>s+w.paidDays,0),absentDays:entries.reduce((s,w)=>s+1-w.paidDays,0),
-      unconfirmed:plan.dates.filter(d=>d<=today&&!confirmed.has(d)).length,
-      upcoming:plan.dates.filter(d=>d>today&&!confirmed.has(d)).length};
+      unconfirmed:eligible.filter(d=>d<=today&&!confirmed.has(d)).length,
+      upcoming:eligible.filter(d=>d>today&&!confirmed.has(d)).length};
   },
   saveSalaryPlan(input, convert = false) {
     const p = {...input,id:input.id || U.id(),project:String(input.project || '').trim(),dates:[...(input.dates || [])].sort()};
     if (!this.salaryPlanValid(p)) throw new Error('请填写有效月薪、项目及应出勤日期');
-    if (this.data.salaryMonths.some(x=>x.id!==p.id&&x.month===p.month&&x.project===p.project)) throw new Error('本月该项目已有月薪方案');
+    const range=this.salaryRange(p);
+    if (this.data.salaryMonths.some(x=>x.id!==p.id&&x.project===p.project&&this.salaryRange(x).start<=range.end&&this.salaryRange(x).end>=range.start)) throw new Error('计薪区间与现有方案重叠，请使用「调整计薪周期」');
     const old = this.salaryPlan(p.id);
     if (old && (old.project!==p.project || old.month!==p.month)) throw new Error('已有方案的项目与月份不能更改');
+    if(old&&(old.cycleStartDay || 1)!==(p.cycleStartDay || 1))throw new Error('请通过「调整计薪周期」预览并重整已有记录');
     const linked = this.data.worktimes.filter(w=>w.salaryMonthId===p.id);
     if (linked.some(w=>!p.dates.includes(w.date))) throw new Error('移除的日期已有出勤记录，请先在当天撤销确认');
-    const candidates = convert ? this.data.worktimes.filter(w=>w.project===p.project&&w.date.startsWith(p.month)&&w.payMode==='day') : [];
+    linked.forEach(w=>this.salaryTerms(w,p));
+    const candidates = convert ? this.data.worktimes.filter(w=>w.project===p.project&&w.date>=range.start&&w.date<=range.end&&w.payMode==='day') : [];
     const seen = new Set(linked.map(w=>w.date));
     for (const w of candidates) {
       this.salaryTerms({...w,salaryMonthId:p.id},p);
@@ -102,23 +139,62 @@ Object.assign(Store, {
   removeSalaryPlan(id) {
     this.mutate(d=>{d.salaryMonths=d.salaryMonths.filter(p=>p.id!==id);d.worktimes=d.worktimes.filter(w=>w.salaryMonthId!==id);});
   },
+  salaryCycleToken(project) {
+    return JSON.stringify([this.data.salaryMonths.filter(p=>p.project===project),this.data.worktimes.filter(w=>w.project===project),this.data.transactions.filter(t=>t.wageProject===project)]);
+  },
+  previewSalaryCycle(project,startDay,baseMinor,calendar='cn',employmentStart='') {
+    project=String(project || '').trim();
+    const records=this.data.worktimes.filter(w=>w.project===project&&['day','month'].includes(w.payMode));
+    const oldPlans=this.data.salaryMonths.filter(p=>p.project===project),months=new Set([WorkCalendar.monthFor(U.todayStr(),startDay)]);
+    if(employmentStart)months.add(WorkCalendar.monthFor(employmentStart,startDay));
+    records.forEach(w=>months.add(WorkCalendar.monthFor(w.date,startDay)));
+    oldPlans.filter(p=>this.salaryRange(p).end>U.todayStr()).forEach(p=>months.add(WorkCalendar.monthFor(this.salaryRange(p).end,startDay)));
+    const plans=[...months].sort().map(month=>{
+      const r=WorkCalendar.period(month,startDay),entries=records.filter(w=>w.date>=r.start&&w.date<=r.end);
+      const dates=[...new Set([...WorkCalendar.rangeDates(r.start,r.end,calendar),...entries.map(w=>w.date)])].sort();
+      const p={id:U.id(),project,month,cycleStartDay:startDay,cycleConfirmed:true,baseMinor,calendar,dates,employmentStart};
+      if(!this.salaryPlanValid(p))throw new Error('请填写有效工资、项目和周期');
+      if(new Set(entries.map(w=>w.date)).size!==entries.length)throw new Error('同日有多条同项目记录，请先合并后调整周期');
+      entries.forEach(w=>this.salaryTerms(w,p));
+      return {...p,previewEarned:Math.round(baseMinor*entries.reduce((s,w)=>s+w.paidDays,0)/dates.length),previewCount:entries.length};
+    });
+    return {project,startDay,baseMinor,calendar,employmentStart,plans,recordCount:records.length,oldPlanCount:oldPlans.length,
+      before:records.reduce((s,w)=>s+this.workPayMinor(w),0),after:plans.reduce((s,p)=>s+p.previewEarned,0),
+      receiptCount:this.data.transactions.filter(t=>t.wageProject===project).length,token:this.salaryCycleToken(project)};
+  },
+  applySalaryCycle(preview) {
+    if(this.salaryCycleToken(preview.project)!==preview.token)throw new Error('记录已变化，请重新预览后确认');
+    const fresh=this.previewSalaryCycle(preview.project,preview.startDay,preview.baseMinor,preview.calendar,preview.employmentStart);
+    this.mutate(d=>{
+      d.salaryMonths=d.salaryMonths.filter(p=>p.project!==fresh.project);
+      for(const row of fresh.plans){const {previewEarned,previewCount,...p}=row;d.salaryMonths.push(p);}
+      for(const w of d.worktimes.filter(w=>w.project===fresh.project&&['day','month'].includes(w.payMode))){
+        const p=this.salaryPlanAt(w.project,w.date);Object.assign(w,this.salaryTerms(w,p));
+      }
+      for(const t of d.transactions.filter(t=>t.wageProject===fresh.project))Object.assign(t,{wageNeedsReview:t.wageProject,wagePreviousMonth:t.wageMonth,wageProject:'',wageMonth:''});
+      d.settings.salaryProject=fresh.project;
+    });
+    return fresh;
+  },
   wageSummary(project,month) {
-    const rows = this.monthWorktimes(month).filter(w=>w.project===project);
+    const plan=this.salaryPlanFor(project,month),range=plan?this.salaryRange(plan):WorkCalendar.period(month);
+    const rows = this.data.worktimes.filter(w=>w.project===project&&w.date>=range.start&&w.date<=range.end);
     const earned = rows.reduce((s,w)=>s+this.workPayMinor(w),0);
     const receipts = this.data.transactions.filter(t=>t.type==='in'&&t.wageProject===project&&t.wageMonth===month);
     const received = receipts.reduce((s,t)=>s+t.amountMinor,0);
-    return {earned,received,pending:Math.max(0,earned-received),excess:Math.max(0,received-earned),receipts};
+    return {earned,received,pending:Math.max(0,earned-received),excess:Math.max(0,received-earned),receipts,range};
   },
   linkWageReceipt(id,project,month) {
     const t = this.data.transactions.find(x=>x.id===id);
     if (!t || t.type!=='in') throw new Error('请选择已有收入');
     if (t.wageProject || t.subscriptionId) throw new Error('这笔账单已有关联，请先解除原关联');
-    this.updateTransaction(id,{wageProject:project,wageMonth:month});
+    this.updateTransaction(id,{wageProject:project,wageMonth:month,wageNeedsReview:''});
   },
   validatePayrollBackup(data) {
     const plans = data.salaryMonths || [];
     if (plans.some(p=>!this.salaryPlanValid(p)) || new Set(plans.map(p=>p.id)).size!==plans.length ||
       new Set(plans.map(p=>p.month+'|'+p.project)).size!==plans.length) throw new Error('备份中的月薪方案无效');
+    for(let i=0;i<plans.length;i++)for(let j=i+1;j<plans.length;j++)if(plans[i].project===plans[j].project&&this.salaryRange(plans[i]).start<=this.salaryRange(plans[j]).end&&this.salaryRange(plans[j]).start<=this.salaryRange(plans[i]).end)throw new Error('同项目计薪区间重叠');
     const seen = new Set();
     for (const w of data.worktimes || []) {
       if (w.payMode !== 'month') { if (w.salaryMonthId) throw new Error('计薪方式与月薪方案不匹配'); continue; }
@@ -141,8 +217,16 @@ Object.assign(Store, {
     }
     if(/工资|日薪|月薪|家教|工时/.test(text)) {
       if(/上周|去年|今年|明年|下月|下个月|\d{4}年/.test(text))return '';
-      const names=this.allProjects(),named=names.filter(n=>text.includes(n)),projects=named.length?named:[...new Set([...this.monthWorktimes(month).map(w=>w.project),...this.salaryPlans(month).map(p=>p.project)])];
-      return U.ymLabel(month)+' · 工资核对\n'+(projects.map(n=>{const s=this.wageSummary(n,month),p=this.salaryPlanFor(n,month);return `${n}：已计 ${money(s.earned)}，已关联到账 ${money(s.received)}，待收 ${money(s.pending)}。`+(p?` 整月预计 ${money(this.salarySummary(p).expected)}，${this.salarySummary(p).unconfirmed} 天待确认出勤。`:'');}).join('\n')||'暂无工作记录。')+'\n仅按已关联收入核对；已记过但未关联的工资，请在「工时 → 工资到账」关联。';
+      const names=this.allProjects(),named=names.filter(n=>text.includes(n)),active=this.salaryPlansOn(today);
+      const projects=named.length?named:[...new Set([...this.monthWorktimes(month).map(w=>w.project),...active.map(p=>p.project),...this.salaryPlans(month).map(p=>p.project)])];
+      const previous=/上月|上个月|上期|上一期/.test(text),natural=/自然月/.test(text);
+      return '工资核对（每个项目列明区间）\n'+(projects.map(n=>{
+        const current=active.find(p=>p.project===n),key=current?(previous?U.ymShift(current.month,-1):current.month):month;
+        const p=this.salaryPlanFor(n,key);
+        if(natural){const rows=this.monthWorktimes(month).filter(w=>w.project===n),earned=rows.reduce((sum,w)=>sum+this.workPayMinor(w),0);return `${n}：${U.ymLabel(month)}自然月已计 ${money(earned)}；到账归属请按工资周期核对。`;}
+        const s=this.wageSummary(n,key),z=p?this.salarySummary(p):null;
+        return `${n}（${s.range.start} 至 ${s.range.end}${p&&!p.cycleConfirmed?'，区间待确认':''}）：已计 ${money(s.earned)}，已关联到账 ${money(s.received)}，待收 ${money(s.pending)}。`+(p?` 本期预计 ${money(z.expected)}，${z.unconfirmed} 天待确认出勤。`:'');
+      }).join('\n')||'暂无工作记录。')+'\n发薪日为每月 '+this.nextPayday().day+' 日，与计薪区间分开设置。仅按已关联收入核对；已记过但未关联的工资，请在「工时 → 工资到账」关联。';
     }
     if(/扣款|续费|订阅/.test(text)) {
       const start=/下周/.test(text)?U.addDays(U.weekStart(today),7):/本周/.test(text)?U.weekStart(today):today;

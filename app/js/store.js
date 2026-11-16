@@ -90,6 +90,7 @@ const Store = {
         sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
         subscriptionRates: {},         // 其他外币，1 单位原币对应的人民币
         defaultRate: 0,                // 默认时薪（元/小时），项目未单独设置时使用
+        salaryPayDay: 21, salaryProject: '', // 发薪日独立于计薪周期
         aiActiveSessionId: ''          // 当前 AI 会话
       }
     };
@@ -649,7 +650,7 @@ const Store = {
   },
   addWork(o) {
     const date=o.date || U.todayStr();
-    if (this.salaryPlanFor && this.salaryPlanFor(o.project,date.slice(0,7))) throw new Error('该项目本月按月薪计，请在月薪出勤里确认日期');
+    if (this.salaryPlanAt && this.salaryPlanAt(o.project,date)) throw new Error('该项目本期按月薪计，请在月薪出勤里确认日期');
     const item = {
       id: U.id(), date: o.date || U.todayStr(), project: (o.project || '未分类').trim() || '未分类',
       ...this.workTerms(o), note: o.note || '',
@@ -663,7 +664,7 @@ const Store = {
     if (!it) return;
     if (it.payMode === 'month') throw new Error('请在月薪出勤里修改或撤销当天确认');
     const nextProject=patch.project ?? it.project,nextDate=patch.date ?? it.date;
-    if(this.salaryPlanFor&&(nextProject!==it.project||nextDate!==it.date)&&this.salaryPlanFor(nextProject,nextDate.slice(0,7)))throw new Error('该项目按月薪计，请在月薪出勤里确认');
+    if(this.salaryPlanAt&&(nextProject!==it.project||nextDate!==it.date)&&this.salaryPlanAt(nextProject,nextDate))throw new Error('该项目按月薪计，请在月薪出勤里确认');
     const terms = this.workTerms({...it,...patch});
     this.mutate(() => Object.assign(it,patch,terms,{id}));
   },
@@ -681,7 +682,11 @@ const Store = {
     return this.dayWorktimes(dateStr).reduce((s, w) => s + this.workPayMinor(w), 0);
   },
   monthWorkSummary(ym) {
-    const list = this.monthWorktimes(ym);
+    const {y,m}=U.ymParts(ym);
+    return this.rangeWorkSummary(ym+'-01',ym+'-'+U.pad(U.daysInMonth(y,m)));
+  },
+  rangeWorkSummary(start,end) {
+    const list = this.data.worktimes.filter(w=>w.date>=start&&w.date<=end);
     const total = list.reduce((s, w) => s + Number(w.hours || 0), 0);
     const pay = list.reduce((s, w) => s + this.workPayMinor(w), 0);
     const days = new Set(list.filter(w=>w.payMode!=='month'||w.paidDays>0).map(w => w.date)).size;
@@ -690,8 +695,7 @@ const Store = {
       byProject[w.project] = (byProject[w.project] || 0) + Number(w.hours || 0);
       byProjectPay[w.project] = (byProjectPay[w.project] || 0) + this.workPayMinor(w);
     });
-    const { y, m } = U.ymParts(ym);
-    const dim = U.daysInMonth(y, m);
+    const dim = U.daysBetween(start,end);
     return { total, pay, days, avg: days ? total / days : 0, list, byProject, byProjectPay, avgPay: Math.round(pay / dim) };
   },
   // 项目时薪管理

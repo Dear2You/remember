@@ -1,8 +1,8 @@
 {
-  "versionCode": 22600,
-  "versionName": "2.26",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.26/nianxiatian.apk",
-  "sha256": "cb809a45911b65ad947df90d5f29827a3df268d82d5ba97cdb435081e700c988",
-  "apkBlob": "8b0d876897aec55b33bb336dd1927f2a1c2271b7",
-  "note": "月薪按法定工作日折算，支持半天、缺勤、批量出勤与旧日薪转换；工资到账可关联已有收入。新增支付渠道和余额核对、订阅周期及续费提醒、报销提交与票据照片、日程通知；首页与 AI 查询同步完善。"
+  "versionCode": 22700,
+  "versionName": "2.27",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.27/nianxiatian.apk",
+  "sha256": "8509cf148b34bbcdf6650a830921904ae14316bde30fccfe3bdf0e54c65754c6",
+  "apkBlob": "69889a61888ec7f585609b1c3dd7fb8ced138648",
+  "note": "新增跨月计薪：支持21日至次月20日等工资周期，入职起算与发薪日分开设置，旧记录先预览再调整，到账归属可重新核对。首页重排本期工资、待确认出勤与自然月收支，工时可切周期和自然月，更新应用内AI操作手册。"
 }

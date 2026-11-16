@@ -5,6 +5,55 @@ function fixture(){
   for(const file of ['utils','store','payroll'])vm.runInContext(fs.readFileSync('app/js/'+file+'.js','utf8'),ctx);
   const s=ctx.window.Store;s.init();return {s,c:ctx.window.WorkCalendar};
 }
+test('21日起算跨月无重叠，跨年与闰月日期完整',()=>{
+  const {c}=fixture();
+  assert.deepEqual(JSON.parse(JSON.stringify(c.period('2026-10',21))),{start:'2026-09-21',end:'2026-10-20'});
+  assert.equal(c.period('2026-11',21).start,'2026-10-21');
+  assert.equal(c.monthFor('2026-10-20',21),'2026-10');assert.equal(c.monthFor('2026-10-21',21),'2026-11');
+  assert.equal(c.period('2027-01',21).start,'2026-12-21');assert.equal(c.period('2028-02').end,'2028-02-29');
+  assert.equal(c.monthFor('2026-10-21',22),'2026-10');assert.equal(c.monthFor('2026-10-22',22),'2026-11');
+  const r=c.period('2026-10',21),dates=c.rangeDates(r.start,r.end);
+  assert(dates.includes('2026-10-10'));assert(!dates.includes('2026-10-01'));assert(!dates.includes('2026-09-25'));
+  assert.equal(c.matrix(r.start,r.end).flat().filter(x=>x.inMonth).length,30);
+});
+test('入职日前不计薪也不算缺勤，跨月满勤精确6000',()=>{
+  const {s,c}=fixture(),r=c.period('2026-10',21);
+  const p=s.saveSalaryPlan({project:'工作',month:'2026-10',cycleStartDay:21,cycleConfirmed:true,employmentStart:'2026-09-21',baseMinor:600000,calendar:'cn',dates:c.rangeDates(r.start,r.end)});
+  s.setSalaryAttendance(p.id,p.dates,1);assert.equal(s.salarySummary(p).earned,600000);
+  assert.equal(s.rangeWorkSummary(r.start,r.end).pay,600000);assert.equal(s.wageSummary('工作','2026-10').earned,600000);
+  assert.equal(s.salaryPlanAt('工作','2026-09-21').id,p.id);assert(!s.salaryPlanAt('工作','2026-10-21'));
+  s.setSalaryAttendance(p.id,[p.dates[0]],.5);assert.equal(s.salarySummary(p).earned,s.salarySummary(p).expected);
+  const p2=s.saveSalaryPlan({project:'新工作',month:'2026-10',baseMinor:600000,calendar:'cn',dates:c.dates('2026-10'),employmentStart:'2026-10-21'});
+  const z=s.salarySummary(p2);assert.equal(z.deducted,0);assert(z.expected<600000);
+  assert.equal(z.eligibleDays,p2.dates.filter(d=>d>='2026-10-21').length);
+  assert.throws(()=>s.setSalaryAttendance(p2.id,[p2.dates[0]],1));
+  assert.throws(()=>s.saveSalaryPlan({...p,id:'overlap',month:'2026-09',cycleStartDay:1,dates:c.dates('2026-09')}));
+});
+test('周期调整保留工作与现金账单，预览可取消，过期预览不能保存',()=>{
+  const {s,c}=fixture();
+  const w=s.addWork({project:'企业',date:'2026-10-26',payMode:'day',dailyRateMinor:27300,paidDays:1,note:'原备注'});
+  s.addWork({project:'家教',date:'2026-10-26',hours:2,rate:100});
+  s.saveSalaryPlan({project:'企业',month:'2026-10',baseMinor:600000,calendar:'cn',dates:c.dates('2026-10')},true);
+  const t=s.addTransaction({type:'in',accountId:'acc-bank',amountMinor:50000,date:'2026-11-01'});s.linkWageReceipt(t.id,'企业','2026-10');
+  const original=JSON.stringify(s.data),balance=s.accountBalance('acc-bank'),preview=s.previewSalaryCycle('企业',21,600000,'cn','2026-09-21');
+  assert.equal(JSON.stringify(s.data),original);assert(preview.plans.some(p=>p.month==='2026-10'));
+  s.applySalaryCycle(preview);
+  assert.equal(w.id,s.data.worktimes.find(x=>x.id===w.id).id);assert.equal(w.note,'原备注');assert.equal(w.payMode,'month');
+  assert.equal(s.salaryPlan(w.salaryMonthId).month,'2026-11');assert.equal(s.data.worktimes.length,2);
+  assert.equal(s.data.transactions.length,1);assert.equal(s.accountBalance('acc-bank'),balance);assert.equal(t.wageNeedsReview,'企业');assert.equal(t.wageProject,'');
+  assert(s.inspectBackup(s.exportData()).ok);assert.throws(()=>s.applySalaryCycle(preview));
+  s.linkWageReceipt(t.id,'企业','2026-11');assert.equal(t.wageNeedsReview,'');assert.equal(s.wageSummary('企业','2026-11').received,50000);
+  const next=s.previewSalaryCycle('企业',22,600000,'cn','2026-09-21');s.updateTransaction(t.id,{amountMinor:40000});assert.throws(()=>s.applySalaryCycle(next));
+});
+test('发薪日与计薪独立，短月月末正确，未知周期保持旧数据',()=>{
+  const {s,c}=fixture();
+  assert.equal(s.nextPayday('2026-10-21').days,0);assert.equal(s.nextPayday('2026-10-22').date,'2026-11-21');
+  s.settings.salaryPayDay=31;assert.equal(s.nextPayday('2028-02-01').date,'2028-02-29');assert.equal(s.nextPayday('2026-02-01').date,'2026-02-28');
+  s.settings.salaryPayDay=-2;assert.equal(s.nextPayday('2026-10-01').day,21);
+  const p=s.saveSalaryPlan({project:'旧方案',month:'2026-10',baseMinor:600000,calendar:'cn',dates:c.dates('2026-10')});
+  assert.equal(s.salaryRange(p).start,'2026-10-01');assert(!p.cycleConfirmed);
+  const b=s.exportData();assert(s.importData(b).ok);assert.deepEqual(s.salaryRange(s.data.salaryMonths[0]),s.salaryRange(p));
+});
 test('法定调休包含补班周末，排除假期，未知年份要求核对',()=>{
   const {c}=fixture();assert(c.dates('2026-10').includes('2026-10-10'));assert(!c.dates('2026-10').includes('2026-10-01'));
   assert(c.dates('2027-02').includes('2027-02-14'));assert(!c.dates('2027-02').includes('2027-02-05'));

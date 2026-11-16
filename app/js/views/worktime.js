@@ -4,6 +4,8 @@ Views.worktime = (() => {
   let ym = U.ymNow();
   let mode = 'cal'; // cal | list
   let distribution = 'pay';
+  let scope = 'period', initialized = false;
+  function openPeriod(){const p=Store.primarySalaryPlan();scope='period';ym=p?.month || U.ymNow();initialized=true;App.go('worktime');}
 
   function dayPayText(day) {
     if (Store.settings.hideAmount) return '••••';
@@ -140,7 +142,7 @@ Views.worktime = (() => {
           let payMode = (it || last || {}).payMode === 'day' ? 'day' : 'hour';
           const val = v => U.escapeHtml(v == null ? '' : v);
           formBox.innerHTML = `<div class="work-form">
-            ${!it?'<div class="work-templates">'+Store.allProjects().filter(p=>!Store.salaryPlanFor(p,dateStr.slice(0,7))).map(p=>`<button class="chip" data-template="${val(p)}">${val(p)}</button>`).join('')+'</div>':''}
+            ${!it?'<div class="work-templates">'+Store.allProjects().filter(p=>!Store.salaryPlanAt(p,dateStr)).map(p=>`<button class="chip" data-template="${val(p)}">${val(p)}</button>`).join('')+'</div>':''}
             <div class="seg work-modes" role="group" aria-label="计薪方式"><button data-pay="hour">按时薪</button><button data-pay="day">按日薪</button></div>
             <label>项目<input class="j-proj" list="wage-projects-dl" placeholder="项目名称（选填）" maxlength="16" value="${val(it && it.project)}"></label>
             <datalist id="wage-projects-dl">${Store.allProjects().map(p => '<option value="'+val(p)+'">').join('')}</datalist>
@@ -230,9 +232,11 @@ Views.worktime = (() => {
 
   /* ---------- 页面 ---------- */
   function mount(root) {
-    const ws = Store.monthWorkSummary(ym);
-    const { y, m } = U.ymParts(ym);
-    const rows = U.monthMatrix(y, m);
+    const primary=Store.primarySalaryPlan() || [...Store.data.salaryMonths].sort((a,b)=>b.month.localeCompare(a.month))[0];
+    if(!initialized){if(primary)ym=WorkCalendar.monthFor(U.todayStr(),primary.cycleStartDay || 1);initialized=true;}
+    const cycle=scope==='period'?(primary?.cycleStartDay || 1):1;
+    const range=WorkCalendar.period(ym,cycle),ws=Store.rangeWorkSummary(range.start,range.end);
+    const rows=WorkCalendar.matrix(range.start,range.end);
     const first = rows[0][0].date, last = rows[rows.length - 1][6].date;
     const entries = new Map();
     for (const w of Store.data.worktimes) {
@@ -247,7 +251,7 @@ Views.worktime = (() => {
       days:new Set(ws.list.filter(w=>w.project===name&&(w.payMode!=='month'||w.paidDays>0)).map(w=>w.date)).size}));
     const projArr=projects.sort((a,b)=>b[distribution]-a[distribution]);
     const projMax=Math.max(1,...projArr.map(p=>p[distribution]));
-    const salaryPlans=Store.salaryPlans(ym);
+    const salaryPlans=Store.salaryPlansBetween(range.start,range.end);
 
     function tile(c) {
       const day = days.get(c.date);
@@ -267,15 +271,15 @@ Views.worktime = (() => {
           ? '¥' + UI.amount(day.pay,true).replace(/,/g,',<wbr>') + (day.unpriced ? '*' : '') : pay;
         details = `<span class="day-hours">${hours}</span><span class="day-pay${pay.length > 6 ? ' compact' : ''}">${amount}</span>`;
       } else {
-        const scheduled=salaryPlans.filter(p=>p.dates.includes(c.date));
+        const scheduled=salaryPlans.filter(p=>p.dates.includes(c.date)&&(!p.employmentStart||c.date>=p.employmentStart));
         if(scheduled.length){
           classes.push('work-scheduled');const status=c.date>U.todayStr()?'预计':'待确认';
           const pay=scheduled.reduce((s,p)=>s+Store.salaryEntryPay({date:c.date,paidDays:1},p),0);
           details=`<span class="day-hours">${status}</span><span class="day-pay compact">¥${UI.amount(pay)}</span>`;label+='，应出勤，'+status;
-        } else if(salaryPlans.length&&c.inMonth){details='<span class="day-hours rest-label">休息</span>';}
+        } else if(c.inMonth){const active=salaryPlans.filter(p=>{const r=Store.salaryRange(p);return c.date>=r.start&&c.date<=r.end;});if(active.length)details='<span class="day-hours rest-label">'+(active.every(p=>p.employmentStart&&c.date<p.employmentStart)?'未入职':'休息')+'</span>';}
       }
       return `<td><button class="${classes.join(' ')}" data-date="${c.date}" aria-label="${label}"
-        ${c.isToday ? 'aria-current="date"' : ''}><b>${c.day}</b>${details}</button></td>`;
+        ${c.isToday ? 'aria-current="date"' : ''}><b>${cycle!==1&&(c.day===1||c.date===range.start)?Number(c.date.slice(5,7))+'/'+c.day:c.day}</b>${details}</button></td>`;
     }
 
     const partialPay = !Store.settings.hideAmount && [...days.values()].some(d => d.unpriced && d.unpriced < d.count);
@@ -289,8 +293,8 @@ Views.worktime = (() => {
 
     const listHtml = (() => {
       if (mode !== 'list') return '';
-      const dates = [...entries.keys()].filter(d => d.startsWith(ym)).sort().reverse();
-      if (!dates.length) return '<div class="empty"><div>本月暂无工时记录</div></div>';
+      const dates = [...entries.keys()].filter(d => d>=range.start&&d<=range.end).sort().reverse();
+      if (!dates.length) return '<div class="empty"><div>本区间暂无工时记录</div></div>';
       return dates.map(d => {
         const day = days.get(d);
         return '<div class="day-group">' +
@@ -315,22 +319,24 @@ Views.worktime = (() => {
       '    </div>' +
       '  </div>' +
 
+      (primary?'<div class="work-scope report-switch" role="group" aria-label="统计范围">'+[['period','工资周期'],['month','自然月']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
       '    <header class="work-monthbar"><div class="work-month">' +
-      '      <button class="j-prev" aria-label="上个月">‹</button><h2>' + U.ymLabel(ym) + '</h2>' +
+      '      <button class="j-prev" aria-label="上个月">‹</button><h2>' + (scope==='period'&&primary?Number(ym.slice(5))+'月结算期':U.ymLabel(ym)) + '</h2>' +
       '      <button class="j-next" aria-label="下个月">›</button></div>' +
       '      <div class="report-switch" role="group" aria-label="工时视图">' +
       '        <button data-m="cal" aria-pressed="' + (mode === 'cal') + '">月历</button>' +
       '        <button data-m="list" aria-pressed="' + (mode === 'list') + '">列表</button></div></header>' +
+      '<p class="work-range">'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</p>'+
       calendar +
       '  <div class="stat-grid worktime-summary">' +
       '    <div><div class="lab">已记工时</div><div class="val num">' + U.fmtHours(ws.total) + '</div></div>' +
       '    <div><div class="lab">已计工资</div><div class="val num">¥' + UI.amount(ws.pay, true) + '</div></div>' +
-      '    <div><div class="lab">全月日均工资</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
+      '    <div><div class="lab">区间日均工资</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
       '    <div><div class="lab">出勤天数</div><div class="val num">' + ws.days + ' 天</div></div>' +
       '  </div>' +
 
-      '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym) + listHtml +
+      '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym,salaryPlans) + listHtml +
 
       (projArr.length
         ? '<div class="card"><div class="section-title">项目分布</div><div class="report-switch work-distribution">'+[['pay','工资'],['days','出勤天数'],['hours','已填小时']].map(([key,text])=>`<button data-distribution="${key}" aria-pressed="${distribution===key}">${text}</button>`).join('')+'</div>' + projArr.map(p =>
@@ -347,12 +353,13 @@ Views.worktime = (() => {
     root.querySelector('.j-receipts').onclick=()=>Views.payroll.receipts(ym);
     root.querySelectorAll('[data-distribution]').forEach(b=>b.onclick=()=>{distribution=b.dataset.distribution;App.refresh(true);});
     Views.payroll.bind(root,ym);
-    root.querySelector('.j-add').onclick = () => openDaySheet(U.todayStr().startsWith(ym) ? U.todayStr() : ym + '-15');
+    root.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{scope=b.dataset.scope;ym=scope==='period'?WorkCalendar.monthFor(U.todayStr(),primary?.cycleStartDay || 1):U.ymNow();App.refresh(true);});
+    root.querySelector('.j-add').onclick=()=>openDaySheet(U.todayStr()>=range.start&&U.todayStr()<=range.end?U.todayStr():range.start);
     root.querySelector('.j-prev').onclick = () => { ym = U.ymShift(ym, -1); App.refresh(true); };
     root.querySelector('.j-next').onclick = () => { ym = U.ymShift(ym, 1); App.refresh(true); };
     root.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; App.refresh(true); });
     root.querySelectorAll('.j-day, .j-day2').forEach(el => el.onclick = () => openDaySheet(el.dataset.date));
   }
 
-  return { mount, openDaySheet, openWageSheet };
+  return { mount, openDaySheet, openWageSheet, openPeriod };
 })();
