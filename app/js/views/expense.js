@@ -5,9 +5,25 @@
 Views.expense = (() => {
   const filter = { type: '', accountId: '', categoryId: '', subId: '', kw: '' };
   const curBook = () => Store.settings.currentBookId;
+  const parseFee=value=>!String(value || '').trim() || /^0(?:\.0{1,2})?$/.test(String(value).trim())?0:Store.parseAmount(value);
+  function feeFields(state) {
+    return '<div class="transfer-fee"><div class="money-field-grid"><label>手续费（元，可选）<input class="j-fee" inputmode="decimal" placeholder="0.00" value="'+U.escapeHtml(state.fee || '')+'"></label><label>扣费方式<select class="j-fee-mode"><option value="extra" '+(state.feeMode!=='deduct'?'selected':'')+'>额外扣除</option><option value="deduct" '+(state.feeMode==='deduct'?'selected':'')+'>从转账金额内扣除</option></select></label></div><div class="transfer-breakdown" aria-live="polite"></div><small>手续费单独计入支出；修改或删除转账时同步处理。</small></div>';
+  }
+  function feeTerms(state){return Store.transferAmounts(Store.parseAmount(state.amount),parseFee(state.fee),state.feeMode || 'extra');}
+  function paintTransfer(body,state){
+    const target=body.querySelector('.transfer-breakdown');if(!target)return;
+    try{const t=feeTerms(state);target.innerHTML='<span>实际扣款<b>¥'+UI.amount(t.debited)+'</b></span><i>→</i><span>实际到账 / 抵扣欠款<b>¥'+UI.amount(t.amountMinor)+'</b></span>';}
+    catch(e){target.textContent=state.amount?e.message:'填写金额后，核对实际扣款与到账';}
+  }
+  function bindFee(body,state,change){
+    const fee=body.querySelector('.j-fee');if(!fee)return;
+    fee.oninput=e=>{state.fee=e.target.value;change();};
+    body.querySelector('.j-fee-mode').onchange=e=>{state.feeMode=e.target.value;change();};
+  }
 
   /* ---------- 记一笔 / 编辑弹层 ---------- */
   function openEntrySheet(editItem, presetKind, presetDate, draft, onSaved) {
+    if(editItem?.transferFeeFor){editItem=Store.data.transactions.find(t=>t.id===editItem.transferFeeFor);if(!editItem){UI.toast('找不到关联转账','err');return;}}
     if (editItem?.tripId) { Views.trips.edit(editItem); return; }
     const activeTrip = Store.trip(Store.settings.activeTripId);
     let tripExpense = !editItem && !!activeTrip;
@@ -22,7 +38,8 @@ Views.expense = (() => {
     if (editItem) {
       state = {
         bookId: editItem.bookId, type: editItem.type,
-        amount: editItem.amountMinor ? String(editItem.amountMinor / 100) : '',
+        amount: editItem.amountMinor ? String((editItem.amountMinor+(editItem.type==='transfer'&&editItem.feeMode==='deduct'?(editItem.feeMinor || 0):0)) / 100) : '',
+        fee:editItem.feeMinor?String(editItem.feeMinor/100):'',feeMode:editItem.feeMode || 'extra',
         categoryId: editItem.categoryId || '',
         accountId: editItem.accountId || lastAcc,
         fromId: editItem.fromId || (assetAccs[0] ? assetAccs[0].id : ''),
@@ -32,14 +49,14 @@ Views.expense = (() => {
     } else {
       state = {
         bookId: (Store.currentBook() || books.find(b => b.id === Store.settings.lastBookId && !b.archived) || books[0] || {}).id || '',
-        type: presetKind || 'out', amount: '', categoryId: '',
+        type: presetKind || 'out', amount: '', categoryId: '', fee:'',feeMode:'extra',
         accountId: lastAcc,
         fromId: assetAccs[0] ? assetAccs[0].id : '',
         toId: (accsAll.find(a => a.type === 'liability') || accsAll[1] || accsAll[0] || {}).id || '',
         note: '', date: presetDate || U.todayStr(), ...draft
       };
     }
-    let saving = false, sentence = '', reviewing = !!draft;
+    let saving = false, sentence = '', reviewing = !!draft && !draft._direct;
     let focusAmount = !editItem && !draft;
 
     UI.sheet({
@@ -91,13 +108,14 @@ Views.expense = (() => {
                 '</div></div>' +
                 '<div class="field"><label>转入账户（选负债账户 = 还款）</label><div class="acct-chips j-to">' +
                 accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
-                '</div></div>' +
+                '</div></div>' + feeFields(state) +
                 (isRepayMode
                   ? '<div class="repay-tip">'+UI.art('card')+'还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
                 accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
                 '</div></div>' +
+                (state.type==='out'&&Store.account(state.accountId)?.type==='liability'?'<p class="credit-entry-hint">'+UI.art('card')+'这笔现在就计入消费和预算，同时增加待还；之后还款请用“转账/还款”。</p>':'')+
                 '<div class="field"><label>一级分类</label><div class="cat-grid j-cats">' +
                 roots.map(c => '<button class="cat-item ' + (rootCat && rootCat.id === c.id ? 'on' : '') + '" data-id="' + c.id + '"><span class="ci">' + UI.categoryIcon(c) + '</span><span>' + U.escapeHtml(c.name) + '</span></button>').join('') +
                 '</div></div>' +
@@ -165,7 +183,7 @@ Views.expense = (() => {
               if (!b) return;
               state[key] = b.dataset.id;
               box.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-              if (isTransfer) render();
+              if (isTransfer || key==='accountId') render();
             };
           };
           bindChips('.j-acc', 'accountId');
@@ -184,14 +202,16 @@ Views.expense = (() => {
             if (!b) return;
             state.categoryId = b.dataset.id;
             subsBox.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+            paintBudget();
           };
           const amt = body.querySelector('.j-amount');
           amt.oninput = e => { state.amount = e.target.value; paintBudget(); };
+          bindFee(body,state,paintBudget);
           if (focusAmount) {
             focusAmount=false;
             setTimeout(() => { if (amt.isConnected && !quick.open && !body.contains(document.activeElement)) amt.focus(); },250);
           }
-          body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
+          body.querySelector('.j-note').oninput = e => { state.note = e.target.value; paintBudget(); };
           const channel=body.querySelector('.j-channel');if(channel)channel.onchange=e=>{state.paymentChannel=e.target.value;};
           body.querySelector('.j-date').onchange = e => { state.date = e.target.value || U.todayStr(); syncChips(); };
           body.querySelector('.j-today').onclick = () => { state.date = U.todayStr(); body.querySelector('.j-date').value = state.date; syncChips(); };
@@ -201,7 +221,8 @@ Views.expense = (() => {
           };
           function syncChips() { body.querySelector('.j-today').classList.toggle('on', state.date === U.todayStr()); paintBudget(); }
           function paintBudget() {
-            const rules=Store.budgetImpact({...state,type:advance?'advance':state.type,amountMinor:Store.parseAmount(state.amount)},editItem?.id);
+            paintTransfer(body,state);
+            const rules=Store.budgetImpact({...state,type:advance?'advance':state.type,feeMinor:parseFee(state.fee),amountMinor:Store.parseAmount(state.amount)},editItem?.id);
             const target=body.querySelector('.entry-budget-check');
             target.innerHTML=rules.map(r=>'<span class="'+(r.remaining<0?'money-out':'')+'">'+U.escapeHtml(r.label)+' · '+(r.remaining<0?'记下后超出 ¥':'记下后剩余 ¥')+UI.amount(Math.abs(r.remaining))+'</span>').join('');
           }
@@ -214,11 +235,13 @@ Views.expense = (() => {
             if (isTransfer && state.fromId === state.toId) { UI.toast('转出与转入账户不能相同', 'err'); return; }
             if (state.type !== 'transfer' && !state.accountId) { UI.toast('请选择账户', 'err'); return; }
             if (!state.bookId) { UI.toast('请选择账本', 'err'); return; }
+            let transferTerms;
+            try { if(isTransfer)transferTerms=feeTerms(state); }catch(e){UI.toast(e.message,'err');return;}
             saving = true;
             body.querySelector('.j-save').textContent = '保存中…';
             const payload = {
               bookId: advance ? activeTrip.bookId : state.bookId, type: advance ? 'advance' : state.type,
-              tripId: advance ? activeTrip.id : '', amountMinor: minor, note: state.note.trim(), date: state.date,
+              tripId: advance ? activeTrip.id : '', amountMinor: transferTerms?.amountMinor || minor, feeMinor:transferTerms?.feeMinor || 0,feeMode:transferTerms?.feeMode || 'extra',note: state.note.trim(), date: state.date,
               accountId: state.type === 'transfer' ? '' : state.accountId,
               fromId: state.type === 'transfer' ? state.fromId : '',
               toId: state.type === 'transfer' ? state.toId : '',
@@ -245,7 +268,7 @@ Views.expense = (() => {
           };
           const delBtn = body.querySelector('.j-del');
           if (delBtn) delBtn.onclick = async () => {
-            if (await UI.confirm({ title: '删除账单', msg: '确定删除这条记录吗？账户余额将恢复。', danger: true, okText: '删除' })) {
+            if (await UI.confirm({ title: '删除账单', msg: editItem.feeMinor?'删除这笔转账及关联手续费？两边账户余额和支出统计会一起恢复。':'确定删除这条记录吗？账户余额将恢复。', danger: true, okText: '删除' })) {
               Store.removeTransaction(editItem.id);
               UI.toast('已删除');
               close();
@@ -327,11 +350,12 @@ Views.expense = (() => {
 
   /* ---------- 共享展示工具 ---------- */
   function tSummary(t) {
+    if(t.transferFeeFor)return {icon:'🧾',title:'转账手续费',sub:(t.note || '')+' · 点击随转账修改'};
     if (t.tripId) return {icon:'🧳',title:(t.type==='advance'?'出差垫付':'报销到账')+' · '+(Store.trip(t.tripId)?.name || '出差'),
       sub:[t.note,Store.category(t.categoryId)?.name,Store.accountName(t.accountId)].filter(Boolean).join(' · ')};
     if (t.type === 'transfer') {
       const repay = Store.isRepay(t);
-      return { icon: repay ? '💳' : '🔁', title: repay ? '还款' : '转账', sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.fromId) + ' → ' + Store.accountName(t.toId) };
+      return { icon: repay ? '💳' : '🔁', title: repay ? '还款' : '转账', sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.fromId) + ' → ' + Store.accountName(t.toId)+(t.feeMinor?' · 手续费 ¥'+UI.amount(t.feeMinor):'') };
     }
     const c = Store.category(t.categoryId);
     const root = c ? Store.catRoot(t.categoryId) : null;
@@ -365,7 +389,7 @@ Views.expense = (() => {
   }
 
   return {
-    openEntrySheet, openFilterSheet, tSummary, tAmountHtml, applyFilter,
+    openEntrySheet, openFilterSheet, tSummary, tAmountHtml, applyFilter,feeFields,feeTerms,bindFee,paintTransfer,
     curBook, filter,
     clearFilter() { filter.type = ''; filter.accountId = ''; filter.categoryId = ''; filter.subId = ''; filter.kw = ''; }
   };

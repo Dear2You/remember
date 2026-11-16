@@ -1,8 +1,8 @@
 {
-  "versionCode": 23100,
-  "versionName": "2.31",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.31/nianxiatian.apk",
-  "sha256": "50a74c463fb077cdaee37cd3719043bece6cbdcd1d00ef48989993ede9d44b52",
-  "apkBlob": "a99fd0561d8c56a2e39b1336e87b0bb80ea87597",
-  "note": "整页浅青水墨背景，底部导航与记账弹窗统一淡彩图标，首页补齐月度计划；工时同一项目合并为一张卡，支持下拉切换计薪周期；新增全账本消费上限、每日可花额度、超预算核对与月存钱计划；自动识别建行卡为主要存钱账户，支持存钱目标、存入取出、流水编辑删除与备份恢复；内置 AI 手册同步更新。"
+  "versionCode": 23200,
+  "versionName": "2.32",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.32/nianxiatian.apk",
+  "sha256": "ac8eb28db79b52dd6f2b5c26fcf5701b85817ac165815964ceb74a9bd5cdab50",
+  "apkBlob": "d29d71602bc1e84c683c8cf7f7fdf8c73cec98b4",
+  "note": "v2.32：流水明细放到账单第一页；转账/提现支持手续费内扣或额外扣，预览扣款到账并同步改删；修复 Android 键盘遮挡与输入框定位；水墨浅色界面增加青绿、红色和暖金层次；新增购物/外卖/奶茶专项额度、联培预算建议、白条信用消费与待还提醒。"
 }

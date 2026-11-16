@@ -32,10 +32,7 @@ const App = {
     document.getElementById('fab').addEventListener('click', () => this.go('ai'));
     window.addEventListener('hashchange', () => this.render(location.hash));
     Store.on('change', () => this.refresh());
-    window.addEventListener('resize', () => {
-      const small = window.innerHeight < window.outerHeight * 0.75 && window.outerHeight > 300;
-      document.body.classList.toggle('keyb', small);
-    });
+    KeyboardLayout.init();
     // 自动备份结果回传（来自 Android 原生桥）
     window.__backupDone = (status, msg) => Store.noteBackupResult(status, msg);
     Store.on('localBackup', Views.settings.updateLocalBackup);

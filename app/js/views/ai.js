@@ -100,6 +100,7 @@ Views.ai = (() => {
       '- 当前计薪方案（发薪日每月 '+Store.nextPayday().day+' 日，不代表计薪起止）：'+Store.salaryPlansOn(today).map(p=>{const s=Store.salarySummary(p);return p.project+' ['+Store.salaryRangeLabel(p)+(p.cycleConfirmed?'':'，区间待确认')+'] 入职起算 '+(p.employmentStart || '未设置')+'，完整一期 '+Store.fmtMinor(p.baseMinor)+' 元，应出勤 '+s.days+' 天，已确认 '+s.paidDays+' 天，缺勤 '+s.absentDays+' 天，待确认 '+s.unconfirmed+' 天，预计 '+Store.fmtMinor(s.expected)+' 元';}).join('；')+'。已计工资不代表实际到账。月薪项目的出勤由用户在工时日历确认，不能再用普通时薪或日薪动作重复计入。\n'+
       '- 待报销：'+Store.fmtMinor(Store.tripTotals().pending)+' 元。\n'+
       '- 全账本自然月消费上限：'+Store.fmtMinor(spending.limit)+' 元（0 表示未设），已用 '+Store.fmtMinor(spending.spent)+'，剩余 '+Store.fmtMinor(spending.remaining)+'；本月计划存下 '+Store.fmtMinor(spending.savingTarget)+'，存钱账户本月净增加 '+Store.fmtMinor(spending.saved)+'。主要存钱账户：'+(Store.preferredSavingAccount()?.name || '未指定')+'。存钱目标：'+Store.data.savingGoals.map(g=>g.name+' '+Store.fmtMinor(Store.accountBalance(g.accountId))+'/'+Store.fmtMinor(g.targetMinor)).join('；')+'。计划与目标由用户在「预算与存钱」操作，不可伪称已经修改或完成银行转账。\n'+
+      '- 专项消费：'+Store.focusSummary(ym).map(s=>s.label+'已用 '+Store.fmtMinor(s.spent)+' / 额度 '+Store.fmtMinor(s.limit)+'（0 为不限）').join('；')+'。信用账户本月消费 '+Store.fmtMinor(Store.creditSummary(ym).spent)+'，当前全部待还 '+Store.fmtMinor(Store.creditSummary(ym).debt)+'。白条下单就计消费，还款不再重复算支出。\n'+
       '- 打卡习惯：' + habits + '\n' +
       '- 今日待办(' + dg.tasksOpen + '项)：' + taskStr + '；逾期：' + overdueStr + '\n' +
       '- 下一场日程：' + nextEv + '；今日专注：' + focusStr + '\n' +
@@ -109,7 +110,8 @@ Views.ai = (() => {
       '```action\n{"type":"add_expense","kind":"out","amount":25.5,"category":"午餐","account":"微信零钱","note":"午饭","date":"' + today + '"}\n```\n' +
       '支持的操作：\n' +
       'add_expense 的 kind 取 out 或 in，amount 是以人民币元为单位的数字；book、account、category、note、date 按用户提供的信息填写。\n' +
-      '{"type":"add_transfer","from":"转出账户","to":"转入账户(负债账户=还款)","amount":数字(元),"note":"备注"}\n' +
+      '{"type":"add_transfer","from":"转出账户","to":"转入账户(负债账户=还款)","amount":数字(元),"fee":手续费元数(选填),"feeMode":"extra额外扣除或deduct金额内扣除","date":"YYYY-MM-DD","note":"备注"}\n' +
+      '转账手续费未提及则为0；提及手续费但不清楚扣费方式时先询问，不猜费率。白条等明确账户不存在时，请用户先在预算与存钱添加信用账户，不能改记到零钱。\n' +
       '{"type":"add_task","title":"事项名","date":"YYYY-MM-DD或空","important":bool,"urgent":bool}\n' +
       '{"type":"add_memo","title":"标题","content":"内容"}\n' +
       '{"type":"add_habit","name":"习惯名","icon":"一个emoji"}\n' +
@@ -171,9 +173,13 @@ Views.ai = (() => {
           if (!minor || !from || !to || from.id === to.id) return { label: '转账失败：请提供不同的转出/转入账户名' };
           let bookId = a.book ? (findBook(a.book) || {}).id : '';
           if (!bookId) bookId = Store.settings.currentBookId || (Store.books()[0] || {}).id;
-          const item = Store.addTransaction({ bookId, type: 'transfer', amountMinor: minor, fromId: from.id, toId: to.id, note: a.note || '', date: U.todayStr() });
+          const fee=a.fee==null||a.fee===0?0:Store.parseAmount(a.fee);
+          if(fee===null || (fee>0&&!['extra','deduct'].includes(a.feeMode)))return {label:'未记账：请确认手续费金额及额外扣除 / 金额内扣除'};
+          const terms=Store.transferAmounts(minor,fee,a.feeMode || 'extra');
+          const item = Store.addTransaction({ bookId, type: 'transfer', ...terms, fromId: from.id, toId: to.id, note: a.note || '', date: a.date || U.todayStr() });
           const repay = Store.isRepay(item);
-          return { label: (repay ? '已还款 ' : '已转账 ') + '¥' + Store.fmtMinor(minor) + '：' + from.name + ' → ' + to.name, itemId: item.id };
+          const warning=Store.budgetImpact(item,item.id).filter(r=>r.over>0).map(r=>r.label+'已超出 ¥'+UI.amount(r.over)).join('；');
+          return { label: (repay ? '已还款 ' : '已转账到账 ') + '¥' + Store.fmtMinor(item.amountMinor) + '：' + from.name + ' → ' + to.name+(fee?'，手续费 ¥'+Store.fmtMinor(fee)+' 已计支出':'')+(warning?'\n'+warning:''), itemId: item.id };
         }
         case 'add_task': {
           const item = Store.addTask({

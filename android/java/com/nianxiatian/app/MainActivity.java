@@ -65,12 +65,18 @@ public class MainActivity extends Activity {
         // Android 15+ 强制边缘到边缘：把系统栏高度作为安全衬距（设在容器上，WebView 自身 padding 不可靠）
         final android.widget.FrameLayout container = fl;
         if (android.os.Build.VERSION.SDK_INT >= 30) {
+            // Own all insets consistently, including IME. Consuming only system bars hid forms behind the keyboard.
+            getWindow().setDecorFitsSystemWindows(false);
             container.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
                 @Override
                 public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
                     android.graphics.Insets sys = insets.getInsets(
                             android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
-                    v.setPadding(0, sys.top, 0, sys.bottom);
+                    android.graphics.Insets ime = insets.getInsets(android.view.WindowInsets.Type.ime());
+                    v.setPadding(sys.left, sys.top, sys.right, Math.max(sys.bottom, ime.bottom));
+                    final boolean keyboardVisible = insets.isVisible(android.view.WindowInsets.Type.ime());
+                    webView.post(() -> webView.evaluateJavascript(
+                            "window.KeyboardLayout && KeyboardLayout.nativeChanged(" + keyboardVisible + ")", null));
                     return android.view.WindowInsets.CONSUMED;
                 }
             });
@@ -324,11 +330,18 @@ public class MainActivity extends Activity {
                     try {
                         getWindow().setStatusBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
                         getWindow().setNavigationBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
-                        View decor = getWindow().getDecorView();
-                        int vis = decor.getSystemUiVisibility();
-                        if (dark) vis &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                        else vis |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                        decor.setSystemUiVisibility(vis);
+                        if (android.os.Build.VERSION.SDK_INT >= 30) {
+                            android.view.WindowInsetsController controller = getWindow().getInsetsController();
+                            int light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
+                                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                            if (controller != null) controller.setSystemBarsAppearance(dark ? 0 : light, light);
+                        } else {
+                            View decor = getWindow().getDecorView();
+                            int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                            if (android.os.Build.VERSION.SDK_INT >= 26) light |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                            int vis = decor.getSystemUiVisibility();
+                            decor.setSystemUiVisibility(dark ? vis & ~light : vis | light);
+                        }
                         webView.setBackgroundColor(dark ? 0xFF19201D : 0xFFF7FAF8);
                     } catch (Exception ignored) { }
                 }

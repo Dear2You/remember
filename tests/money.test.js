@@ -6,6 +6,22 @@ function fixture(){
   for(const file of ['utils','store','money'])vm.runInContext(fs.readFileSync('app/js/'+file+'.js','utf8'),ctx);
   const s=ctx.window.Store;ctx.window.UI.toast=()=>{};s.init();return {s,storage};
 }
+
+test('专项额度包含白条消费，外卖与饮品各归一组，跨账本沿用且编辑正确',()=>{
+  const {s}=fixture();s.saveMoneyPlan({month:'2026-11',limitMinor:200000,saveMinor:300000,repeat:true,focusLimits:{shopping:50000,delivery:20000,drinks:10000},dailyCategories:true});
+  const shop=s.data.categories.find(c=>c.name==='数码'),food=s.data.categories.find(c=>c.name==='餐饮'),tea=s.data.categories.find(c=>c.name==='奶茶饮品');
+  const credit=s.addAccount({name:'京东白条',type:'liability',opening:200}),book=s.addBook({name:'其他'});
+  const t=s.addTransaction({type:'out',accountId:credit.id,categoryId:shop.id,amountMinor:51000,date:'2026-12-02',bookId:book.id});
+  const rules=s.budgetImpact({...t,amountMinor:52000},t.id);assert.equal(rules.find(r=>r.label==='购物专项额度').after,52000);assert.equal(rules.find(r=>r.label==='购物专项额度').needsConfirm,true);
+  s.addTransaction({type:'out',accountId:'acc-wx',categoryId:food.id,amountMinor:2000,note:'奶茶外卖',date:'2026-12-02'});
+  s.addTransaction({type:'out',accountId:'acc-wx',categoryId:tea.id,amountMinor:1500,date:'2026-12-03'});
+  assert.equal(s.focusSummary('2026-12').find(s=>s.key==='drinks').spent,3500);assert.equal(s.focusSummary('2026-12').find(s=>s.key==='delivery').spent,0);
+  s.addTransaction({type:'transfer',fromId:'acc-bank',toId:credit.id,amountMinor:10000,date:'2026-12-03'});
+  const c=s.creditSummary('2026-12');assert.equal(c.debt,61000);assert.equal(c.spent,51000);assert.equal(c.paid,10000);
+  assert.equal(s.moneySummary('2026-12').spent,54500);
+  const restore=fixture().s;assert(restore.importData(JSON.stringify(s.backupData())).ok);assert.equal(restore.moneyPlan('2027-01').focusLimits.shopping,50000);
+  assert.throws(()=>s.saveMoneyPlan({month:'2026-11',limitMinor:1,saveMinor:0,focusLimits:{shopping:null}}),/有效/);
+});
 test('月计划跨年沿用，改动与停用只影响所选月及之后，旧数据保持空计划',()=>{
   const {s}=fixture();assert.equal(s.moneyPlan(),null);
   s.saveMoneyPlan({month:'2026-11',limitMinor:200000,saveMinor:300000,repeat:true});

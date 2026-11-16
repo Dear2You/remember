@@ -1,7 +1,7 @@
 'use strict';
 /* ============ 账单页：账单报表 | 日历报表（各自独立 周/月/年 周期，点击选择） ============ */
 Views.bills = (() => {
-  let topMode = 'report';             // report | calendar
+  let topMode = 'detail';             // detail | report | calendar
   let calendarMetric = 'both';
   // 两种报表各自的周期状态（独立记忆，默认月账单）
   const periods = {
@@ -108,7 +108,7 @@ Views.bills = (() => {
 
   /* ---------- 通用头部（一级切换 + 周期选择 + 导航） ---------- */
   function headerHtml(p, selected) {
-    const names = [['report','收支分析'],['detail','流水明细'],['calendar','账单日历']];
+    const names = [['detail','流水明细'],['report','收支分析'],['calendar','账单日历']];
     return `<div class="report-tabs j-top">${names.map(([key,title]) =>
       `<button data-t="${key}" aria-pressed="${selected===key}">${title}</button>`).join('')}</div>
       <div class="swipe-panel">

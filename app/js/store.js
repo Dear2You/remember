@@ -446,6 +446,7 @@ const Store = {
   // o: {bookId, type, amountMinor, accountId?, fromId?, toId?, categoryId?, note, date}
   // 校验：in 只能资产账户；还款额 ≤ 当前负债
   addTransaction(o) {
+    if (o.transferFeeFor) throw new Error('手续费请在对应转账中登记');
     const now = Date.now();
     const item = {
       id: U.id(), bookId: o.bookId || this.data.settings.currentBookId || (this.books()[0] || {}).id || '',
@@ -458,10 +459,12 @@ const Store = {
     if (o.wageProject) { item.wageProject=o.wageProject; item.wageMonth=o.wageMonth; }
     if (o.paymentChannel) item.paymentChannel=String(o.paymentChannel).slice(0,20);
     if (o.subscriptionId) {item.subscriptionId=o.subscriptionId;item.subscriptionDue=o.subscriptionDue;}
+    if (item.type === 'transfer') { item.feeMinor=o.feeMinor ?? 0; item.feeMode=o.feeMode || 'extra'; }
     this.validateTransaction(item);
     this.checkTripChange(null,item);
     this.mutate(d => {
       d.transactions.push(item);
+      this.syncTransferFee(d,item);
       if(item.subscriptionId){const sub=d.subscriptions.find(s=>s.id===item.subscriptionId);if(sub.nextDue===item.subscriptionDue)sub.nextDue=this.nextSubscriptionDate(sub);}
       if (item.type === 'reimbursement') d.settings.lastReceiptAccountId = item.accountId;
       else if (item.type !== 'transfer' && item.accountId) d.settings.lastAccountId = item.accountId;
@@ -486,6 +489,7 @@ const Store = {
       if (acc && acc.type === 'liability') throw new Error('收入不能记入负债账户');
     }
     if (item.type === 'transfer') {
+      if (!Number.isSafeInteger(item.feeMinor ?? 0) || (item.feeMinor ?? 0)<0 || !Number.isSafeInteger(item.amountMinor+(item.feeMinor || 0)) || !['extra','deduct'].includes(item.feeMode || 'extra')) throw new Error('请输入有效手续费和扣费方式');
       const from = this.account(item.fromId), to = this.account(item.toId);
       if (!from || !to || from.id === to.id) throw new Error('请选择两个不同的账户');
       if (from.type === 'liability') throw new Error('首版不支持从负债账户转出');
@@ -497,22 +501,66 @@ const Store = {
   updateTransaction(id, patch) {
     const it = this.data.transactions.find(x => x.id === id);
     if (!it) throw new Error('找不到这条账单');
+    if (it.transferFeeFor || patch.transferFeeFor) throw new Error('手续费请在对应转账中修改');
     const next = Object.assign({}, it, patch, { id, updatedAt: Date.now() });
+    if(next.type!=='transfer'){next.feeMinor=0;next.feeMode='extra';}
     this.validateTransaction(next, id);
     this.checkTripChange(it,next);
     this.mutate(d => {
       if (next.type === 'reimbursement' && next.accountId !== it.accountId) d.settings.lastReceiptAccountId = next.accountId;
       if(next.subscriptionId&&!it.subscriptionId){const sub=d.subscriptions.find(s=>s.id===next.subscriptionId);if(sub.nextDue===next.subscriptionDue)sub.nextDue=this.nextSubscriptionDate(sub);}
       Object.assign(it,next);
+      this.syncTransferFee(d,it);
     });
   },
   removeTransaction(id) {
+    if(this.data.transactions.find(t=>t.id===id)?.transferFeeFor)throw new Error('手续费请在对应转账中修改或删除');
     this.checkTripChange(this.data.transactions.find(t => t.id === id),null);
     this.mutate(d => {
       const tx=d.transactions.find(x=>x.id===id), sub=tx?.subscriptionId&&d.subscriptions.find(s=>s.id===tx.subscriptionId);
       if(sub&&sub.nextDue===this.nextSubscriptionDate(sub,tx.subscriptionDue))sub.nextDue=tx.subscriptionDue;
-      d.transactions = d.transactions.filter(x => x.id !== id);
+      d.transactions = d.transactions.filter(x => x.id !== id && x.transferFeeFor !== id);
     });
+  },
+  // The transfer stores the amount that arrives. Its linked expense pays the fee once.
+  transferAmounts(entered, fee=0, mode='extra') {
+    if(!Number.isSafeInteger(entered)||entered<=0||!Number.isSafeInteger(fee)||fee<0||!['extra','deduct'].includes(mode))throw new Error('请输入有效转账金额和手续费');
+    const received=mode==='deduct'?entered-fee:entered,debited=received+fee;
+    if(received<=0||!Number.isSafeInteger(debited))throw new Error('手续费不能达到或超过转账金额');
+    return {amountMinor:received,feeMinor:fee,feeMode:mode,debited};
+  },
+  feeCategory(data=this.data, create=false) {
+    let category=data.categories.find(c=>c.kind==='out'&&c.name==='手续费');
+    if(!category&&create){
+      const root=data.categories.find(c=>c.kind==='out'&&!c.parentId&&c.name==='其他支出');
+      category={id:U.id(),name:'手续费',kind:'out',icon:'🧾',parentId:root?.id || '',archived:false,sortOrder:99,createdAt:Date.now()};
+      data.categories.push(category);
+    }
+    return category;
+  },
+  syncTransferFee(data, item) {
+    const existing=data.transactions.find(t=>t.transferFeeFor===item.id);
+    data.transactions=data.transactions.filter(t=>t.transferFeeFor!==item.id);
+    if(item.type!=='transfer'||!item.feeMinor)return;
+    data.transactions.push({id:existing?.id || U.id(),bookId:item.bookId,type:'out',amountMinor:item.feeMinor,
+      accountId:item.fromId,fromId:'',toId:'',categoryId:this.feeCategory(data,true).id,
+      note:'转账手续费 · '+this.accountName(item.fromId)+' → '+this.accountName(item.toId),date:item.date,
+      transferFeeFor:item.id,createdAt:existing?.createdAt || item.createdAt,updatedAt:item.updatedAt});
+  },
+  validateTransferFees(data) {
+    const rows=data.transactions,byId=new Map(rows.map(t=>[t.id,t])),fees=new Map();
+    if(byId.size!==rows.length)throw new Error('备份中存在重复账单');
+    for(const t of rows)if(t.transferFeeFor)fees.set(t.transferFeeFor,(fees.get(t.transferFeeFor) || 0)+1);
+    for(const t of rows){
+      if(t.transferFeeFor){
+        const parent=byId.get(t.transferFeeFor);
+        if(!parent||parent.type!=='transfer'||t.type!=='out'||t.amountMinor!==parent.feeMinor||t.accountId!==parent.fromId||t.bookId!==parent.bookId||t.date!==parent.date||t.tripId||t.subscriptionId||t.wageProject)throw new Error('备份中的转账手续费关联无效');
+      }
+      if(t.type==='transfer'){
+        const fee=t.feeMinor ?? 0,linked=fees.get(t.id) || 0;
+        if(!Number.isSafeInteger(fee)||fee<0||!Number.isSafeInteger(t.amountMinor+fee)||!['extra','deduct'].includes(t.feeMode || 'extra')||linked!==(fee?1:0))throw new Error('备份中的转账与手续费不匹配');
+      }else if(t.feeMinor)throw new Error('手续费只能关联转账');
+    }
   },
   isRepay(t) { return t.type === 'transfer' && this.account(t.toId) && this.account(t.toId).type === 'liability'; },
 
@@ -1213,6 +1261,7 @@ const Store = {
     }
     for (const rows of tripRows.values()) if (!this.tripCovered(rows)) return {ok:false,msg:'备份中的报销到账超过了当时的垫付'};
     try {
+      this.validateTransferFees(d);
       for(const sub of d.subscriptions || [])this.subscriptionTerms(sub);
       const seenPayments=new Set();
       for(const tx of d.transactions)if(tx.subscriptionId){

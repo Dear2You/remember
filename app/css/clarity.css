@@ -1,0 +1,113 @@
+/* Fresh ink colours: a deeper jade anchor, blue work pages and rose spending cues. */
+:root {
+  --accent: #246c5e; --solid: #276f61; --accent-weak: #d8ede3;
+  --text: #243f38; --text-2: #4d625b; --text-3: #607168;
+  --hairline: #cbdcd1; --input-bg: #ecf3ed; --tint-surface: #e3efe6;
+  --calendar-expense: #ad465b; --danger: #ae463f; --info: #386f8e; --warn: #99642d;
+  --landscape-opacity: .88; --scene-opacity: .72; --paper-glass: #fffef8f2;
+  --nav-paper: #fffefaf7; --rose-wash: #f7e8e6; --blue-wash: #e7f0f4; --gold-wash: #f5edda;
+  --surface-shadow: 0 3px 12px #274a3620;
+}
+html[data-theme="dark"] { --accent-weak: #344b3f; --warn: #d0ab6e; --rose-wash: #3e2d32; --blue-wash: #273b42; --gold-wash: #3b372b; --surface-shadow: 0 3px 12px #0003; }
+@media(prefers-color-scheme:dark) { html[data-theme="auto"] { --accent-weak: #344b3f; --warn: #d0ab6e; --rose-wash: #3e2d32; --blue-wash: #273b42; --gold-wash: #3b372b; --surface-shadow: 0 3px 12px #0003; } }
+#app::before { filter: saturate(1.32) contrast(1.06); }
+.masthead { border-bottom: 1px solid var(--hairline); }
+.wordmark { color: var(--accent); }
+.card, .account-drawer { box-shadow: 0 2px 7px #274a3609; }
+.art-wash { fill-opacity: .26; }
+.decorated-page>.page-head::before { opacity: .34; }
+.page-emblem { opacity: 1; }
+.handpage .home-book { border-top: 3px solid var(--accent); box-shadow: var(--surface-shadow); }
+.handpage .home-cover { min-height: 95px; }
+.handpage .overview-finance { background: linear-gradient(180deg,transparent,var(--tint-surface)); }
+.handpage .overview-finance header { color: var(--accent); }
+.handpage .overview-shortcuts button>span { border-radius: 12px 5px 12px 5px; background: var(--tint-surface); width: 40px; height: 38px; }
+.handpage .overview-shortcuts button:nth-child(2)>span { background: var(--blue-wash); }
+.handpage .overview-shortcuts button:nth-child(3)>span { background: var(--gold-wash); }
+.handpage .overview-shortcuts button:nth-child(4)>span { background: var(--rose-wash); }
+.home-money { border-left: 3px solid var(--accent); }
+.home-money::before { opacity: .8; width: 40px; }
+.saving-track { height: 5px; }
+.saving-track i { opacity: .9; }
+.handpage .work-slip { border-left: 3px solid var(--info); background: var(--blue-wash); }
+.handpage .work-slip::before { background: var(--info); opacity: .75; }
+.home-notebook .overview-section h2 { color: var(--accent); }
+.home-notebook .overview-section+ .overview-section h2 { color: var(--calendar-expense); }
+#tabbar { border-color: var(--hairline); box-shadow: var(--surface-shadow); padding-top: 6px; }
+#tabbar .tab.on { background: var(--accent-weak); border-radius: 12px; }
+#tabbar .tab.on::after { bottom: 1px; opacity: .9; }
+#tabbar .tab-plus .art-icon { color: #fff9e5; background: var(--solid); border: 1px solid var(--solid); box-shadow: 0 2px 5px #28493726; }
+#tabbar .tab .art-wash { fill-opacity: .2; }
+.report-tabs { border-bottom-color: var(--hairline); }
+.report-tabs [aria-pressed="true"] { background: var(--accent-weak); color: var(--accent); border-radius: 8px 8px 0 0; }
+.seg button.on { background: var(--accent-weak); box-shadow: inset 0 0 0 1px var(--hairline); }
+.asset-overview { border-top: 3px solid var(--accent); background: linear-gradient(135deg,var(--paper-glass),var(--tint-surface)); }
+.asset-month { border-left: 3px solid var(--info); }
+.memo-card:nth-of-type(3n+1) { border-left-color: var(--accent); }
+.memo-card:nth-of-type(3n+2) { border-left-color: var(--warn); }
+.memo-card:nth-of-type(3n) { border-left-color: var(--info); }
+.entry-sheet .entry-amount { background: var(--tint-surface); border: 1px solid var(--hairline); border-radius: 10px; padding-inline: 12px; }
+.entry-sheet .entry-amount.money-out { background: var(--rose-wash); }
+.entry-sheet .cat-item.on { border-color: var(--accent); }
+.entry-sheet .cat-item:not(.on) .ci { background: var(--input-bg); border-radius: 9px; }
+.entry-sheet .j-type button.on[data-t="out"] { color: var(--calendar-expense); background: var(--rose-wash); }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.entry-amount .amount-input:focus { outline: none; }
+.entry-amount:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-weak); }
+.transfer-fee { border: 1px solid var(--hairline); border-radius: 9px; padding: 12px; margin: 12px 0; background: var(--tint-surface); }
+.transfer-fee label { font-size: 11px; color: var(--text-2); }
+.transfer-fee input, .transfer-fee select { font-size: 13px; margin-top: 6px; padding: 9px 7px; }
+.transfer-fee .money-field-grid { grid-template-columns: minmax(0,1fr) minmax(0,1.55fr); gap: 9px; margin-bottom: 9px; }
+.transfer-fee>small { color: var(--text-2); font-size: 10px; line-height: 1.8; }
+.transfer-breakdown { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 10px; border-block: 1px dashed var(--hairline); padding: 8px 0; margin-bottom: 6px; }
+.transfer-breakdown b { display: block; font: 17px/1.6 Georgia,serif; color: var(--text); }
+.transfer-breakdown i { color: var(--accent); font-style: normal; }
+.credit-entry-hint { color: var(--calendar-expense); padding: 9px; background: var(--rose-wash); border-radius: 7px; font-size: 11px; line-height: 1.8; }
+.credit-entry-hint svg { width: 22px; height: 22px; margin-right: 5px; }
+.home-credit { display: flex; align-items: center; justify-content: space-between; gap: 5px; width: 100%; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--hairline); text-align: left; font-size: 10px; color: var(--text-2); }
+.home-credit .art-icon { width: 21px; height: 21px; }
+.home-credit b { color: var(--calendar-expense); font-weight: 550; }
+.spending-focus, .credit-watch { background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 8px 16px 8px 8px; padding: 12px; margin: 14px 0; }
+.spending-focus>header, .credit-watch>header { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 9px; }
+.spending-focus h2, .credit-watch h2 { display: flex; align-items: center; gap: 6px; font: 600 14px/1.5 var(--book-serif); margin: 0; }
+.spending-focus header svg, .credit-watch header svg { width: 23px; height: 23px; }
+.focus-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.focus-grid>button { min-width: 0; text-align: left; padding: 10px 8px; border-radius: 7px; background: var(--rose-wash); }
+.focus-grid>.focus-delivery { background: var(--gold-wash); }
+.focus-grid>.focus-drinks { background: var(--blue-wash); }
+.focus-grid span { display: flex; justify-content: space-between; font-size: 11px; }
+.focus-grid i { font-style: normal; color: var(--text-3); }
+.focus-grid strong { display: block; font: 18px/1.9 Georgia,serif; overflow-wrap: anywhere; }
+.focus-grid small { display: block; font-size: 9px; color: var(--text-2); line-height: 1.7; }
+.focus-grid .saving-track { height: 3px; }
+.spending-focus>p, .credit-watch>p { font-size: 10px; line-height: 1.8; color: var(--text-2); margin-bottom: 0; }
+.credit-watch { border-top: 3px solid var(--calendar-expense); }
+.credit-overview { display: grid; grid-template-columns: 1fr 1fr; padding: 10px; border-radius: 7px; background: var(--rose-wash); gap: 10px; }
+.credit-overview span { font-size: 10px; }
+.credit-overview b { display: block; font: 21px/1.7 Georgia,serif; color: var(--calendar-expense); overflow-wrap: anywhere; }
+.credit-account { border-top: 1px solid var(--hairline); margin-top: 10px; padding-top: 10px; }
+.credit-account>div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
+.credit-account small { display: block; color: var(--text-2); font-size: 10px; margin: 6px 0; }
+.credit-account footer { display: flex; gap: 8px; }
+.credit-account footer button { min-height: 33px; padding: 5px 10px; border-radius: 5px; font-size: 11px; background: var(--input-bg); color: var(--accent); }
+.credit-account footer button:last-child { margin-left: auto; background: transparent; }
+.focus-plan { border: 1px solid var(--hairline); border-radius: 8px; margin: 16px 0; padding: 10px; }
+.focus-plan legend { font-size: 12px; color: var(--accent); padding: 0 5px; }
+.focus-plan>div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.focus-plan label { font-size: 11px; min-width: 0; }
+.focus-plan input { padding: 10px 6px; }
+.focus-plan small { display: block; margin-top: 7px; font-size: 10px; color: var(--text-2); }
+.money-suggestion { border: 1px solid var(--hairline); background: var(--gold-wash); }
+
+/* Fit fixed overlays to the visible keyboard-free area, without shrinking twice on Android. */
+body.keyb #app { height: var(--visible-height,100%); }
+body.keyb #sheetRoot, body.keyb #dialogRoot { top: var(--visible-top,0px); bottom: auto; height: var(--visible-height,100%); }
+body.keyb .sheet-panel { max-height: calc(100% - 8px); }
+.sheet-body { min-height: 0; overscroll-behavior-y: contain; scroll-padding-block: 18px 75px; }
+body.keyb .sheet-body { padding-bottom: 12px; }
+body.keyb .entry-submit { position: static; margin-top: 12px; }
+body.keyb #pageBody { min-height: 0; padding-bottom: 8px; }
+body.keyb .assistant-page { padding-bottom: 0; }
+body.keyb .ai-input-bar { padding-bottom: 8px; }
+@media(max-width:350px) { .home-credit { flex-wrap: wrap; } .home-credit>span:last-child { margin-left: auto; } .focus-grid { gap: 5px; } .focus-grid>button { padding: 9px 6px; } .focus-grid strong { font-size: 16px; } }
+@media(min-width:920px) { #tabbar { box-shadow: none; } #tabbar .tab.on { border-radius: 8px; } }

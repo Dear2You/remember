@@ -5,7 +5,9 @@
   const monthOK = m => typeof m === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
   const minorOK = n => Number.isSafeInteger(n) && n >= 0 && n <= 1000000000;
   const dateOK = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && U.dateStr(U.parseDate(d)) === d;
-  const validPlan = p => p && monthOK(p.month) && minorOK(p.limitMinor) && minorOK(p.saveMinor) && typeof p.repeat === 'boolean';
+  const focusNames={shopping:'购物',delivery:'外卖',drinks:'奶茶饮品'};
+  const validPlan = p => p && monthOK(p.month) && minorOK(p.limitMinor) && minorOK(p.saveMinor) && typeof p.repeat === 'boolean' &&
+    (p.focusLimits==null || (typeof p.focusLimits==='object'&&!Array.isArray(p.focusLimits)&&Object.entries(p.focusLimits).every(([k,v])=>Object.hasOwn(focusNames,k)&&minorOK(v))));
   const validGoal = g => g && typeof g.id === 'string' && !!g.id && typeof g.name === 'string' && !!g.name.trim() && g.name.length <= 40 && minorOK(g.targetMinor) && g.targetMinor > 0 && (!g.deadline || dateOK(g.deadline));
   Object.assign(Store, {
     preferredSavingAccount() {
@@ -19,10 +21,45 @@
       return p && (p.month === month || p.repeat) ? {...p, inherited:p.month !== month} : null;
     },
     saveMoneyPlan(input) {
-      const p = {month:input.month, limitMinor:input.limitMinor, saveMinor:input.saveMinor, repeat:!!input.repeat};
+      const p = {month:input.month, limitMinor:input.limitMinor, saveMinor:input.saveMinor, repeat:!!input.repeat,focusLimits:input.focusLimits || {}};
       if (!validPlan(p)) throw new Error('请填写有效月份和金额（最多两位小数）');
-      this.mutate(d => { d.moneyPlans = d.moneyPlans.filter(x => x.month !== p.month); d.moneyPlans.push(p); });
+      this.mutate(d => {
+        d.moneyPlans = d.moneyPlans.filter(x => x.month !== p.month); d.moneyPlans.push(p);
+        if(input.dailyCategories){
+          const root=d.categories.find(c=>c.kind==='out'&&!c.parentId&&c.name==='餐饮');
+          if(root)for(const [name,icon] of [['买菜做饭','🥬'],['奶茶饮品','🧋']])if(!d.categories.some(c=>c.kind==='out'&&c.name===name))d.categories.push({id:U.id(),kind:'out',name,icon,parentId:root.id,archived:false,sortOrder:90,createdAt:Date.now()});
+        }
+      });
       return p;
+    },
+    focusNames,
+    spendingFocus(t) {
+      if(t.type!=='out')return '';
+      const cat=this.category(t.categoryId),root=this.catRoot(t.categoryId),name=cat?.name || '';
+      if(/购物|服饰|数码|日用品/.test(root?.name || '') || /购物|服饰|数码|日用品/.test(name))return 'shopping';
+      if(/奶茶|咖啡|饮品/.test(name))return 'drinks';
+      if(/外卖/.test(name))return 'delivery';
+      if(/餐饮|饮食|吃饭/.test(root?.name || '')){
+        if(/奶茶|咖啡|饮品/.test(t.note || ''))return 'drinks';
+        if(/外卖/.test(t.note || ''))return 'delivery';
+      }
+      return '';
+    },
+    focusSummary(month=U.ymNow()) {
+      const plan=this.moneyPlan(month),rows=this.monthTransactions('',month);
+      return Object.entries(focusNames).map(([key,label])=>{
+        const list=rows.filter(t=>this.spendingFocus(t)===key),spent=list.reduce((s,t)=>s+t.amountMinor,0),limit=plan?.focusLimits?.[key] || 0;
+        return {key,label,list,spent,limit,remaining:limit-spent};
+      });
+    },
+    creditSummary(month=U.ymNow()) {
+      const rows=this.monthTransactions('',month);
+      const accounts=this.accounts().filter(a=>a.type==='liability').map(a=>{
+        const list=rows.filter(t=>t.accountId===a.id || t.toId===a.id);
+        return {account:a,balance:Math.max(0,this.accountBalance(a.id)),spent:list.filter(t=>t.type==='out').reduce((s,t)=>s+t.amountMinor,0),
+          advance:list.filter(t=>t.type==='advance').reduce((s,t)=>s+t.amountMinor,0),paid:list.filter(t=>t.type==='transfer').reduce((s,t)=>s+t.amountMinor,0),list};
+      });
+      return {accounts,debt:accounts.reduce((s,a)=>s+a.balance,0),spent:accounts.reduce((s,a)=>s+a.spent,0),paid:accounts.reduce((s,a)=>s+a.paid,0)};
     },
     // Signed movement of a group of asset accounts. Transfers inside the group cancel out.
     savingsMovement(month) {
@@ -44,10 +81,17 @@
         ratio:limit ? Math.min(1,stat.out/limit) : 0, saved, savingTarget, savingRemaining:Math.max(0,savingTarget-saved)};
     },
     budgetImpact(draft, skipId) {
+      const skipIds=new Set(skipId?[skipId,...this.data.transactions.filter(t=>t.transferFeeFor===skipId).map(t=>t.id)]:[]);
+      if(draft.type==='transfer'){
+        const category=this.feeCategory() || this.data.categories.find(c=>c.kind==='out'&&!c.parentId&&c.name==='其他支出');
+        draft={...draft,type:'out',amountMinor:draft.feeMinor,categoryId:category?.id || '',accountId:draft.fromId};
+      }
       if (draft.type !== 'out' || !dateOK(draft.date) || !minorOK(draft.amountMinor) || !draft.amountMinor) return [];
       const month = draft.date.slice(0,7), root = this.catRoot(draft.categoryId)?.id || '';
       const rules = [], plan = this.moneyPlan(month);
       if (plan?.limitMinor) rules.push({label:'每月消费上限',limit:plan.limitMinor,match:t => t.type==='out'});
+      const focus=this.spendingFocus(draft),focusLimit=plan?.focusLimits?.[focus];
+      if(focusLimit)rules.push({label:focusNames[focus]+'专项额度',limit:focusLimit,match:t=>this.spendingFocus(t)===focus});
       for (const c of ['',root].filter((v,i,a) => a.indexOf(v)===i)) {
         const b = this.getBudget(draft.bookId,month,c);
         if (b?.amountMinor) rules.push({label:c?(this.category(c)?.name || '分类')+'预算':'账本总预算',limit:b.amountMinor,
@@ -56,7 +100,7 @@
       const rows = this.monthTransactions('',month);
       return rules.map(r => {
         const before = rows.filter(r.match).reduce((s,t) => s+t.amountMinor,0);
-        const used = rows.filter(t => t.id!==skipId && r.match(t)).reduce((s,t) => s+t.amountMinor,0);
+        const used = rows.filter(t => !skipIds.has(t.id) && r.match(t)).reduce((s,t) => s+t.amountMinor,0);
         const after = used + draft.amountMinor;
         return {label:r.label,limit:r.limit,before,after,remaining:r.limit-after,over:Math.max(0,after-r.limit),needsConfirm:after>r.limit && after>before};
       });
