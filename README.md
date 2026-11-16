@@ -2,6 +2,8 @@
 
 记账 · 工时薪资 · 时光日程 · 打卡 · AI 助手（GLM-5.3），一个 App 全搞定。纯本地存储 + 自动备份，无需登录，个人自用。
 
+**换电脑或新对话接手：**先读 [AGENTS.md](AGENTS.md) 和 [维护与换机说明](docs/maintenance.md)。源码和操作说明在仓库中；签名私钥与手机个人数据需通过各自的私人备份迁移。
+
 ## 一、安装到手机
 
 1. 下载 `apk/nianxiatian.apk`（或仓库首页 Releases 说明）传到 Android 手机
