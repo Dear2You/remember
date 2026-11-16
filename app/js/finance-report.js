@@ -46,9 +46,8 @@ const FinanceReport = (() => {
   function categoryPanel(bookId, list, kind, total) {
     const items = categories(bookId, list, kind, total);
     const title = kind === 'out' ? '支出' : '收入';
-    const colors = kind === 'out'
-      ? ['#c58087','#73a897','#8bacc2','#c7b47b','#98b18b','#9caaa9','#b2b7b3']
-      : ['#63a18c','#89afc3','#c6b27b','#b5909d','#98b18b','#9caaa9','#b2b7b3'];
+    const colors = [kind==='out'?'var(--calendar-expense)':'var(--income)',
+      ...Array.from({length:6},(_,i)=>'var(--chart-'+(i+1)+')')];
     const ring = items.slice(0,6).map((c,i) => ({value:c.minor,color:colors[i]}));
     const rest = items.slice(6);
     if (rest.length) ring.push({value:rest.reduce((sum,c)=>sum+c.minor,0),color:colors[6]});
@@ -96,6 +95,7 @@ const FinanceReport = (() => {
     const slot=(right-left)/rows.length;
     const x=i=>left+slot*(i+.5);
     function paint() {
+      const scene = document.documentElement.dataset.visualStyle;
       const max = Math.max(1,...rows.map(r=>Math.max(...visible.map(key=>r[key]))));
       const unit = Math.pow(10, Math.floor(Math.log10(max)));
       const scale = Math.max(2, ([1,1.5,2,2.5,3,4,5,6,8,10].find(n=>n*unit>=max) || 10)*unit);
@@ -113,12 +113,20 @@ const FinanceReport = (() => {
       for (const kind of visible) {
         if (chartType==='line') {
           const points=rows.map((r,i)=>x(i)+','+y(r[kind])).join(' ');
-          areas+=`<polygon class="plot-area ${kind}" points="${x(0)},${bottom} ${points} ${x(rows.length-1)},${bottom}" fill="url(#${paintId}-area-${kind})"/>`;
-          marks+=`<polyline class="plot-line ${kind}" points="${points}"/><circle class="plot-halo ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/><circle class="plot-point ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/>`;
+          if (scene==='coast') {
+            // Endpoint tangents remain horizontal, so a smooth segment stays between its real values.
+            const path=rows.reduce((d,r,i)=>i ? d+` C${(x(i-1)+x(i))/2},${y(rows[i-1][kind])} ${(x(i-1)+x(i))/2},${y(r[kind])} ${x(i)},${y(r[kind])}` : `M${x(0)},${y(r[kind])}`,'');
+            areas+=`<path class="plot-area ${kind}" d="${path} L${x(rows.length-1)},${bottom} L${x(0)},${bottom} Z" fill="url(#${paintId}-area-${kind})"/>`;
+            marks+=`<path class="plot-line ${kind}" d="${path}"/>`;
+          } else {
+            areas+=`<polygon class="plot-area ${kind}" points="${x(0)},${bottom} ${points} ${x(rows.length-1)},${bottom}" fill="url(#${paintId}-area-${kind})"/>`;
+            marks+=`<polyline class="plot-line ${kind}" points="${points}"/>`;
+          }
+          marks+=`<circle class="plot-halo ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/><circle class="plot-point ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/>`;
         } else {
           const width = Math.min(12, slot * (visible.length === 1 ? 0.62 : 0.33));
           const offset = visible.length === 1 ? -width/2 : kind === 'inc' ? -width-.5 : .5;
-          marks+=rows.map((r,i)=>r[kind] ? `<rect class="plot-bar ${kind}${i===selected?' is-selected':''}" style="fill:url(#${paintId}-bar-${kind})" x="${x(i)+offset}" y="${y(r[kind])}" width="${width}" height="${bottom-y(r[kind])}" rx="${Math.min(3,width/2)}"/>` : '').join('');
+          marks+=rows.map((r,i)=>r[kind] ? `<rect class="plot-bar ${kind}${i===selected?' is-selected':''}" style="fill:url(#${paintId}-bar-${kind})" x="${x(i)+offset}" y="${y(r[kind])}" width="${width}" height="${bottom-y(r[kind])}" rx="${scene==='future'?.6:Math.min(3,width/2)}"/>` : '').join('');
         }
       }
       const selectionWidth = Math.min(28,slot*.9);

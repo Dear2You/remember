@@ -66,19 +66,7 @@ const App = {
   },
 
   applyTheme() {
-    const starry=Store.settings.visualStyle==='starry';
-    document.documentElement.dataset.visualStyle=starry?'starry':'ink';
-    document.documentElement.dataset.theme = starry?'dark':Store.settings.theme || 'auto';
-    const dark = starry || Store.settings.theme === 'dark' ||
-      (Store.settings.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', starry?'#10182c':dark ? '#19201d' : '#f7faf8');
-    // 同步 Android 状态栏（颜色/图标深浅）
-    if (window.AndroidBridge) {
-      try {
-        if(window.AndroidBridge.setAppearance)window.AndroidBridge.setAppearance(dark,starry);
-        else if(window.AndroidBridge.setStatusBar)window.AndroidBridge.setStatusBar(dark);
-      } catch (e) { /* ignore */ }
-    }
+    Appearance.apply(Store.settings);
   },
 
   render(hash) {

@@ -375,6 +375,7 @@ Views.settings = (() => {
     const dataWasOpen = !!root.querySelector('.settings-data[open]');
     const diagnosticsOpen = !!root.querySelector('.reminder-diagnostics[open]');
     const s = Store.settings;
+    const appearance = Appearance.resolve(s);
     const book = Store.currentBook();
     root.innerHTML =
       '<div class="page settings-page">' +
@@ -397,11 +398,13 @@ Views.settings = (() => {
         <span class="settings-entry-icon">${UI.art(icon)}</span><span class="settings-entry-copy"><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
       '  </div>' +
 
-      '  <div class="card"><div class="section-title">显示</div>' +
-      '<div class="visual-style-picker" aria-label="界面风格">'+[['ink','水墨清夏','清浅山水 · 日常账页'],['starry','星空彼岸','夜蓝星河 · 静谧远岸']].map(([v,t,desc])=>'<button class="visual-style-option '+v+' '+(s.visualStyle===v?'on':'')+'" data-visual-style="'+v+'" aria-pressed="'+(s.visualStyle===v)+'"><span class="visual-style-art" aria-hidden="true"></span><b>'+t+'</b><small>'+desc+'</small><i>'+(s.visualStyle===v?'使用中':'选择')+'</i></button>').join('')+'</div>'+
-      (s.visualStyle==='starry'?'<p class="theme-note">星空彼岸采用夜色外观；切回水墨清夏后恢复原来的浅色 / 深色设置。</p>':'')+
+      '  <div class="card appearance-card"><div class="section-title">显示</div>' +
+      '<div class="visual-style-picker" role="group" aria-label="界面风格">'+Appearance.styles.map(({id,name,description})=>'<button class="visual-style-option '+id+' '+(s.visualStyle===id?'on':'')+'" data-visual-style="'+id+'" aria-pressed="'+(s.visualStyle===id)+'"><span class="visual-style-art" aria-hidden="true"></span><b>'+name+'</b><small>'+description+'</small><i>'+(s.visualStyle===id?'使用中':'选择')+'</i></button>').join('')+'</div>'+
+      '<div class="palette-heading"><span>主题配色</span><small class="j-palette-name">'+appearance.style.name+'</small></div>'+
+      '<div class="palette-picker" role="group" aria-label="主题配色">'+Appearance.palettes.map(({id,name})=>'<button class="palette-option '+id+'" data-palette-choice="'+id+'" aria-pressed="'+(appearance.palette===id)+'"><span aria-hidden="true"><i></i><b>✓</b></span><small>'+name+'</small></button>').join('')+'</div>'+
+      '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题采用夜间外观；切回水墨或海岸后恢复你的明暗设置。':'点选即保存，配色按主题分别记住。')+'</p>'+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
-      '    <div class="set-row appearance-mode" '+(s.visualStyle==='starry'?'hidden':'')+'><div class="sr-lab">明暗</div>' +
+      '    <div class="set-row appearance-mode" '+(appearance.style.night?'hidden':'')+'><div class="sr-lab">明暗</div>' +
       '      <div class="seg" style="width:190px">' +
       '        <button data-t="auto" class="' + (s.theme === 'auto' ? 'on' : '') + '">跟随系统</button>' +
       '        <button data-t="light" class="' + (s.theme === 'light' ? 'on' : '') + '">浅色</button>' +
@@ -543,14 +546,29 @@ Views.settings = (() => {
       root.querySelector('.j-accounts .sr-desc').textContent = accountDescription();
     };
     root.querySelectorAll('.seg button[data-t]').forEach(b => b.onclick = () => {
-      save({ theme: b.dataset.t });
-      App.applyTheme();
+      if(!changeAppearance({ theme: b.dataset.t }))return;
       root.querySelectorAll('.seg button[data-t]').forEach(x => x.classList.toggle('on', x === b));
     });
-    root.querySelectorAll('[data-visual-style]').forEach(b=>b.onclick=()=>{
-      try{Store.mutate(d=>{d.settings.visualStyle=b.dataset.visualStyle;});App.applyTheme();App.refresh();}
-      catch(e){UI.toast(e.message,'err');}
-    });
+    // Keep the form and scroll position intact, including unsaved AI configuration.
+    const changeAppearance = patch => {
+      const before = JSON.stringify(Store.settings);
+      Object.assign(Store.settings,patch);
+      if(!Store.save()){Object.assign(Store.settings,JSON.parse(before));return false;}
+      App.applyTheme();
+      const current=Appearance.resolve(Store.settings);
+      root.querySelectorAll('[data-visual-style]').forEach(b=>{
+        const selected=b.dataset.visualStyle===current.style.id;
+        b.classList.toggle('on',selected);b.setAttribute('aria-pressed',String(selected));
+        b.querySelector('i').textContent=selected?'使用中':'选择';
+      });
+      root.querySelectorAll('[data-palette-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.paletteChoice===current.palette)));
+      root.querySelector('.j-palette-name').textContent=current.style.name;
+      root.querySelector('.appearance-mode').hidden=current.style.night;
+      root.querySelector('.j-appearance-note').textContent=current.style.night?'此主题采用夜间外观；切回水墨或海岸后恢复你的明暗设置。':'点选即保存，配色按主题分别记住。';
+      return true;
+    };
+    root.querySelectorAll('[data-visual-style]').forEach(b=>b.onclick=()=>changeAppearance({visualStyle:b.dataset.visualStyle}));
+    root.querySelectorAll('[data-palette-choice]').forEach(b=>b.onclick=()=>changeAppearance({themePalettes:{...Store.settings.themePalettes,[Store.settings.visualStyle]:b.dataset.paletteChoice}}));
 
     root.querySelector('.j-csv').onclick = () => {
       const csv = Store.exportCSV();

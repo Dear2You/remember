@@ -1,8 +1,8 @@
 {
-  "versionCode": 23400,
-  "versionName": "2.34",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.34/nianxiatian.apk",
-  "sha256": "ee68998cbf269f78370fa2818c080f3b1577c31f9519c03a969b9e2a38f60ef7",
-  "apkBlob": "7d0c6678edff4e06c2758c687947f6462699364f",
-  "note": "v2.34：企业上班自动续期，沿用月薪和计薪周期，法定节假日及调休自动排班；新增可切换的星空彼岸主题，统一日历、图表和记账弹窗。"
+  "versionCode": 23500,
+  "versionName": "2.35",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.35/nianxiatian.apk",
+  "sha256": "a960129eef6e8128a124e5f9d539ceba83f40658121b1d8d595840ef11bb19ee",
+  "apkBlob": "fef322366b4d4d3f8fd6635c44607d2ce73c4a6d",
+  "note": "v2.35：新增碧海晴空、未来回响主题，支持六种独立配色；海洋面积曲线、科技微光折线与刻度环形图，日历、导航、弹窗及系统栏统一适配。修复明暗切换图表重绘与主题保存失败回退。"
 }

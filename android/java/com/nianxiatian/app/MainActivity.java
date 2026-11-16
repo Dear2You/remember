@@ -329,11 +329,17 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void setAppearance(final boolean dark, final boolean starry) {
+            setThemeColors(dark, starry ? "#10182c" : dark ? "#19201d" : "#f7faf8");
+        }
+
+        @JavascriptInterface
+        public void setThemeColors(final boolean dark, final String color) {
+            if (color == null || !color.matches("#[0-9a-fA-F]{6}")) return;
+            final int background = android.graphics.Color.parseColor(color);
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        int background = starry ? 0xFF10182C : dark ? 0xFF19201D : 0xFFF7FAF8;
                         getWindow().setStatusBarColor(background);
                         getWindow().setNavigationBarColor(background);
                         if (android.os.Build.VERSION.SDK_INT >= 30) {

@@ -1,6 +1,17 @@
 'use strict';
 /* ============ 零依赖 Canvas 图表 ============ */
 const Charts = {
+  _drawings: new Map(),
+  _remember(canvas, method, items, opt) {
+    this._drawings.forEach((_, old) => {if (!old.isConnected) this._drawings.delete(old);});
+    this._drawings.set(canvas,{method,items,opt});
+  },
+  redraw() {
+    this._drawings.forEach((draw, canvas) => {
+      if (!canvas.isConnected) this._drawings.delete(canvas);
+      else this[draw.method](canvas, draw.items, draw.opt);
+    });
+  },
   _ctx(canvas) {
     const ratio = Math.min(window.devicePixelRatio || 1, 3);
     const w = canvas.clientWidth || canvas.parentElement.clientWidth || 300;
@@ -18,13 +29,26 @@ const Charts = {
 
   /* 环形图 items:[{label,value,color}]，中心两行文字 */
   donut(canvas, items, opt) {
+    this._remember(canvas,'donut',items,opt);
     opt = opt || {};
     const { ctx, w, h } = this._ctx(canvas);
     ctx.clearRect(0, 0, w, h);
     const total = items.reduce((s, i) => s + i.value, 0);
     const cx = w / 2, cy = h / 2;
-    const R = Math.min(w, h) / 2 - 4;
-    const LW = Math.min(26, R * 0.4);
+    const scene = document.documentElement.dataset.visualStyle;
+    const tech = scene === 'future';
+    const R = Math.min(w, h) / 2 - (tech ? 8 : 4);
+    const LW = Math.min(26, R * (tech ? 0.3 : 0.4));
+    const css = getComputedStyle(document.documentElement);
+    // The instrument ticks sit outside the data ring and never alter sector proportions.
+    if (tech) {
+      for(let i=0;i<40;i++) {
+        const angle=-Math.PI/2+i*Math.PI/20, outer=R+6, inner=R+(i%5===0?1:3);
+        ctx.beginPath();ctx.moveTo(cx+Math.cos(angle)*inner,cy+Math.sin(angle)*inner);
+        ctx.lineTo(cx+Math.cos(angle)*outer,cy+Math.sin(angle)*outer);
+        ctx.strokeStyle=css.getPropertyValue(i%5===0?'--accent':'--hairline').trim();ctx.lineWidth=.8;ctx.stroke();
+      }
+    }
     if (!total) {
       ctx.beginPath();
       ctx.arc(cx, cy, R - LW / 2, 0, Math.PI * 2);
@@ -49,14 +73,15 @@ const Charts = {
         const inset = Math.min(gap, ang * .16) / 2;
         ctx.beginPath();
         ctx.arc(cx, cy, R - LW / 2, start + inset, start + ang - inset);
-        ctx.strokeStyle = it.color;
+        const token=/^var\((--[\w-]+)\)$/.exec(it.color || '');
+        ctx.strokeStyle = token ? css.getPropertyValue(token[1]).trim() || '#8bacc2' : it.color;
         ctx.lineWidth = LW;
         ctx.lineCap = 'butt';
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(cx, cy, R - LW + 1, start + inset, start + ang - inset);
         ctx.strokeStyle = 'rgba(255,255,255,.35)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = tech ? .65 : 1;
         ctx.stroke();
         start += ang;
       });
@@ -77,6 +102,7 @@ const Charts = {
 
   /* 柱状图 items:[{label,value}]，竖向，值轴自动 */
   bars(canvas, items, opt) {
+    this._remember(canvas,'bars',items,opt);
     opt = opt || {};
     const { ctx, w, h } = this._ctx(canvas);
     ctx.clearRect(0, 0, w, h);
