@@ -21,6 +21,6 @@
 - 数据、日期、薪资或备份改动运行相关测试，应用版本发布前运行 `node --test --test-reporter=dot tests/*.test.js`。界面变动进行浏览器交互与目视核对，不能仅以测试计数代替视觉检查。
 - 用户要求发布时，按 `docs/maintenance.md` 的顺序构建、验证、发布资产，再更新 main 清单。文档整理不需要虚增应用版本或重打 APK。
 - 构建脚本会清理 `build/work`。执行前核对它解析后的绝对路径属于当前仓库且不是目录链接。不要跨 Shell 拼接删除命令。
-- 正式构建前确认原 `android/keystore.jks` 在位，核对证书指纹。密钥缺失时先恢复原件，不能生成另一把钥匙冒充可覆盖升级的版本。签名配置、Git 凭据、AI Key 和云备份应用密码不得输出到日志或聊天。
+- 正式构建前确认原 `android/keystore.jks` 和 `.private/signing.json` 在位，运行 `bash tools/build-apk.sh --check-signing`。密钥缺失时按 `docs/signing-backup.md` 恢复，不生成另一把钥匙。签名配置、备份解锁口令、Git 凭据、AI Key 和云备份应用密码不得输出到日志或聊天；不要打印旧构建脚本或其完整历史diff，旧版本含曾使用的密码。
 - 不覆盖旧发布的 APK、不强推已发布标签、不关闭 Release 不可替换保护。发布后检查主／备用下载、SHA-256 和公开更新清单。未做手机真机验证时如实说明。
 - 完成影响维护方式的修改后更新 `docs/maintenance.md`，让后续对话能从仓库继续。

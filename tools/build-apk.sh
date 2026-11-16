@@ -5,6 +5,10 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ "${1:-}" == "--check-signing" ]]; then
+  node "$ROOT/tools/sign-apk.js" check
+  exit 0
+fi
 TC="$ROOT/build/toolchain"
 JDK="$TC/jdk"
 SDK="$TC/android-sdk"
@@ -19,11 +23,10 @@ fi
 PATCH_PART="${BASH_REMATCH[4]:-0}"
 VERSION_CODE=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#$PATCH_PART))
 
+node "$ROOT/tools/sign-apk.js" check
 node "$ROOT/tools/build-ai-guide.js" "$VERSION_NAME"
 
 OUT_APK="$ROOT/那年夏天-v$VERSION_NAME.apk"
-KEYSTORE="$ROOT/android/keystore.jks"
-KS_PASS="nianxiatian-sign-2026"
 
 echo "== 0/7 检查工具链 =="
 [ -f "$JDK/bin/javac.exe" ] || [ -f "$JDK/bin/javac" ] || { echo "❌ 缺少 JDK: $JDK"; exit 1; }
@@ -34,8 +37,6 @@ JAVA="$JDK/bin/java.exe"; [ -f "$JAVA" ] || JAVA="$JDK/bin/java"
 AAPT2="$BT/aapt2.exe"; [ -f "$AAPT2" ] || AAPT2="$BT/aapt2"
 ZIPALIGN="$BT/zipalign.exe"; [ -f "$ZIPALIGN" ] || ZIPALIGN="$BT/zipalign"
 D8_CP="$BT/lib/d8.jar"
-APKSIGNER_CP="$BT/lib/apksigner.jar"
-KEYTOOL="$JDK/bin/keytool.exe"; [ -f "$KEYTOOL" ] || KEYTOOL="$JDK/bin/keytool"
 echo "   JDK/SDK 就绪"
 
 echo "== 1/7 生成图标 =="
@@ -98,19 +99,7 @@ ARSC=$(unzip -v "$WORK/full.apk" | grep resources.arsc | grep -c Stored || true)
 "$ZIPALIGN" -f 4 "$WORK/full.apk" "$WORK/aligned.apk"
 
 echo "== 7/7 签名 =="
-if [ ! -f "$KEYSTORE" ]; then
-  echo "   生成签名密钥（请妥善保管 keystore.jks（那年夏天专属签名，勿上传勿丢失），升级安装需要它）"
-  "$KEYTOOL" -genkeypair -keystore "$KEYSTORE" -alias nianxiatian \
-    -keyalg RSA -keysize 2048 -validity 10950 \
-    -storepass "$KS_PASS" -keypass "$KS_PASS" \
-    -dname "CN=NianXiaTian, OU=Personal, O=NianXiaTian, L=Local, ST=Local, C=CN"
-fi
-"$JAVA" -cp "$APKSIGNER_CP" com.android.apksigner.ApkSignerTool sign \
-  --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
-  --ks "$KEYSTORE" --ks-key-alias nianxiatian \
-  --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
-  --out "$OUT_APK" "$WORK/aligned.apk"
-"$JAVA" -cp "$APKSIGNER_CP" com.android.apksigner.ApkSignerTool verify --print-certs "$OUT_APK" | head -4
+node "$ROOT/tools/sign-apk.js" sign "$WORK/aligned.apk" "$OUT_APK"
 
 echo ""
 mkdir -p "$ROOT/apk"

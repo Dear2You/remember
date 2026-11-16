@@ -2,7 +2,7 @@
 
 记账 · 工时薪资 · 时光日程 · 打卡 · AI 助手（GLM-5.3），一个 App 全搞定。纯本地存储 + 自动备份，无需登录，个人自用。
 
-**换电脑或新对话接手：**先读 [AGENTS.md](AGENTS.md) 和 [维护与换机说明](docs/maintenance.md)。源码和操作说明在仓库中；签名私钥与手机个人数据需通过各自的私人备份迁移。
+**换电脑或新对话接手：**先读 [AGENTS.md](AGENTS.md) 和 [维护与换机说明](docs/maintenance.md)。源码和操作说明在仓库中；签名私钥及密码配置按[加密备份恢复说明](docs/signing-backup.md)迁移，手机个人数据通过自己的备份恢复。
 
 ## 一、安装到手机
 
@@ -84,7 +84,7 @@ USE_RELEASE_ASSET=1 UPDATE_NOTE="更新说明" bash tools/build-apk.sh 2.34   # 
 - 构建生成对应版本的本地 APK、`apk/nianxiatian.apk` 更新包和 `latest.json` 版本清单。
 - 应用内检查更新会在 GitHub Raw 与 GitHub API 之间回退。下载时会校验成品 APK 的 SHA-256、包名、签名与版本。若使用 GitHub Release 分发，构建时设置 `USE_RELEASE_ASSET=1`，并在更新 main 分支清单前，将同一份签名 APK 以 `nianxiatian.apk` 上传到对应的 `v版本号` Release。
 - 工具链在 `build/toolchain/`（JDK17 + Android SDK 35，不入库）
-- ⚠️ `android/keystore.jks` 已被 .gitignore 排除——**绝不能上传，请异地备份**（丢失后无法覆盖升级）
+- `android/keystore.jks` 与 `.private/signing.json` 均被Git忽略，密码由签名工具通过子进程环境传递。用 `bash tools/build-apk.sh --check-signing` 检查；缺少原件或签名不符时停止，不自动生成新密钥。请按[签名备份说明](docs/signing-backup.md)私下备份和恢复。
 - 仓库需保持 Public（App 匿名读取更新包）
 
 ## 六、目录结构
