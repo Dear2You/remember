@@ -1,35 +1,54 @@
-/* Phone pages use the screen width; reading space belongs inside the sections. */
+/* Narrow outer gutters keep the page open without joining every panel to the edges. */
 @media (max-width: 919px) {
-  #pageBody { padding-inline: 0; padding-top: 10px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  #pageBody { padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right)); padding-top: 10px; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   #pageBody > .page { width: 100%; max-width: none; margin-inline: 0; }
 
-  /* Cancel old calendar gutters now that their parent is edge-to-edge. */
+  /* Calendars fill their panel; legacy negative gutters must not clip edge cells. */
   #pageBody .life-page.calendar-mode { width: 100%; max-width: none; margin-inline: 0; }
-  #pageBody .page > .page-head { margin-inline: 0; padding-inline: 16px; }
+  #pageBody .page > .page-head { margin-inline: 0; padding-inline: 6px; }
   #pageBody .page > .page-head::before { right: 0; }
   #pageBody :is(.work-panel,.ledger-calendar) { margin-inline: 0; width: 100%; }
-  #pageBody .page > :is(.back-btn,.field,.seg,.work-scope,.work-pay-actions,.money-month,.settings-shortcuts) { margin-inline: 16px; }
+  #pageBody .page > :is(.field,.seg,.work-scope,.work-pay-actions,.money-month,.settings-shortcuts) { margin-inline: 0; }
+  #pageBody .page > .back-btn { margin-inline: 6px; }
   #pageBody .page > .back-btn { width: auto; }
-  #pageBody .bill-report :is(.report-period,.j-filters,.day-head) { padding-inline: 16px; }
-  #pageBody .bill-report .report-tabs { margin-inline: 16px; }
-  #pageBody .page > :is(.asset-section-title,.section-title,.asset-footnote,.page-sub) { padding-inline: 16px; }
-  #pageBody .worktime-page > .day-group > .day-head { padding-inline: 16px; }
-  #pageBody .work-panel :is(.work-monthbar,.work-range,.work-key) { margin-inline: 12px; }
-  #pageBody .money-page > .money-help, #pageBody .saving-goals > header { padding-inline: 16px; }
-  #pageBody .assistant-page > :is(.chat-wrap,.ai-input-bar,.assistant-connect) { margin-inline: 16px; }
+  #pageBody .bill-report :is(.report-period,.j-filters,.day-head) { padding-inline: 6px; }
+  #pageBody .bill-report .report-tabs { margin-inline: 0; }
+  #pageBody .page > :is(.asset-section-title,.section-title,.asset-footnote,.page-sub) { padding-inline: 6px; }
+  #pageBody .worktime-page > .day-group > .day-head { padding-inline: 6px; }
+  #pageBody .work-panel :is(.work-monthbar,.work-range,.work-key) { margin-inline: 3px; }
+  #pageBody .money-page > .money-help, #pageBody .saving-goals > header { padding-inline: 6px; }
+  #pageBody .assistant-page > :is(.chat-wrap,.ai-input-bar,.assistant-connect) { margin-inline: 6px; }
 
-  /* Outer panels meet the sides; inner controls retain their theme's shapes. */
-  #pageBody .page :is(.card,.home-book,.home-money,.work-slip,.home-notebook,.overview-tools,.balance-panel,.account-drawer,.asset-money-link,.asset-month,.asset-pending,.life-calendar-spread,.money-limit,.money-metrics,.monthly-saving,.saving-goal,.saving-empty,.spending-focus,.credit-watch,.sub-total,.countdown-ticket), #pageBody .page > .cell-list {
-    border-left-width: 0; border-right-width: 0; border-radius: 0; box-shadow: none;
-  }
-  #pageBody .life-calendar-spread { border-radius: 0; }
+  #pageBody .life-calendar-spread { border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
 
-  /* A fixed full-width bar, including the system gesture safe area. */
+  /* A small inset, with a solid background and space for system gestures. */
   #app #tabbar {
-    left: 0; right: 0; bottom: 0;
-    border: 0; border-top: 1px solid var(--hairline); border-radius: 0;
+    left: 6px; right: 6px; bottom: 4px;
+    border: 1px solid var(--hairline); border-radius: 12px;
     padding-inline: max(3px, env(safe-area-inset-left)) max(3px, env(safe-area-inset-right));
     padding-top: 6px; padding-bottom: calc(5px + env(safe-area-inset-bottom));
     background: var(--tab-bg); box-shadow: none;
   }
 }
+
+/* Busy days keep both counts inside their own date cell. */
+.lc-cell-foot { flex-wrap: wrap; gap: 2px 4px; }
+.lc-cell-foot i, .lc-cell-foot small { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+/* Keep the complete save button in view, including before the sheet is scrolled. */
+.entry-sheet { padding-bottom: 0; }
+.entry-sheet .entry-submit { bottom: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.entry-sheet .entry-amount { display: grid; grid-template-columns: auto minmax(0,1fr); column-gap: 8px; row-gap: 0; }
+.entry-sheet .entry-amount>.amount-input { width: 100%; font-size: clamp(24px,8vw,32px); }
+.entry-sheet .entry-amount>.amount-input:focus { box-shadow: none; }
+.entry-sheet .entry-amount>small { grid-column: 2; justify-self: end; }
+.entry-sheet .acct-chips .chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.entry-sheet .cat-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.entry-sheet .cat-item { min-width: 0; overflow-wrap: anywhere; }
+.balance-pair b, .balance-pair small { overflow-wrap: anywhere; }
+
+/* Long confirmations remain readable without pushing their actions off a short screen. */
+.dialog { display: flex; flex-direction: column; max-height: 100%; }
+.dialog h3, .dialog-btns { flex-shrink: 0; }
+.dialog p { min-height: 0; overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior-y: contain; }
+body.keyb #dialogRoot { padding: 12px; }

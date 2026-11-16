@@ -8,7 +8,7 @@
 
 ## 已发布基线与入口
 
-本说明更新于2026-11-16，当前应用为 **v2.38 / 23800**，发布代码以 `v2.38` 标签为准。之后的文档提交可能比这个标签新；接手时总是再核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，不把这个快照当作永久最新版本。
+本说明更新于2026-11-16，当前应用为 **v2.39 / 23900**，发布代码以 `v2.39` 标签为准。之后的文档提交可能比这个标签新；接手时总是再核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，不把这个快照当作永久最新版本。
 
 - 公开仓库：[Dear2You/remember](https://github.com/Dear2You/remember)。应用内更新依赖公开读取清单和安装包。
 - 包名：`com.nianxiatian.app`。Android最低API24、目标API35，原生Java外壳加载随包附带的HTML/CSS/JavaScript。
@@ -26,13 +26,13 @@
 | 账单、手续费、预算、存钱及信用消费 | `app/js/store.js`、相关 `app/js/views/`、[消费与存钱规则](spending-and-saving.md) |
 | 星空主题及插画 | `app/css/starry.css`、`app/images/starry-shore.png`、[素材与提示词](starry-theme.md) |
 | 多主题、独立配色、图标与图表 | `app/js/appearance.js`、`app/js/art.js`、`app/css/themes.css`、`app/css/theme-details.css`、`app/js/charts.js`、`app/js/finance-report.js`；六套主题通过设置页下拉选择，各自记住配色。环形图绘制与点选共用几何信息，见[主题维护与素材](themes.md) |
-| 手机页面铺满与贴边底栏 | `app/css/edge-layout.css`；外围无留白，文字空间留在面板内，核对三个日历的负边距与导航安全区 |
+| 手机窄留白、日历与弹窗遮挡 | `app/css/edge-layout.css`；页面两侧8px、底栏两侧6px与底部4px，核对日历格内文字、弹窗保存区、键盘与导航安全区 |
 | 更新下载、提醒及云备份 | Android目录中的相应Java类，以及前端 `app/js/` 中对应模块；入口和限制看功能手册 |
 | 验证依据 | `tests/`、`docs/qa-*.md`；临时截图和测试产物在忽略的 `build/` 下，不应作为换机后唯一依据 |
 
 ## 每年更新法定节假日与调休
 
-当前v2.38内置2026、2027年；没有独立联网更新假日表的功能。新年度安排尚未收录时，工资自动续期停止在缺少数据的区间并提示，不按普通周末猜排班。
+当前v2.39内置2026、2027年；没有独立联网更新假日表的功能。新年度安排尚未收录时，工资自动续期停止在缺少数据的区间并提示，不按普通周末猜排班。
 
 1. 查阅该年度国务院办公厅正式通知或可核验的政府转载，核对通知年份、发布日期、放假起止日和补班日。不要把网络预测或仅有农历节日的日期表当作调休安排。
 2. 更新 `app/js/payroll.js` 顶部 `WorkCalendar.schedules`。`off` 是含首尾的月日区间，`on` 是补班日；补班优先于普通周末。当前 `off` 下标对应元旦、春节、清明、劳动、端午、中秋、国庆，若新通知合并假期，还要核对 `dayInfo` 名称映射。
