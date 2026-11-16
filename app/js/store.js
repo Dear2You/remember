@@ -80,12 +80,13 @@ const Store = {
       subscriptions: [],   // amount 为每月订阅原币金额
       wageProjects: [],   // {id, name, rate(元/小时)} 项目时薪表
       salaryMonths: [], // 月薪方案，按月保存应出勤日期，出勤记录以 salaryMonthId 关联
+      salaryRenewals: [], // 按项目续期，删除过的月份不自动重建
       worktimes: [], memos: [], habits: [], habitLogs: {}, chats: [],
       aiSessions: [],   // {id, title, messages:[{role,content,actions,ts}], createdAt, updatedAt}
       settings: {
         aiBase: 'https://open.bigmodel.cn/api/paas/v4',
         aiKey: '', aiModel: 'glm-5.3',
-        theme: 'auto', hideAmount: false,
+        theme: 'auto', visualStyle: 'ink', hideAmount: false,
         currentBookId: 'book-life',   // '' = 全部账本
         lastAccountId: '', lastBookId: 'book-life', lastReceiptAccountId: '',
         activeTripId: '',
@@ -120,6 +121,8 @@ const Store = {
     const def = this.defaults();
     const data = Object.assign({}, def, saved);
     data.settings = Object.assign({}, def.settings, saved.settings || {});
+    if(!['ink','starry'].includes(data.settings.visualStyle))data.settings.visualStyle='ink';
+    if(!['auto','light','dark'].includes(data.settings.theme))data.settings.theme='auto';
     if (!Array.isArray(data.books) || !data.books.length) data.books = this.DEFAULT_BOOK();
     if (!Array.isArray(data.accounts) || !data.accounts.length) data.accounts = this.DEFAULT_ACCOUNTS();
     if (!Array.isArray(data.categories) || !data.categories.length) data.categories = this.DEFAULT_CATS();
@@ -151,6 +154,8 @@ const Store = {
     }
     if (!Array.isArray(data.wageProjects)) data.wageProjects = [];
     if (!Array.isArray(data.salaryMonths)) data.salaryMonths = [];
+    if (!Array.isArray(data.salaryRenewals)) data.salaryRenewals = [];
+    if(this.normalizeSalaryRenewals)this.normalizeSalaryRenewals(data,!Array.isArray(saved.salaryRenewals));
     data.settings.sgdRate = this.parseSubscriptionRate(data.settings.sgdRate) || def.settings.sgdRate;
     const savedRates = data.settings.subscriptionRates;
     data.settings.subscriptionRates = {};

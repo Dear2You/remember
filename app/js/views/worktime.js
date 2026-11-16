@@ -287,7 +287,7 @@ Views.worktime = (() => {
     const calendar = mode === 'cal' ? `<table class="cal ledger-grid work-grid" aria-label="${U.ymLabel(ym)}工时与工资">
       <thead><tr>${[...'一二三四五六日'].map(d => '<th scope="col">周' + d + '</th>').join('')}</tr></thead>
       <tbody>${rows.map(week => '<tr>'+week.map(tile).join('')+'</tr>').join('')}</tbody></table>
-      <div class="work-key">${salaryPlans.length?'浅绿：已确认 · 浅红：缺勤 · 虚线：待确认／预计':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
+      <div class="work-key">${salaryPlans.length?'实色：已确认 · 红色：缺勤 · 虚线：待确认／预计':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
       ${partialPay ? '<p class="work-pay-note">* 当天有工时待设时薪，工资显示已计部分。</p>' : ''}
       ${partialHours ? '<p class="work-pay-note">工时后的 + 表示另有日薪记录未填实际工时。</p>' : ''}` : '';
 

@@ -1,0 +1,87 @@
+/* 星空彼岸 — a painted night sky, restrained violet details and legible paper-like panels. */
+.visual-style-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 14px 0; }
+.visual-style-option { position: relative; min-width: 0; text-align: left; border: 1px solid var(--hairline); border-radius: 11px; overflow: hidden; background: var(--card); padding-bottom: 10px; }
+.visual-style-option.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.visual-style-art { display: block; height: 78px; background: url('../images/summer-mist.png') center 60% / cover; }
+.visual-style-option.starry .visual-style-art { background: #151f38 url('../images/starry-shore.png') center 15% / cover; }
+.visual-style-option b { display: block; font: 600 14px/1.8 var(--book-serif); margin: 8px 10px 0; }
+.visual-style-option small { display: block; margin: 0 10px; font-size: 9px; color: var(--text-2); }
+.visual-style-option i { position: absolute; right: 7px; top: 7px; padding: 3px 6px; border-radius: 12px; font: 9px/1.5 var(--ui-font); color: var(--text); background: var(--paper-glass); }
+.theme-note { font-size: 11px; line-height: 1.7; color: var(--text-2); }
+.appearance-mode[hidden] { display: none; }
+.salary-renew-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 16px; }
+.salary-renew-toggle input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.salary-renew-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 0 0; margin-top: 10px; border-top: 1px solid var(--hairline); text-align: left; }
+.salary-renew-row>span { min-width: 0; flex: 1; }
+.salary-renew-row b { font-size: 11px; color: var(--accent); font-weight: 500; }
+.salary-renew-row small { display: block; color: var(--text-3); line-height: 1.6; font-size: 10px; margin-top: 3px; }
+.salary-renew-row i { font: 11px var(--ui-font); color: var(--text-2); flex: none; }
+.renewal-summary { background: var(--input-bg); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+.renewal-summary b { color: var(--accent); font-size: 15px; }
+.renewal-summary p, .renewal-notice { font-size: 12px; line-height: 1.8; }
+.renewal-notice { color: var(--warn); background: var(--gold-wash); border-radius: 8px; padding: 10px; }
+
+html[data-visual-style="starry"] {
+  color-scheme: dark;
+  --bg: #10182c; --card: #19253e; --paper-glass: #17243deb; --nav-paper: #111c33f5;
+  --text: #f0ecf7; --text-2: #c3c9e0; --text-3: #a5afca; --hairline: #354665;
+  --accent: #c5c8f5; --on-accent: #172237; --solid: #505f99; --accent-grad: #505f99; --accent-weak: #303e63;
+  --input-bg: #22324e; --tint-surface: #273958; --cover-wash: #42577b40;
+  --calendar-expense: #f1a7b9; --danger: #f4aa9c; --warn: #dec18c; --info: #9cc5e6;
+  --tile-out-text: #ffe0e7; --tile-in-text: #b0eed9; --star-income: #a0ddce;
+  --rose-wash: #3d2e48; --blue-wash: #223a54; --gold-wash: #3a364b;
+  --tile-blue: #223a54; --tile-sand: #3a364b; --tile-rose: #3d2e48;
+  --card-glaze: #243351; --tab-bg: #111c33; --mask: #030713b8;
+  --scene-opacity: .9; --scene-filter: none; --scene-fade: #17243d;
+  --landscape-opacity: .86; --surface-shadow: 0 5px 20px #03071332; --detail-shadow: 0 3px 12px #03071325;
+}
+html[data-visual-style="starry"] #app::before { background-image: url('../images/starry-shore.png'); background-position: center; filter: none; }
+html[data-visual-style="starry"] .masthead { background: #111c33e8; border-color: #52628c70; }
+html[data-visual-style="starry"] .wordmark { color: #e4d9f5; }
+html[data-visual-style="starry"] .wordmark>svg { color: #526399; }
+html[data-visual-style="starry"] .home-cover::before {
+  background-image: linear-gradient(90deg,var(--scene-fade),transparent 55%),linear-gradient(0deg,var(--scene-fade),transparent 45%),url('../images/starry-shore.png');
+  background-size: cover; background-position: center 13%; filter: none; opacity: .95;
+}
+html[data-visual-style="starry"] .home-refined .home-cover { min-height: 78px; }
+html[data-visual-style="starry"] .home-refined .home-cover::before { background-position: center 35%; opacity: 1; }
+html[data-visual-style="starry"] .overview-heading::before,
+html[data-visual-style="starry"] :is(.assets-page,.worktime-page,.bill-report,.life-page,.settings-page,.decorated-page)>.page-head::before { content: none; }
+html[data-visual-style="starry"] :is(input,textarea)::placeholder { color: var(--text-3); opacity: 1; }
+html[data-visual-style="starry"] .home-refined .home-book { border-color: #7785af85; box-shadow: 0 5px 22px #03071330; }
+html[data-visual-style="starry"] .home-refined .overview-finance { background: linear-gradient(180deg,transparent,#25375933); }
+html[data-visual-style="starry"] .home-refined .home-date-leaf b { color: #ead9b4; }
+html[data-visual-style="starry"] .home-refined .home-money,
+html[data-visual-style="starry"] .home-refined.handpage .work-slip,
+html[data-visual-style="starry"] .home-refined .home-notebook { background: var(--paper-glass); border-color: #7283ac60; }
+html[data-visual-style="starry"] .money-in { color: var(--star-income); }
+html[data-visual-style="starry"] .bill-report .balance-pair>div:first-child b,
+html[data-visual-style="starry"] .ledger-ranking[data-kind="inc"] b,
+html[data-visual-style="starry"] .ledger-calendar[data-metric="inc"] .calendar-totals b,
+html[data-visual-style="starry"] .ledger-calendar[data-metric="both"] .calendar-totals span:last-child b { color: var(--star-income); }
+html[data-visual-style="starry"] .saving-track i { background: #9aadd9; }
+html[data-visual-style="starry"] .saving-track.over i { background: var(--calendar-expense); }
+html[data-visual-style="starry"] .home-refined .overview-shortcuts button>span { box-shadow: inset 0 0 0 1px #a8b9e326; }
+html[data-visual-style="starry"] #tabbar { border-color: #7a89b66e; box-shadow: 0 -4px 22px #02071535; }
+html[data-visual-style="starry"] #tabbar .tab.on { background: #37476e; color: #e1ddff; }
+html[data-visual-style="starry"] #tabbar .tab-plus .art-icon { border-color: #93a0ce; background: #505f99; color: #fff3d5; }
+html[data-visual-style="starry"] .sheet-panel { background: #17233a; border: 1px solid #62729a88; border-bottom: 0; }
+html[data-visual-style="starry"] .dialog { background: #19253e; }
+html[data-visual-style="starry"] .sheet-title { color: #e6dcf7; }
+html[data-visual-style="starry"] .lc-cell.is-today .lc-day-top b { background: #d5caed; color: #172237; }
+html[data-visual-style="starry"] .lc-cell.selected { box-shadow: inset 0 0 0 1.5px #b1bcec; }
+html[data-visual-style="starry"] .lc-grid { border-color: #7185ac5c; }
+html[data-visual-style="starry"] .lc-cell { border-color: #7185ac5c; }
+html[data-visual-style="starry"] .lc-day-top b { color: #ece7fa; }
+html[data-visual-style="starry"] .lc-cell.outside { background: #17233a99; }
+html[data-visual-style="starry"] .lc-item.event { background: #304566; }
+html[data-visual-style="starry"] .lc-item.task { background: #443e55; }
+html[data-visual-style="starry"] .life-calendar-spread { background: #17233de6; }
+html[data-visual-style="starry"] .entry-sheet .cat-item:not(.on) .ci { background: #243652; }
+html[data-visual-style="starry"] .entry-sheet .cat-item.on { background: #37476e; border-color: #a1add5; }
+html[data-visual-style="starry"] .entry-sheet .entry-amount { border-color: #63769f; }
+html[data-visual-style="starry"] .asset-overview { border-top-color: #a0add9; background: linear-gradient(135deg,#233757f2,#1b2843ee); }
+html[data-visual-style="starry"] .salary-card { border-top-color: #a0add9; }
+html[data-visual-style="starry"] .bill-report { --report-out-line: #efb0c4; }
+html[data-visual-style="starry"] .art-bank, html[data-visual-style="starry"] .art-coin, html[data-visual-style="starry"] .art-sprout { color: #decda8; }
+@media(max-width:350px) { .visual-style-picker { gap: 9px; } .visual-style-option small { font-size: 8px; } .visual-style-option b { font-size: 13px; } }

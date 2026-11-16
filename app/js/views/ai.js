@@ -14,6 +14,8 @@ Views.ai = (() => {
       return 'v'+window.__APP_VERSION+' 功能手册\n'+titles.map(t=>'· '+t).join('\n')+'\n\n发送其中一个标题可查看步骤，例如“删除报销到账”。';
     }
     if (guideSections.has(text)) return guideSections.get(text);
+    if(/自动续期|工资.*自动生成|自动生成.*工资/.test(text))return guideSections.get('工资自动续期') || '';
+    if(/星空|主题|外观|水墨/.test(text)&&/怎么|如何|在哪|哪里|设置|切换|换|打开/.test(text))return guideSections.get('主题与外观') || '';
     if(/预算|存钱|攒钱|存入|取出/.test(text)&&/怎么|如何|在哪|哪里|设置|修改|删除|操作/.test(text))return guideSections.get('预算与存钱') || '';
     if(/月薪|工资|出勤|计薪/.test(text)&&/怎么|如何|在哪|哪里|设置|改|选|操作/.test(text))return guideSections.get('工时与薪资') || '';
     const tripTopics = [

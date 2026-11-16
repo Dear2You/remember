@@ -8,6 +8,7 @@ const App = {
 
   init() {
     const existingData = Store.init();
+    this.renewSalaryPeriods();
     if (existingData) Cloud.queue();
     else if (Cloud.status().enabled) Cloud.pause();
     this.applyTheme();
@@ -31,7 +32,9 @@ const App = {
     });
     document.getElementById('fab').addEventListener('click', () => this.go('ai'));
     window.addEventListener('hashchange', () => this.render(location.hash));
-    Store.on('change', () => this.refresh());
+    Store.on('change', () => {if(this._salaryRenewing)return;this.renewSalaryPeriods();this.refresh();});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.resume();});
+    setInterval(()=>{if(!document.hidden)this.resume();},60000);
     KeyboardLayout.init();
     // 自动备份结果回传（来自 Android 原生桥）
     window.__backupDone = (status, msg) => Store.noteBackupResult(status, msg);
@@ -63,13 +66,18 @@ const App = {
   },
 
   applyTheme() {
-    document.documentElement.dataset.theme = Store.settings.theme || 'auto';
-    const dark = Store.settings.theme === 'dark' ||
+    const starry=Store.settings.visualStyle==='starry';
+    document.documentElement.dataset.visualStyle=starry?'starry':'ink';
+    document.documentElement.dataset.theme = starry?'dark':Store.settings.theme || 'auto';
+    const dark = starry || Store.settings.theme === 'dark' ||
       (Store.settings.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#19201d' : '#f7faf8');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', starry?'#10182c':dark ? '#19201d' : '#f7faf8');
     // 同步 Android 状态栏（颜色/图标深浅）
-    if (window.AndroidBridge && window.AndroidBridge.setStatusBar) {
-      try { window.AndroidBridge.setStatusBar(dark); } catch (e) { /* ignore */ }
+    if (window.AndroidBridge) {
+      try {
+        if(window.AndroidBridge.setAppearance)window.AndroidBridge.setAppearance(dark,starry);
+        else if(window.AndroidBridge.setStatusBar)window.AndroidBridge.setStatusBar(dark);
+      } catch (e) { /* ignore */ }
     }
   },
 
@@ -79,6 +87,7 @@ const App = {
     const redirect = { stats: 'bills', expense: 'bills' }[route];
     if (redirect) { location.hash = '#/' + redirect; return; }
     this.route = this.routes[route] ? route : 'home';
+    this.renewSalaryPeriods();
     // 子页高亮映射：时光子页→时光，订阅→资产，旧报表/明细→账单
     const tabRoute = ({ countdown: 'life', focus: 'life', memo: 'life', habit: 'life', subs: 'assets', money: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
     document.querySelectorAll('#tabbar .tab').forEach(b => {const selected=b.dataset.route===tabRoute;b.classList.toggle('on',selected);if(selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
@@ -88,6 +97,18 @@ const App = {
     this.routes[this.route].mount(body);
   },
 
+  renewSalaryPeriods() {
+    if(this._salaryRenewing)return;
+    this._salaryRenewing=true;
+    try {Store.renewSalaryPeriods();this._salaryDate=U.todayStr();}
+    catch(e){UI.toast('自动续期未完成：'+e.message,'err');}
+    finally {this._salaryRenewing=false;}
+  },
+  resume() {
+    if(!Store.data||this._salaryDate===U.todayStr()||document.activeElement?.matches('input,textarea,[contenteditable="true"]'))return;
+    this.renewSalaryPeriods();
+    if(['home','life','worktime','assets','money','bills'].includes(this.route))this.refresh();
+  },
   refresh(force) {
     const sheetRoot = document.getElementById('sheetRoot');
     if (sheetRoot.classList.contains('show') && !sheetRoot.dataset.closing) { this.pendingRefresh = true; return; }

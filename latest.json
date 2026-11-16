@@ -1,8 +1,8 @@
 {
-  "versionCode": 23300,
-  "versionName": "2.33",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.33/nianxiatian.apk",
-  "sha256": "da2f96fb27ef604ebe5fba08f15bfe35e8266b237a9fd237a74f3ad07166736c",
-  "apkBlob": "52e00a034b22bbe0818271c5f98e993af825e2f9",
-  "note": "v2.33：首页统一为清新水墨账页，整理收支、预算与工作层级；时光改为铺满页面的大月历，显示农历、节日节气及 2026/2027 放假调休，格内展示日程、待办和打卡。点日期管理全部安排，支持年月选择、回到今天和全天提醒时刻；修复午夜结束多占一天、跨天时间标签、下一场日程排序、非法日期及重复保存等问题。"
+  "versionCode": 23400,
+  "versionName": "2.34",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.34/nianxiatian.apk",
+  "sha256": "ee68998cbf269f78370fa2818c080f3b1577c31f9519c03a969b9e2a38f60ef7",
+  "apkBlob": "7d0c6678edff4e06c2758c687947f6462699364f",
+  "note": "v2.34：企业上班自动续期，沿用月薪和计薪周期，法定节假日及调休自动排班；新增可切换的星空彼岸主题，统一日历、图表和记账弹窗。"
 }

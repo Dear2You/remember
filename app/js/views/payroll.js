@@ -24,6 +24,7 @@ Views.payroll = (() => {
         <div class="field"><label>工作日规则<select class="j-calendar"><option value="cn" ${kind==='cn'?'selected':''}>法定节假日及调休</option><option value="weekdays" ${kind==='weekdays'?'selected':''}>周一至周五</option><option value="custom" ${kind==='custom'?'selected':''}>自定日期</option></select></label></div>
         <p class="payroll-help">点日期调整整期工作日。未记录的日期待确认，未来日期只作预计。</p>
         <div class="salary-date-grid"></div><p class="salary-form-preview" aria-live="polite"></p>
+        <label class="salary-renew-toggle"><input type="checkbox" class="j-auto-renew" ${(Store.salaryRenewal(edit?.project || prior?.project || recent?.project || '工作')?.enabled ?? ((edit?.project || prior?.project || recent?.project)==='企业上班'))?'checked':''}>按当前工资和周期自动续期</label><p class="payroll-help">自动准备下一期，工作日重新按法定节假日及调休生成；出勤和到账仍由你确认。若官方调休尚未收录，会显示待更新。</p>
         <label class="salary-convert"><input type="checkbox" class="j-convert">将区间内同项目的旧日薪重新折算</label>
         <p class="salary-convert-preview payroll-help"></p><button class="btn btn-primary btn-block j-plan-save">保存本期方案</button>
         ${edit?'<button type="button" class="btn btn-danger btn-block j-delete-plan">删除本期方案及月薪出勤</button>':''}</form>`;
@@ -41,7 +42,10 @@ Views.payroll = (() => {
         body.querySelector('.j-plan-save').textContent=changingCycle()?'预览计薪周期调整':'保存本期方案';
         body.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{dates.has(b.dataset.day)?dates.delete(b.dataset.day):dates.add(b.dataset.day);kind='custom';picker.value=kind;paint();});
       }
-      project.oninput=base.oninput=employment.oninput=paint;
+      const renew=body.querySelector('.j-auto-renew');let renewalTouched=false;
+      renew.onchange=()=>{renewalTouched=true;};
+      project.oninput=()=>{if(!renewalTouched)renew.checked=Store.salaryRenewal(project.value.trim())?.enabled ?? (project.value.trim()==='企业上班');paint();};
+      base.oninput=employment.oninput=paint;
       picker.onchange=()=>{try{if(picker.value!=='custom')dates=new Set(WorkCalendar.rangeDates(range.start,range.end,picker.value));kind=picker.value;paint();}catch(e){picker.value=kind;UI.toast(e.message,'err');}};
       cyclePicker.onchange=()=>{const old=cycle;try{cycle=cyclePicker.value;range=WorkCalendar.period(month,Number(cycle)||1);dates=new Set(WorkCalendar.rangeDates(range.start,range.end,kind==='custom'?'cn':kind));if(kind==='custom'){kind='cn';picker.value=kind;}paint();}catch(e){cycle=old;cyclePicker.value=old;range=WorkCalendar.period(month,Number(cycle)||1);UI.toast(e.message,'err');}};
       body.querySelector('.j-month').onchange=e=>{const old=month;try{month=e.target.value;range=WorkCalendar.period(month,Number(cycle)||1);dates=new Set(WorkCalendar.rangeDates(range.start,range.end,kind==='custom'?'cn':kind));if(kind==='custom'){kind='cn';picker.value=kind;}paint();}catch(err){month=old;e.target.value=old;range=WorkCalendar.period(month,Number(cycle)||1);UI.toast(err.message,'err');}};
@@ -50,7 +54,7 @@ Views.payroll = (() => {
         e.preventDefault();
         const p={id:edit?.id,month,project:project.value.trim(),baseMinor:Store.parseAmount(base.value),dates:[...dates],calendar:kind,cycleStartDay:Number(cycle)||1,cycleConfirmed:cycle!=='pending',employmentStart:employment.value};
         if(changingCycle()){
-          try{cyclePreview(Store.previewSalaryCycle(p.project,p.cycleStartDay,p.baseMinor,kind==='custom'?'cn':kind,p.employmentStart));}catch(err){UI.toast(err.message,'err');}return;
+          try{cyclePreview(Store.previewSalaryCycle(p.project,p.cycleStartDay,p.baseMinor,kind==='custom'?'cn':kind,p.employmentStart),body.querySelector('.j-auto-renew').checked);}catch(err){UI.toast(err.message,'err');}return;
         }
         const convert=body.querySelector('.j-convert').checked;
         if(convert||edit){
@@ -60,12 +64,12 @@ Views.payroll = (() => {
           const before=items.reduce((s,w)=>s+Store.workPayMinor(w),0),after=Math.round(p.baseMinor*items.reduce((s,w)=>s+w.paidDays,0)/p.dates.length);
           if(!await UI.confirm({title:'核对本期计薪调整',msg:`${p.project}，${items.length} 条记录。已计工资从 ${money(before)} 调整为 ${money(after)}。到账金额保持原值。`,okText:'确认调整'}))return;
         }
-        try{Store.saveSalaryPlan(p,convert);close();UI.toast('已保存工资方案');}catch(err){UI.toast(err.message,'err');}
+        try{Store.saveSalaryPlan(p,convert,body.querySelector('.j-auto-renew').checked);close();UI.toast('已保存工资方案');}catch(err){UI.toast(err.message,'err');}
       };
-      const del=body.querySelector('.j-delete-plan');if(del)del.onclick=async()=>{if(await UI.confirm({title:'删除本期工资方案？',msg:'删除对应月薪出勤记录，普通时薪、固定日薪和到账账单保留。',danger:true,okText:'删除'})){Store.removeSalaryPlan(edit.id);close();}};
+      const del=body.querySelector('.j-delete-plan');if(del)del.onclick=async()=>{if(await UI.confirm({title:'删除本期工资方案？',msg:'删除对应月薪出勤记录，普通时薪、固定日薪和到账账单保留。自动续期不会重建这个已删除的区间。',danger:true,okText:'删除'})){try{Store.removeSalaryPlan(edit.id);close();}catch(e){UI.toast(e.message,'err');}}};
     }});
   }
-  function cyclePreview(preview) {
+  function cyclePreview(preview,renewEnabled) {
     UI.sheet({title:'核对计薪周期调整',content(body,close){
       body.innerHTML=`<p>${esc(preview.project)} · ${preview.recordCount} 条出勤记录</p><p class="payroll-help">按新规则重建此项目全部计薪区间。已确认出勤的日期保留为工作日；未确认的自定义排班需重新核对。</p>
         <div class="salary-cycle-preview">${preview.plans.map(p=>`<div><b>${esc(Store.salaryRangeLabel(p))}</b><span>${p.dates.length} 个工作日 · ${p.previewCount} 条记录 · 已计 ${money(p.previewEarned)}</span></div>`).join('')}</div>
@@ -73,7 +77,7 @@ Views.payroll = (() => {
         <button class="btn btn-primary btn-block j-apply-cycle">确认调整周期</button>`;
       body.querySelector('.j-apply-cycle').onclick=async()=>{
         if(!await UI.confirm({title:'按以上区间重新计薪？',msg:'保留原出勤记录及收入账单，按新周期重新折算工资。已有到账关联会标记为待重新核对。',okText:'确认调整'}))return;
-        try{Store.applySalaryCycle(preview);close();Views.worktime.openPeriod();UI.toast('已调整周期，请核对出勤与到账');}catch(e){UI.toast(e.message,'err');}
+        try{Store.applySalaryCycle(preview,renewEnabled);close();Views.worktime.openPeriod();UI.toast('已调整周期，请核对出勤与到账');}catch(e){UI.toast(e.message,'err');}
       };
     }});
   }
@@ -116,21 +120,34 @@ Views.payroll = (() => {
       };
     }});
   }
+  function renewalSheet(project) {
+    const state=Store.salaryRenewalStatus(project),p=state.template;
+    UI.sheet({title:project+' · 自动续期',content(body,close){
+      body.innerHTML=`<div class="renewal-summary"><b>${state.enabled?'正在自动准备工资周期':'自动续期已暂停'}</b><p>${p?esc(Store.salaryRangeLabel(p))+' · 正常一期 '+money(p.baseMinor):'请先添加工资方案'}</p></div>
+        <p class="payroll-help">沿用这个项目的月薪、计薪周期和入职日，按每期法定节假日及调休重算工作日。提前准备下一期，重新打开应用时补齐缺少的区间。</p>
+        <p class="payroll-help">不会自动记出勤或创建工资收入。历史及已记录的方案保持原值；未来自动生成、尚无出勤和到账的方案会跟随工资调整，手动编辑后则保留你的设置。</p>
+        ${state.next?`<p>下一期：${esc(Store.salaryRangeLabel(state.next))}</p>`:''}${state.issue?`<p class="renewal-notice">${esc(state.issue)}</p>`:''}
+        <p class="payroll-help">删除过的区间不会重建。暂停只停止后续生成，已有记录保留；恢复后会补齐缺少的区间。未知年份等待官方调休数据更新。</p>
+        <button class="btn btn-primary btn-block j-renew-switch">${state.enabled?'暂停自动续期':'开启自动续期'}</button>`;
+      body.querySelector('.j-renew-switch').onclick=()=>{try{Store.setSalaryRenewal(project,!state.enabled);close();UI.toast(state.enabled?'已暂停自动续期':'已开启自动续期');}catch(e){UI.toast(e.message,'err');}};
+    }});
+  }
   function cards(month,plans=Store.salaryPlans(month)) {
     const groups=new Map();plans.forEach(p=>{if(!groups.has(p.project))groups.set(p.project,[]);groups.get(p.project).push(p);});
     return [...groups].map(([project,items])=>{
       items.sort((a,b)=>a.month.localeCompare(b.month));
-      const key=month+'|'+project,today=U.todayStr();
+      const key=month+'|'+project,today=U.todayStr(),renewal=Store.salaryRenewalStatus(project);
       const selected=items.find(p=>p.id===selectedCycles.get(key)) || items.find(p=>{const r=Store.salaryRange(p);return today>=r.start&&today<=r.end;}) || items.find(p=>p.month===month) || items[0];
       return `<section class="card salary-card salary-project" data-cycle-key="${esc(key)}"><header><h2>${UI.art('worktime')}${esc(project)}</h2><small>月薪折算</small></header>
       ${items.length>1?`<label class="salary-cycle-picker">查看计薪区间<select class="j-salary-cycle" aria-label="${esc(project)}计薪区间">${items.map(p=>`<option value="${p.id}" ${p.id===selected.id?'selected':''}>${esc(Store.salaryRangeLabel(p))}</option>`).join('')}</select></label><p class="salary-cycle-note">这个自然月跨越 ${items.length} 个计薪区间，切换查看。日历只汇总所选范围内的出勤。</p>`:''}
-      ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>本期方案</span><button class="chip" data-plan="${p.id}">计薪设置</button></div>
+      ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>${p.autoGenerated?'本期方案 · 自动生成':'本期方案'}</span><button class="chip" data-plan="${p.id}">计薪设置</button></div>
       <p class="payroll-help">${esc(Store.salaryRangeLabel(p))}${p.cycleConfirmed?'':' · 计薪区间待确认'}</p><div class="salary-main"><span>本期预计工资</span><strong>${money(s.expected)}</strong><small>未确认及未来工作日按正常出勤估算</small></div>
       <div class="salary-stats"><span>已计工资<b>${money(s.earned)}</b></span><span>缺勤扣薪<b class="money-out">${money(s.deducted)}</b></span><span>应出勤<b>${s.eligibleDays} 天</b></span><span>已确认出勤<b>${s.paidDays} 天</b></span></div>
-      <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></div>`;}).join('')}</section>`;
+      <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></div>`;}).join('')}<button class="salary-renew-row" data-renew-project="${esc(project)}"><span><b>${renewal.enabled?'自动续期已开启':'自动续期未开启'}</b><small>${esc(renewal.enabled?(renewal.issue || (renewal.next?'已准备 '+Store.salaryRangeLabel(renewal.next):renewal.skipped?'下一期已手动删除，不会重建':'按法定工作日准备下一期')):'沿用月薪与周期，免去每月新建')}</small></span><i>管理 ›</i></button></section>`;
     }).join('');
   }
   function bind(root,month) {
+    root.querySelectorAll('[data-renew-project]').forEach(b=>b.onclick=()=>renewalSheet(b.dataset.renewProject));
     root.querySelectorAll('.j-salary-cycle').forEach(select=>select.onchange=()=>{const card=select.closest('.salary-project');selectedCycles.set(card.dataset.cycleKey,select.value);card.querySelectorAll('[data-salary-panel]').forEach(p=>{p.hidden=p.dataset.salaryPanel!==select.value;});});
     root.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>planSheet(Store.salaryPlan(b.dataset.plan).month,Store.salaryPlan(b.dataset.plan)));
     root.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batch(Store.salaryPlan(b.dataset.batch)));

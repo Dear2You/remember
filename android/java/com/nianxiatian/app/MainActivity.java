@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
         // 返回前台时重申请一次安全衬距（横竖屏/分屏切换后也会重算）
         android.widget.FrameLayout fl = (android.widget.FrameLayout) webView.getParent();
         if (fl != null && android.os.Build.VERSION.SDK_INT >= 30) fl.requestApplyInsets();
-        webView.evaluateJavascript("window.Reminders && Reminders.resume()",null);
+        webView.evaluateJavascript("window.App && App.resume(); window.Reminders && Reminders.resume()",null);
     }
 
     private synchronized void rememberTap(Intent intent) {
@@ -324,12 +324,18 @@ public class MainActivity extends Activity {
         /** 前端主题切换时同步状态栏：深色模式给深底浅字，浅色模式给浅底深字 */
         @JavascriptInterface
         public void setStatusBar(final boolean dark) {
+            setAppearance(dark, false);
+        }
+
+        @JavascriptInterface
+        public void setAppearance(final boolean dark, final boolean starry) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        getWindow().setStatusBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
-                        getWindow().setNavigationBarColor(dark ? 0xFF19201D : 0xFFF7FAF8);
+                        int background = starry ? 0xFF10182C : dark ? 0xFF19201D : 0xFFF7FAF8;
+                        getWindow().setStatusBarColor(background);
+                        getWindow().setNavigationBarColor(background);
                         if (android.os.Build.VERSION.SDK_INT >= 30) {
                             android.view.WindowInsetsController controller = getWindow().getInsetsController();
                             int light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
@@ -342,7 +348,8 @@ public class MainActivity extends Activity {
                             int vis = decor.getSystemUiVisibility();
                             decor.setSystemUiVisibility(dark ? vis & ~light : vis | light);
                         }
-                        webView.setBackgroundColor(dark ? 0xFF19201D : 0xFFF7FAF8);
+                        webView.setBackgroundColor(background);
+                        if (webView.getParent() instanceof View) ((View) webView.getParent()).setBackgroundColor(background);
                     } catch (Exception ignored) { }
                 }
             });

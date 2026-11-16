@@ -398,8 +398,10 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card"><div class="section-title">显示</div>' +
+      '<div class="visual-style-picker" aria-label="界面风格">'+[['ink','水墨清夏','清浅山水 · 日常账页'],['starry','星空彼岸','夜蓝星河 · 静谧远岸']].map(([v,t,desc])=>'<button class="visual-style-option '+v+' '+(s.visualStyle===v?'on':'')+'" data-visual-style="'+v+'" aria-pressed="'+(s.visualStyle===v)+'"><span class="visual-style-art" aria-hidden="true"></span><b>'+t+'</b><small>'+desc+'</small><i>'+(s.visualStyle===v?'使用中':'选择')+'</i></button>').join('')+'</div>'+
+      (s.visualStyle==='starry'?'<p class="theme-note">星空彼岸采用夜色外观；切回水墨清夏后恢复原来的浅色 / 深色设置。</p>':'')+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
-      '    <div class="set-row"><div class="sr-lab">主题</div>' +
+      '    <div class="set-row appearance-mode" '+(s.visualStyle==='starry'?'hidden':'')+'><div class="sr-lab">明暗</div>' +
       '      <div class="seg" style="width:190px">' +
       '        <button data-t="auto" class="' + (s.theme === 'auto' ? 'on' : '') + '">跟随系统</button>' +
       '        <button data-t="light" class="' + (s.theme === 'light' ? 'on' : '') + '">浅色</button>' +
@@ -544,6 +546,10 @@ Views.settings = (() => {
       save({ theme: b.dataset.t });
       App.applyTheme();
       root.querySelectorAll('.seg button[data-t]').forEach(x => x.classList.toggle('on', x === b));
+    });
+    root.querySelectorAll('[data-visual-style]').forEach(b=>b.onclick=()=>{
+      try{Store.mutate(d=>{d.settings.visualStyle=b.dataset.visualStyle;});App.applyTheme();App.refresh();}
+      catch(e){UI.toast(e.message,'err');}
     });
 
     root.querySelector('.j-csv').onclick = () => {
