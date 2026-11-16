@@ -154,7 +154,7 @@ Views.life = (() => {
     root.innerHTML = '<div class="cell-list">' +
       items.map(([r, ic, name, desc]) =>
         '<div class="cell j-mod" data-r="' + r + '" style="cursor:pointer">' +
-        '  <div class="c-ico" >' + UI.icon(ic) + '</div>' +
+        '  <div class="c-ico" >' + UI.art(ic) + '</div>' +
         '  <div class="c-main"><div class="c-title">' + name + '</div><div class="c-sub">' + desc + '</div></div>' +
         '  <div class="c-right" style="color:var(--text-3)">›</div></div>').join('') +
       '</div>';

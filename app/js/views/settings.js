@@ -168,7 +168,7 @@ Views.settings = (() => {
           const debts = accs.filter(a => a.type === 'liability');
           const row = a =>
             '<div class="cell j-edit" data-id="' + a.id + '" style="' + (a.archived ? 'opacity:.5' : '') + '">' +
-            '  <div class="c-ico">' + a.icon + '</div>' +
+            '  <div class="c-ico">' + UI.accountIcon(a) + '</div>' +
             '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (a.type === 'liability' ? ' <span class="badge red">负债</span>' : '') + (a.archived ? '（停用）' : '') + '</div>' +
             '  <div class="c-sub">' + (a.type === 'liability' ? '欠款' : '期初') + ' ¥' + UI.amount(a.opening || 0) + ' · 当前' + (a.type === 'liability' ? '欠款' : '余额') + ' ¥' + UI.amount(Store.accountBalance(a.id)) + '</div></div>' +
             '  <div class="c-right" style="color:var(--text-3)">✏️</div>' +
@@ -193,7 +193,7 @@ Views.settings = (() => {
             '  <input class="j-open num" inputmode="decimal" placeholder="' + (newType === 'liability' ? '期初欠款' : '期初余额') + '" style="flex:0 0 110px;text-align:center" value="' + (it ? (it.opening ? (it.opening / 100) : '') : '') + '">' +
             '</div>' +
             '<div class="field"><div class="chips-wrap">' +
-            ACC_ICONS.map(ic => '<button class="chip j-ico ' + ((it ? it.icon : ACC_ICONS[0]) === ic ? 'on' : '') + '" data-ic="' + ic + '">' + ic + '</button>').join('') +
+            ACC_ICONS.map(ic => '<button class="chip j-ico ' + ((it ? it.icon : ACC_ICONS[0]) === ic ? 'on' : '') + '" data-ic="' + ic + '" aria-label="' + UI.accountIconLabel(ic) + '">' + UI.accountIcon({icon:ic}) + '</button>').join('') +
             '</div></div>' +
             (it
               ? '<div class="field-row" style="margin-bottom:10px">' +
@@ -384,18 +384,18 @@ Views.settings = (() => {
       '  <div class="settings-shortcuts">' +
       '    <div class="settings-tools">' +
       [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
-        '<button class="j-mod" data-r="' + route + '">' + UI.icon(symbol) + label + '</button>').join('') +
+        '<button class="j-mod" data-r="' + route + '">' + UI.art(symbol) + label + '</button>').join('') +
       '    </div>' +
       '  </div>' +
 
       '  <div class="card"><div class="section-title">账本与预算</div>' +
       [
-        ['j-books','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
-        ['j-budget','预算设置',book ? book.name + ' · 本月预算' : '选择账本设置预算'],
-        ['j-accounts','账户管理',accountDescription()],
-        ['j-cats','分类管理','收入与支出分类']
-      ].map(([cls,title,desc]) => `<button class="set-row settings-nav ${cls}">
-        <span><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
+        ['j-books','book','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
+        ['j-budget','chart','预算设置',book ? book.name + ' · 本月预算' : '选择账本设置预算'],
+        ['j-accounts','wallet','账户管理',accountDescription()],
+        ['j-cats','shopping','分类管理','收入与支出分类']
+      ].map(([cls,icon,title,desc]) => `<button class="set-row settings-nav ${cls}">
+        <span class="settings-entry-icon">${UI.art(icon)}</span><span class="settings-entry-copy"><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
       '  </div>' +
 
       '  <div class="card"><div class="section-title">显示</div>' +

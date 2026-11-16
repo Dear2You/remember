@@ -1,8 +1,8 @@
 {
-  "versionCode": 22900,
-  "versionName": "2.29",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.29/nianxiatian.apk",
-  "sha256": "8cadf29277594c5c26386fcb596709c86410acfd70f5f041a7f48cb9a34a2852",
-  "apkBlob": "8666d5aa6f2d84d499a973952d48cc43e6fec846",
-  "note": "清新浅青山水短页眉，淡彩常用操作与细致卡片；润色收支折线、柱状图和分类环形图，完善图表点击与深色模式。保留紧凑布局、工时自然月默认页及原有计薪规则，同步更新 AI 功能手册。"
+  "versionCode": 23000,
+  "versionName": "2.30",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.30/nianxiatian.apk",
+  "sha256": "b9f63d5eb9d71a2de880b87ccfdb52cfd05ee5bea111c46d64d3a7b94cf49f1d",
+  "apkBlob": "b33222cc606abfdb39ff6c4f7b73576ee9d0e957",
+  "note": "首页重排为清爽手账：日期山水、月度收支、工作便笺与流水细线分区；资产账户默认收起，点击展开查看余额和管理账户；账户、分类及常用工具更换细描插画图标；备忘录、倒数日、专注、订阅和 AI 页面补齐统一装饰；订阅汇率设置折叠收纳；更新内置 AI 使用手册。"
 }

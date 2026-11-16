@@ -74,11 +74,11 @@ Views.focus = (() => {
     const sessions = Store.data.focusSessions.slice(0, 8);
 
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page decorated-page focus-page">' +
       '  <button class="back-btn j-back">‹ 返回</button>' +
-      '  <div class="page-head"><div><div class="page-title">番茄专注</div><div class="page-sub">今日 ' + fmtSec(todaySec) + ' · ' + Store.focusCount(today) + ' 次 · 本周 ' + fmtSec(weekSec) + '</div></div></div>' +
+      '  <div class="page-head"><span class="page-emblem">' + UI.art('focus') + '</span><div><div class="page-title">番茄专注</div><div class="page-sub">今日 ' + fmtSec(todaySec) + ' · ' + Store.focusCount(today) + ' 次 · 本周 ' + fmtSec(weekSec) + '</div></div></div>' +
 
-      '  <div class="card" style="text-align:center;padding:26px 16px">' +
+      '  <div class="card focus-dial">' +
       '    <div class="seg j-mode" style="margin-bottom:18px;width:78%;margin-left:auto;margin-right:auto">' +
       '      <button data-m="pomodoro" class="' + (mode === 'pomodoro' ? 'on' : '') + '">番茄钟</button>' +
       '      <button data-m="countdown" class="' + (mode === 'countdown' ? 'on' : '') + '">倒计时</button>' +
@@ -90,7 +90,7 @@ Views.focus = (() => {
           (mode === 'countdown' ? '<input class="j-custom num" inputmode="numeric" placeholder="自定义" style="width:76px;text-align:center;padding:6px 8px" value="' + (![15, 25, 45, 50].includes(targetMin) && targetMin ? targetMin : '') + '"> ' : '') +
           '</div>'
         : '') +
-      '    <div class="j-clock focus-clock num">--:--</div>' +
+      '    <div class="focus-face">' + UI.art('focus') + '<div class="j-clock focus-clock num">--:--</div></div>' +
       '    <div class="field-row" style="justify-content:center">' +
       '      <button class="btn btn-grad j-start" style="flex:1;max-width:150px">开始专注</button>' +
       '      <button class="btn btn-ghost j-reset" style="flex:0 0 76px">重置</button>' +
@@ -110,7 +110,7 @@ Views.focus = (() => {
           sessions.map(s => {
             const t = s.taskId ? Store.data.tasks.find(x => x.id === s.taskId) : null;
             return '<div class="cell">' +
-              '  <div class="c-ico">' + (s.status === 'done' ? '🍅' : '💤') + '</div>' +
+              '  <div class="c-ico">' + UI.art(s.status === 'done' ? 'focus' : 'countdown') + '</div>' +
               '  <div class="c-main"><div class="c-title">' + (t ? U.escapeHtml(t.title) : ({ pomodoro: '番茄钟', countup: '正计时', countdown: '倒计时' })[s.mode]) + '</div>' +
               '  <div class="c-sub">' + new Date(s.startedAt).getHours() + ':' + U.pad(new Date(s.startedAt).getMinutes()) + (s.targetMin ? ' · 目标 ' + s.targetMin + ' 分钟' : '') + '</div></div>' +
               '  <div class="c-right"><div class="c-val num">' + fmtSec(s.actualSec) + '</div></div></div>';

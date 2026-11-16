@@ -83,19 +83,19 @@ Views.expense = (() => {
 
             (isTransfer
               ? '<div class="field" style="margin-top:12px"><label>转出账户（资产）</label><div class="acct-chips j-from">' +
-                assetAccs.map(a => '<button class="chip ' + (state.fromId === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + a.icon + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
+                assetAccs.map(a => '<button class="chip ' + (state.fromId === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
                 '</div></div>' +
                 '<div class="field"><label>转入账户（选负债账户 = 还款）</label><div class="acct-chips j-to">' +
-                accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + a.icon + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
+                accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' +
                 (isRepayMode
                   ? '<div class="repay-tip">💳 还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
-                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + a.icon + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : '') + '</button>').join('') +
+                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : '') + '</button>').join('') +
                 '</div></div>' +
                 '<div class="field"><label>一级分类</label><div class="cat-grid j-cats">' +
-                roots.map(c => '<button class="cat-item ' + (rootCat && rootCat.id === c.id ? 'on' : '') + '" data-id="' + c.id + '"><span class="ci">' + c.icon + '</span><span>' + U.escapeHtml(c.name) + '</span></button>').join('') +
+                roots.map(c => '<button class="cat-item ' + (rootCat && rootCat.id === c.id ? 'on' : '') + '" data-id="' + c.id + '"><span class="ci">' + UI.categoryIcon(c) + '</span><span>' + U.escapeHtml(c.name) + '</span></button>').join('') +
                 '</div></div>' +
                 (rootCat && subs.length
                   ? '<div class="field"><label>二级分类（' + U.escapeHtml(rootCat.name) + '）</label><div class="acct-chips j-subs">' +
@@ -260,11 +260,11 @@ Views.expense = (() => {
             '</div></div>' +
             '<div class="field"><label>账户</label><div class="chips-wrap">' +
             '<button class="chip j-a ' + (!draft.accountId ? 'on' : '') + '" data-v="">全部</button>' +
-            accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + a.icon + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
+            accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
             '</div></div>' +
             (draft.type === 'transfer' ? '' : '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
             '<button class="chip j-c ' + (!draft.categoryId ? 'on' : '') + '" data-v="">全部</button>' +
-            roots.filter(c => !draft.type || c.kind === draft.type).map(c => '<button class="chip j-c ' + (pickRoot === c.id && draft.categoryId ? 'on' : '') + '" data-v="' + c.id + '">' + c.icon + ' ' + U.escapeHtml(c.name) + '</button>').join('') +
+            roots.filter(c => !draft.type || c.kind === draft.type).map(c => '<button class="chip j-c ' + (pickRoot === c.id && draft.categoryId ? 'on' : '') + '" data-v="' + c.id + '">' + UI.categoryIcon(c) + ' ' + U.escapeHtml(c.name) + '</button>').join('') +
             '</div></div>') +
             (pickRoot && subs.length && draft.categoryId
               ? '<div class="field"><label>二级分类</label><div class="chips-wrap">' +

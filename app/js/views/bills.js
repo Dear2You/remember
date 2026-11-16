@@ -89,7 +89,7 @@ Views.bills = (() => {
           (list.length ? list.sort((a, b) => b.createdAt - a.createdAt).map(t => {
             const s = Views.expense.tSummary(t);
             return '<div class="cell j-item" data-id="' + t.id + '">' +
-              '  <div class="c-ico">' + s.icon + '</div>' +
+              '  <div class="c-ico">' + UI.entryIcon(t) + '</div>' +
               '  <div class="c-main"><div class="c-title">' + U.escapeHtml(s.title) + '</div><div class="c-sub">' + U.escapeHtml(s.sub) + '</div></div>' +
               '  <div class="c-right"><div class="c-val">' + Views.expense.tAmountHtml(t) + '</div></div></div>';
           }).join('') : '<div class="empty" style="padding:14px 0"><div class="tip">这一天没有账单</div></div>') + '</div>' +
@@ -226,7 +226,7 @@ Views.bills = (() => {
           return '<div class="day-group"><div class="day-head"><span>' + U.fmtDay(d) + '</span><span class="num">' + bits.join(' · ') + '</span></div>' +
             '<div class="cell-list">' + byDay[d].sort((a, b) => b.createdAt - a.createdAt).map(t => {
               const s = E.tSummary(t);
-              return '<div class="cell j-item" data-id="' + t.id + '"><div class="c-ico">' + s.icon + '</div>' +
+              return '<div class="cell j-item" data-id="' + t.id + '"><div class="c-ico">' + UI.entryIcon(t) + '</div>' +
                 '<div class="c-main"><div class="c-title">' + U.escapeHtml(s.title) + '</div><div class="c-sub">' + U.escapeHtml(s.sub) + '</div></div>' +
                 '<div class="c-right"><div class="c-val">' + E.tAmountHtml(t) + '</div></div></div>';
             }).join('') + '</div></div>';

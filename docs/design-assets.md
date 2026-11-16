@@ -11,3 +11,9 @@
 ```text
 Use case: stylized-concept. Create a production illustration asset for a compact Chinese personal journal and finance app, NOT a UI screenshot. A refined fresh Chinese ink-and-watercolor landscape in a very wide horizontal composition, approximately 3:1 aspect ratio. An airy mist-white sky with generous blank space on the left half, pale celadon and jade green distant mountains over a tranquil lake, delicate willow foliage entering from the top right, and a very small white-walled dark-roofed waterside pavilion on the far right. Hand-painted soft watercolor washes, precise fine brush details on the willow and pavilion, natural irregular pigment edges. Fresh clear morning atmosphere, soft mint green, very pale blue-green, clean off-white; one tiny muted apricot sun as an accent. Ancient Chinese painting sensibility, elegant and contemporary, light and delicate rather than yellowed antique paper. Most details on the right half and along lower edge, so the left can carry app text. Full-bleed landscape artwork with no border, no text, no calligraphy, no seals, no logos, no gradients that look synthetic, no purple, no dark heavy background, no cartoon icons, no UI elements. Keep the upper left extremely light and quiet. Export an opaque image.
 ```
+
+## v2.30 界面延续
+
+复用同一幅浅青山水，首页将日期与本月收支合成一张账页，工作摘要使用细窄的便签边饰，待办与最近流水使用行间细线。保持小标题、短卡片和自然月默认页。
+
+`app/js/art.js` 为本地 SVG 图标集合，细描边搭配低透明度填色。账户图标在资产、管理和记账选择中统一呈现，保存的图标值仍沿用旧值，备份格式不变。默认分类在账单与记账一级分类中共用图案，自定义图标保留。便笺、票签、表盘与折叠菜单的样式放在 `app/css/journal.css`；没有新增远程图片、字体或依赖。

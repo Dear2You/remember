@@ -148,9 +148,9 @@ Views.habit = (() => {
     const doneCount = due.filter(h => Store.habitDone(h.id, today)).length;
 
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page decorated-page habit-page">' +
       '<button class="back-btn j-back" onclick="App.go(&#39;home&#39;)">‹ 返回</button>' +
-      '  <div class="page-head">' +
+      '  <div class="page-head"><span class="page-emblem">' + UI.art('habit') + '</span>' +
       '    <div><div class="page-title">打卡</div><div class="page-sub">' + (due.length ? '今日 ' + doneCount + '/' + due.length : '还没有打卡习惯') + '</div></div>' +
       '    <button class="head-btn j-add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>' +
       '  </div>' +
@@ -177,7 +177,7 @@ Views.habit = (() => {
             '  <div class="c-right" style="font-size:12px;color:var(--text-3)">' + (done ? '✓ 已打卡' : '') + '</div>' +
             '</div>';
         }).join('') + '</div>'
-        : '<div class="empty"><span class="emoji">🎯</span><div>创建第一个打卡习惯</div><div class="tip" style="margin-top:4px">坚持从今天开始</div></div>') +
+        : '<div class="empty"><span class="empty-art">' + UI.art('habit') + '</span><div>创建第一个打卡习惯</div><div class="tip" style="margin-top:4px">坚持从今天开始</div></div>') +
       '</div>';
 
     root.querySelector('.j-add').onclick = () => openEditor();

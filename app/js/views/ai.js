@@ -276,11 +276,11 @@ Views.ai = (() => {
     box.innerHTML = '';
     if (!chats.length) {
       box.innerHTML =
-        '<div class="quick-chips">' +
-      ['昨天微信午饭 28 元', '这个月花了多少钱？', '本月哪类花得最多？', '功能手册', ...(Store.settings.aiKey ? ['本月工时总结'] : [])].map(q =>
-          '<button class="chip j-quick">' + U.escapeHtml(q) + '</button>').join('') +
+        '<div class="assistant-intro">' + UI.art('chat') + '<div><h2>随手记，随时查</h2><p>记账、查账与日常安排</p></div></div><div class="quick-chips">' +
+      ['昨天微信午饭 28 元', '这个月花了多少钱？', '本月哪类花得最多？', '功能手册', ...(Store.settings.aiKey ? ['本月工时总结'] : [])].map((q,i) =>
+          '<button class="chip j-quick" data-prompt="' + U.escapeHtml(q) + '">' + UI.art(['edit','wallet','chart','book','worktime'][i]) + '<span>' + U.escapeHtml(q) + '</span><i aria-hidden="true">›</i></button>').join('') +
         '</div>';
-      box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.textContent));
+      box.querySelectorAll('.j-quick').forEach(b => b.onclick = () => doSend(b.dataset.prompt));
       return;
     }
     chats.forEach((msg, idx) => {

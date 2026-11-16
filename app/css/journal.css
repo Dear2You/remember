@@ -1,0 +1,193 @@
+/* Illustrated objects and quiet book details. All surfaces follow the active theme. */
+:root { --book-serif: "STSong", "Songti SC", "Noto Serif CJK SC", "SimSun", serif; }
+.page-title { font-family: var(--book-serif); font-weight: 600; letter-spacing: .03em; }
+.art-icon { width: 32px; height: 32px; flex: none; display: inline-block; color: var(--accent); vertical-align: middle; }
+.art-wash { fill: currentColor; fill-opacity: .15; }
+.art-paper { fill: var(--card); }
+.art-memo, .art-countdown, .art-bank, .art-coin, .art-food, .art-gift { color: var(--warn); }
+.art-check, .art-alipay, .art-card, .art-subs, .art-travel, .art-chart { color: var(--info); }
+.art-trip, .art-shopping, .art-purse { color: var(--calendar-expense); }
+.c-ico .art-icon { width: 29px; height: 29px; }
+.cat-item .ci .art-icon { width: 28px; height: 28px; }
+.cat-item .ci { filter: none; }
+.art-medical, .art-envelope { color: var(--calendar-expense); }
+.art-game, .art-phone { color: var(--info); }
+.acct-chips .art-icon, .chips-wrap .j-ico .art-icon { width: 23px; height: 23px; }
+.chips-wrap .j-ico { min-width: 40px; min-height: 38px; justify-content: center; padding: 6px 8px; }
+.account-custom-icon { display: inline-block; font-size: 20px; line-height: 1.3; }
+.cell .c-ico:has(.art-icon) { background: transparent; border-radius: 0; }
+.sheet-head { border-bottom: 1px solid var(--hairline); margin-bottom: 10px; }
+.sheet-title { font-family: var(--book-serif); font-size: 17px; letter-spacing: .03em; }
+.sheet-close { background: transparent; border: 1px solid var(--hairline); }
+.sheet-panel { border-radius: 16px 16px 0 0; }
+
+/* Home is one small ledger, a work slip and a ruled list, each with a distinct role. */
+.handpage { max-width: 760px; }
+.home-book { position: relative; border: 1px solid var(--hairline); border-radius: 8px 14px 8px 8px; background: var(--card); box-shadow: 0 3px 0 -1px var(--bg), 0 4px 0 -1px var(--hairline); margin-bottom: 2px; overflow: hidden; }
+.home-cover { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px 3px; min-height: 64px; position: relative; isolation: isolate; }
+.home-cover::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--scene-opacity); filter: var(--scene-filter); background: linear-gradient(90deg,var(--card) 9%,transparent 60%),linear-gradient(0deg,var(--card),transparent 36%),url('../images/summer-mist.png') right 57% / cover; }
+.home-cover h1 { display: flex; align-items: center; gap: 10px; margin: 0; }
+.home-cover h1>b { font: 38px/.95 Georgia, serif; color: var(--text); }
+.home-cover h1>span { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); border-left: 1px solid var(--hairline); padding-left: 10px; }
+.home-cover h1 small { display: block; font-size: 9px; font-weight: 400; letter-spacing: .06em; margin-top: 3px; color: var(--text-3); }
+.home-cover .visibility-toggle { align-self: flex-start; min-width: 32px; min-height: 32px; color: var(--text-2); background: var(--card); border: 1px solid var(--hairline); border-radius: 50%; }
+.handpage .overview-finance { background: none; border: 0; padding: 0 14px 7px; }
+.handpage .overview-finance header { border-bottom: 1px solid var(--hairline); min-height: 30px; }
+.handpage .overview-finance header>span { font-size: 11px; color: var(--text-2); }
+.handpage .overview-finance header small { font-size: 10px; }
+.handpage .overview-finance .text-action { font-size: 10px; min-height: 28px; }
+.handpage .overview-amounts { gap: 16px; padding: 9px 0 8px; }
+.handpage .overview-amounts>span+span { border-left: 1px solid var(--hairline); padding-left: 16px; }
+.handpage .overview-amounts small { font-size: 10px; margin-bottom: 1px; }
+.handpage .overview-amounts strong { font: 500 clamp(20px,6.2vw,25px)/1.25 Georgia, var(--ui-font); letter-spacing: -.02em; }
+.handpage .overview-finance footer { border: 0; padding: 0; min-height: 24px; font-size: 10px; }
+.handpage .overview-finance footer small { font-size: 9px; color: var(--text-3); }
+.handpage .overview-finance footer b { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; }
+.handpage .overview-shortcuts { padding: 14px 0 12px; gap: 8px; }
+.handpage .overview-shortcuts button { gap: 4px; font-size: 11px; }
+.handpage .overview-shortcuts button>span { width: 36px; height: 34px; border: 0; background: transparent; box-shadow: none; border-radius: 0; }
+.handpage .overview-shortcuts svg { width: 32px; height: 32px; }
+.handpage .work-slip { background: var(--tint-surface); border: 1px solid var(--hairline); border-radius: 5px; padding: 5px 11px 0; margin: 0 0 13px; position: relative; }
+.handpage .work-slip::before { content: ''; position: absolute; top: -1px; left: 12px; width: 34px; height: 2px; background: var(--accent); opacity: .45; }
+.handpage .work-slip h2 { gap: 5px; font-family: var(--book-serif); font-size: 13px; font-weight: 600; }
+.handpage .work-slip h2::before, .handpage .overview-section h2::before { content: none; }
+.handpage .work-slip h2 svg { width: 20px; height: 20px; }
+.handpage .overview-work-values { padding: 5px 0 8px; gap: 9px; }
+.handpage .overview-work-values small { font-size: 10px; margin-bottom: 2px; }
+.handpage .overview-work-values strong { font-size: 16px; font-weight: 550; }
+.handpage .overview-attendance { border: 1px solid var(--hairline); background: var(--card); border-radius: 5px; font-size: 10px; padding: 6px; min-height: 34px; }
+.handpage .overview-work footer button { min-height: 32px; }
+.handpage .overview-work footer span { font-size: 9px; }
+.home-notebook { padding: 0 2px; }
+.home-notebook .overview-section+ .overview-section { margin-top: 9px; }
+.handpage .overview-section>header { margin-bottom: 0; min-height: 29px; border-bottom: 1px solid var(--hairline); }
+.handpage .overview-section h2 { font-family: var(--book-serif); font-size: 13px; letter-spacing: .03em; }
+.handpage .overview-section .text-action { min-height: 29px; font-size: 10px; }
+.handpage .overview-agenda, .handpage .overview-transactions { padding: 0; margin-bottom: 0; }
+.handpage .overview-row { min-height: 42px; }
+.handpage .overview-row-title { font-size: 12px; }
+.handpage .overview-row-icon { padding: 4px; color: var(--accent); }
+.handpage .overview-transaction { min-height: 49px; gap: 10px; }
+.handpage .overview-tx-icon { width: 30px; height: 32px; border: 0; background: transparent; }
+.handpage .overview-tx-icon svg { width: 28px; height: 28px; }
+.handpage .overview-tx-amount { font-weight: 500; }
+.handpage .overview-tx-amount .num { font-weight: 550; }
+.handpage .overview-tools { margin-top: 8px; border-top: 1px solid var(--hairline); }
+.handpage .overview-tools summary { padding: 10px 2px; }
+.handpage .overview-tools>div button { justify-content: flex-start; background: transparent; border-bottom: 1px solid var(--hairline); border-radius: 0; font-size: 11px; gap: 7px; min-height: 44px; }
+.handpage .overview-tools svg { width: 25px; height: 25px; }
+
+/* Account drawer: a single quiet summary until the user asks for detail. */
+.account-drawer { background: var(--card); border: 1px solid var(--hairline); border-radius: 9px; margin-bottom: 14px; }
+.account-drawer>summary { display: flex; align-items: center; gap: 10px; list-style: none; cursor: pointer; min-height: 65px; padding: 10px 13px; }
+.account-drawer>summary::-webkit-details-marker { display: none; }
+.account-drawer>summary>span { flex: 1; min-width: 0; }
+.account-drawer b { display: block; font-size: 13px; font-weight: 600; }
+.account-drawer small { font-size: 10px; color: var(--text-3); font-weight: 400; }
+.account-drawer b small { margin-left: 5px; }
+.fold-chevron { width: 7px; height: 7px; border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3); transform: rotate(45deg); margin: 0 3px 4px 5px; transition: transform .16s; flex: none; }
+.account-drawer[open]>summary .fold-chevron, .fx-panel[open]>summary .fold-chevron { transform: rotate(225deg); margin-bottom: -3px; }
+.account-drawer[open]>summary { border-bottom: 1px solid var(--hairline); }
+.account-drawer summary:focus-visible, .fx-panel summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.account-drawer .asset-account-list { border: 0; margin: 0; border-radius: 0; box-shadow: none; padding: 0 9px; }
+.account-drawer .cell { padding: 10px 3px; min-height: 59px; }
+.account-drawer .c-val { font-size: 14px; font-weight: 550; }
+.drawer-manage { width: 100%; min-height: 38px; text-align: center; font-size: 11px; color: var(--accent); border-top: 1px solid var(--hairline); }
+.asset-overview { border-radius: 8px 16px 8px 8px; background: var(--card); padding: 10px 15px; border-bottom: 3px solid var(--hairline); }
+.asset-total { font: 29px/1.4 Georgia,var(--ui-font); padding: 5px 0 12px; }
+.asset-shortcuts { gap: 0; margin: 0 0 14px; }
+.asset-shortcuts button { flex-direction: column; gap: 4px; background: transparent; box-shadow: none; border: 0; border-radius: 0; min-height: 59px; }
+.asset-shortcuts svg { width: 28px; height: 28px; }
+.asset-shortcuts .art-subs { color: var(--info); }
+.asset-shortcuts .art-trip { color: var(--calendar-expense); }
+.asset-shortcuts button+button { border-left: 1px solid var(--hairline); }
+.asset-month { background: var(--card); border-radius: 8px; }
+.asset-month h2 { font-family: var(--book-serif); }
+.asset-month .book-bar { padding-bottom: 8px; }
+.asset-month .stat-grid { padding: 9px 0 4px; border-top: 1px solid var(--hairline); }
+.asset-footnote { text-align: center; font-size: 10px; margin-top: 15px; }
+
+/* Life tools use their own illustrated object and restrained stationery details. */
+.decorated-page>.page-head { position: relative; isolation: isolate; min-height: 65px; padding: 0 0 12px; gap: 10px; margin-bottom: 6px; }
+.decorated-page>.page-head::before { content: ''; position: absolute; z-index: -1; inset: 0 0 3px 15%; pointer-events: none; background: linear-gradient(90deg,var(--bg),transparent 50%),linear-gradient(0deg,var(--bg),transparent 50%),url('../images/summer-mist.png') center 75% / cover; opacity: .14; }
+.decorated-page>.page-head .page-title { font: 600 21px/1.4 var(--book-serif); letter-spacing: .04em; }
+.decorated-page>.page-head .page-sub { font-size: 10px; }
+.page-emblem { order: 2; margin-left: auto; opacity: .85; flex: none; }
+.page-emblem svg { width: 40px; height: 40px; }
+.decorated-page .head-btn { order: 3; }
+.decorated-page .back-btn { font-size: 12px; padding: 0 0 7px; }
+.empty-art { display: block; margin: 10px auto 15px; }
+.empty-art svg { width: 64px; height: 64px; }
+.memo-card { display: block; text-align: left; width: 100%; border-radius: 3px 12px 3px 3px; border-left: 3px solid var(--hairline); padding: 12px 13px 9px; }
+.memo-card:nth-of-type(3n+1) { border-left-color: #a7c5b6; }
+.memo-card:nth-of-type(3n+2) { border-left-color: #c7bd9d; }
+.memo-card:nth-of-type(3n) { border-left-color: #b1c3d1; }
+.memo-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.memo-title { font: 600 15px/1.5 var(--book-serif); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memo-pin { font: 9px/1.5 var(--ui-font); padding: 2px 4px; margin-right: 6px; color: var(--accent); border: 1px solid var(--hairline); border-radius: 2px; vertical-align: middle; }
+.memo-snippet { font-size: 12px; line-height: 1.85; margin-top: 6px; }
+.memo-meta { font-size: 10px; margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--hairline); }
+.habit-page .stat-grid { background: var(--tint-surface); border-radius: 6px; border: 0; }
+.habit-page .habit-circle { width: 40px; height: 40px; border-width: 1px; box-shadow: 0 0 0 3px var(--card),0 0 0 4px var(--hairline); margin: 3px; }
+.habit-page .cell { min-height: 68px; }
+.habit-page .c-title { font-family: var(--book-serif); font-size: 14px; }
+.focus-dial { text-align: center; padding: 15px 13px; border-radius: 8px 8px 18px 18px; }
+.focus-face { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 184px; height: 184px; border: 1px solid var(--hairline); box-shadow: inset 0 0 0 6px var(--card),inset 0 0 0 7px var(--hairline); border-radius: 50%; margin: 8px auto 19px; background: var(--tint-surface); }
+.focus-face::before, .focus-face::after { content: ''; position: absolute; width: 5px; height: 5px; background: var(--accent); opacity: .4; border-radius: 50%; top: 9px; left: calc(50% - 2.5px); }
+.focus-face::after { top: auto; bottom: 9px; }
+.focus-face>.art-icon { width: 28px; height: 28px; margin-top: 5px; }
+.focus-face .focus-clock { font: 40px/1.3 Georgia,serif; letter-spacing: .01em; margin: 3px 0 0; }
+.focus-page .focus-dial .j-mode { width: 100% !important; margin-bottom: 12px !important; }
+.countdown-page .cell-list { border: 0; background: transparent; box-shadow: none; }
+.countdown-page .countdown-ticket { border: 1px solid var(--hairline); border-radius: 5px 12px 12px 5px; background: var(--card); margin-bottom: 9px; min-height: 78px; position: relative; }
+.countdown-ticket .c-right { border-left: 1px dashed var(--hairline); padding-left: 12px; }
+.countdown-ticket+.countdown-ticket::before { content: none; }
+.countdown-ticket .c-title { font-family: var(--book-serif); font-size: 14px; }
+.countdown-yearly { font: 9px/1.5 var(--ui-font); border: 1px solid var(--hairline); color: var(--text-3); padding: 1px 4px; margin-left: 4px; border-radius: 3px; }
+.countdown-page .c-sub { font-size: 10px; }
+.subs-page .sub-total { border-radius: 5px 14px 5px 5px; border-bottom: 3px double var(--hairline); background: var(--card); }
+.subs-page .sub-total>div { font-size: 11px; color: var(--text-2); }
+.subs-page .sub-total strong { font: 28px/1.3 Georgia,var(--ui-font); margin: 7px 0; }
+.subs-page .sub-total small { font-size: 11px; }
+.sub-code { background: var(--input-bg); border: 1px solid var(--hairline); border-radius: 50%; font: 10px/1.6 Georgia,serif; width: 35px; min-width: 35px; height: 35px; padding: 9px 0; }
+.subscription-row+.subscription-row { border-top: 1px solid var(--hairline); }
+.fx-panel { margin-top: 15px; border-top: 1px solid var(--hairline); }
+.fx-panel>summary { display: flex; align-items: center; gap: 8px; min-height: 48px; list-style: none; cursor: pointer; color: var(--text-2); font-size: 12px; }
+.fx-panel>summary::-webkit-details-marker { display: none; }
+.fx-panel>summary svg { width: 23px; height: 23px; }
+.fx-panel>summary .fold-chevron { margin-left: auto; }
+.fx-panel .fx-card { background: transparent; box-shadow: none; padding: 5px 0 0; border: 0; }
+.fx-panel .fx-card h2 { font-size: 12px; }
+.fx-panel .fx-value { font-size: 16px; margin: 9px 0; }
+.assistant-intro { display: flex; align-items: center; gap: 13px; padding: 24px 5px 18px; }
+.assistant-intro>.art-icon { width: 47px; height: 47px; }
+.assistant-intro h2 { font: 600 19px/1.6 var(--book-serif); margin: 0; }
+.assistant-intro p { font-size: 11px; color: var(--text-3); margin: 3px 0 0; }
+.assistant-page .quick-chips { display: block; padding: 0; border-block: 1px solid var(--hairline); }
+.assistant-page .quick-chips button { border-radius: 0; background: transparent; display: flex; width: 100%; gap: 10px; text-align: left; padding: 12px 3px; min-height: 47px; font-size: 12px; }
+.assistant-page .quick-chips button+button { border-top: 1px solid var(--hairline); }
+.assistant-page .quick-chips svg { width: 24px; height: 24px; }
+.assistant-page .quick-chips button>span { flex: 1; }
+.assistant-page .quick-chips i { font-style: normal; color: var(--text-3); }
+.assistant-page .bubble.ai { border: 1px solid var(--hairline); border-radius: 5px 12px 12px 12px; }
+.settings-tools button { border: 0; background: transparent !important; box-shadow: none; font-size: 11px; gap: 7px; padding: 6px 0; }
+.settings-tools svg { width: 30px; height: 30px; }
+.settings-nav .settings-entry-icon { flex: none; }
+.settings-entry-icon svg { width: 26px; height: 26px; }
+.settings-nav .settings-entry-copy { flex: 1; min-width: 0; }
+.settings-page .card { border-radius: 7px; }
+.settings-page .section-title { font-family: var(--book-serif); font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--hairline); }
+.life-page .j-mod .c-ico { width: 35px; height: 35px; background: transparent; }
+.life-page .j-mod .art-icon { width: 30px; height: 30px; }
+.bill-report .c-ico { background: transparent; }
+@media (max-width: 350px) {
+  .home-cover { padding-left: 11px; padding-right: 11px; }
+  .handpage .overview-finance { padding-left: 11px; padding-right: 11px; }
+  .handpage .overview-work-values { gap: 5px; }
+  .handpage .overview-work-values strong { font-size: 14px; }
+  .handpage .overview-work-values .overview-attendance { font-size: 9px; padding: 5px; }
+  .handpage .overview-tools>div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .countdown-ticket .c-right { padding-left: 7px; }
+  .countdown-ticket .c-val { font-size: 14px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .fold-chevron { transition: none; } }

@@ -104,17 +104,19 @@ Views.subs = (() => {
         <span class="c-val num">${cny === null ? '待补汇率' : '¥'+UI.amount(cny,true)}</span></button>
         ${s.nextDue&&!s.paused?`<button class="text-action j-paid" data-id="${s.id}">已扣款，登记支出 ›</button>`:''}</div>`;
     }).join('');
-    root.innerHTML = `<div class="page subs-page"><button class="back-btn j-back">‹ 返回</button>
-      <div class="page-head"><div><div class="page-title">订阅与固定支出</div><div class="page-sub">固定订阅 · ${subs.length} 项</div></div></div>
+    const rateWasOpen = !!root.querySelector('.fx-panel[open]');
+    root.innerHTML = `<div class="page decorated-page subs-page"><button class="back-btn j-back">‹ 返回</button>
+      <div class="page-head"><span class="page-emblem">${UI.art('subs')}</span><div><div class="page-title">订阅与固定支出</div><div class="page-sub">固定订阅 · ${subs.length} 项</div></div></div>
       <section class="card sub-total"><div>月均固定支出（人民币）</div>
       <strong class="num">${total === null ? '待补汇率' : '¥'+UI.amount(total,true)}</strong>
       <small>${total === null ? '待设置 · '+missing.map(esc).join('、') : '日均 ¥'+UI.amount(Math.round(total/30))+' · 年化 ¥'+UI.amount(total*12,true)}</small></section>
+      ${subs.length ? '<div class="cell-list">'+list+'</div>' : '<div class="empty"><span class="empty-art">'+UI.art('subs')+'</span><p class="sub-empty">还没有订阅记录</p></div>'}
+      <button class="btn btn-primary btn-block j-add">＋ 新增订阅</button>
+      <details class="fx-panel" ${rateWasOpen?'open':''}><summary>${UI.art('cash')}折算汇率与币种<i class="fold-chevron" aria-hidden="true"></i></summary>
       <section class="card fx-card"><header><h2>折算汇率</h2><select class="j-rate-currency" aria-label="选择汇率币种">${options(selected,true)}</select></header>
       <div class="fx-value num j-rate" aria-live="polite"></div>
       <div class="fx-tools"><button class="btn btn-ghost j-manual">手动设置</button><button class="btn btn-primary j-fetch">在线更新</button></div>
-      <small>汇率来源 · <a href="https://www.exchangerate-api.com">ExchangeRate-API</a></small></section>
-      ${subs.length ? '<div class="cell-list">'+list+'</div>' : '<p class="sub-empty">还没有订阅记录</p>'}
-      <button class="btn btn-primary btn-block j-add">＋ 新增订阅</button></div>`;
+      <small>汇率来源 · <a href="https://www.exchangerate-api.com">ExchangeRate-API</a></small></section></details></div>`;
     const picker = root.querySelector('.j-rate-currency'), output = root.querySelector('.j-rate');
     const fetchBtn = root.querySelector('.j-fetch'), manual = root.querySelector('.j-manual');
     const paintRate = () => {

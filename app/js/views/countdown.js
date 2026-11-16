@@ -56,20 +56,20 @@ Views.countdown = (() => {
     const card = c => {
       const d = Store.countdownDays(c);
       const label = d === 0 ? '就在今天' : d > 0 ? '还有 ' + d + ' 天' : '已过 ' + (-d) + ' 天';
-      return '<div class="cell j-item" data-id="' + c.id + '" style="' + (d === 0 ? 'background:var(--accent-weak)' : '') + '">' +
-        '  <div class="c-ico" style="font-size:22px">' + c.icon + '</div>' +
-        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(c.title) + (c.yearly ? ' 🔁' : '') + '</div>' +
+      return '<div class="cell countdown-ticket j-item" data-id="' + c.id + '" style="' + (d === 0 ? 'background:var(--accent-weak)' : '') + '">' +
+        '  <div class="c-ico" style="font-size:22px">' + (/🎂|🎉|🎁/.test(c.icon)?UI.art('gift'):U.escapeHtml(c.icon)) + '</div>' +
+        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(c.title) + (c.yearly ? ' <small class="countdown-yearly">每年</small>' : '') + '</div>' +
         '  <div class="c-sub">' + U.fmtFull(c.date) + '</div></div>' +
         '  <div class="c-right"><div class="c-val num" style="font-size:17px;color:' + (d === 0 ? 'var(--accent)' : d > 0 ? 'var(--text)' : 'var(--text-3)') + '">' + label + '</div></div>' +
         '</div>';
     };
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page decorated-page countdown-page">' +
       '  <button class="back-btn j-back">‹ 返回</button>' +
-      '  <div class="page-head"><div><div class="page-title">倒数日</div><div class="page-sub">生日 · 答辩 · 截稿 · 纪念日</div></div></div>' +
+      '  <div class="page-head"><span class="page-emblem">' + UI.art('countdown') + '</span><div><div class="page-title">倒数日</div><div class="page-sub">生日 · 答辩 · 截稿 · 纪念日</div></div></div>' +
       '<div class="section-title" style="padding:0 2px">即将到来</div>' +
       (future.length ? '<div class="cell-list" style="margin-bottom:14px">' + future.map(card).join('') + '</div>'
-        : '<div class="empty" style="padding:12px 0"><span class="emoji">⏳</span><div class="tip">还没有倒数日</div></div>') +
+        : '<div class="empty" style="padding:12px 0"><span class="empty-art">' + UI.art('countdown') + '</span><div class="tip">还没有倒数日</div></div>') +
       (past.length ? '<div class="section-title" style="padding:0 2px">已经过去</div><div class="cell-list" style="margin-bottom:14px">' + past.map(card).join('') + '</div>' : '') +
       '<button class="btn btn-primary btn-block j-add">＋ 新建倒数日</button>' +
       '</div>';

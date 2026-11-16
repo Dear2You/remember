@@ -113,22 +113,22 @@ Views.memo = (() => {
     const today = U.todayStr();
 
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page decorated-page memo-page">' +
       '<button class="back-btn j-back" onclick="App.go(&#39;home&#39;)">‹ 返回</button>' +
-      '  <div class="page-head">' +
+      '  <div class="page-head"><span class="page-emblem">' + UI.art('memo') + '</span>' +
       '    <div><div class="page-title">备忘录</div><div class="page-sub">共 ' + Store.data.memos.length + ' 条</div></div>' +
       '    <button class="head-btn j-add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>' +
       '  </div>' +
-      '  <div class="field"><input class="j-search" placeholder="🔍 搜索备忘…" value="' + U.escapeHtml(keyword) + '"></div>' +
+      '  <div class="field"><input class="j-search" placeholder="搜索标题或内容…" value="' + U.escapeHtml(keyword) + '"></div>' +
       (memos.length
         ? memos.map(m => {
           const items = m.items || [], done = items.filter(i => i.done).length;
           const complete = Store.memoComplete(m);
           const overdue = !complete && m.remindDate && m.remindDate < today;
           const dueToday = !complete && m.remindDate === today;
-          return '<div class="card memo-card j-item" data-id="' + m.id + '">' +
-            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
-            '  <div style="font-weight:700;font-size:15.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (m.pinned ? '📌 ' : '') + U.escapeHtml(m.title) + '</div>' +
+          return '<button class="card memo-card j-item" data-id="' + m.id + '">' +
+            '<div class="memo-title-row">' +
+            '  <div class="memo-title">' + (m.pinned ? '<span class="memo-pin">置顶</span>' : '') + U.escapeHtml(m.title) + '</div>' +
             (m.type === 'list' ? '<span class="badge gray">' + done + '/' + items.length + '</span>' : '') +
             '</div>' +
             (snippet(m) ? '<div class="memo-snippet">' + U.escapeHtml(snippet(m)) + '</div>' : '') +
@@ -137,9 +137,9 @@ Views.memo = (() => {
             (overdue ? '<span class="badge red">逾期 ' + (U.parseDate(m.remindDate).getMonth() + 1) + '月' + U.parseDate(m.remindDate).getDate() + '日</span>' : '') +
             (dueToday ? '<span class="badge red">今天</span>' : '') +
             (!complete && !overdue && !dueToday && m.remindDate ? '<span class="badge green">' + U.fmtDay(m.remindDate) + '提醒</span>' : '') +
-            (!complete && m.phoneRemind && m.remindTime ? '<span>通知 ' + U.escapeHtml(m.remindTime) + '</span>' : '') + '</div></div>';
+            (!complete && m.phoneRemind && m.remindTime ? '<span>通知 ' + U.escapeHtml(m.remindTime) + '</span>' : '') + '</div></button>';
         }).join('')
-        : '<div class="empty"><span class="emoji">📝</span><div>' + (keyword ? '没有匹配的备忘' : '还没有备忘') + '</div><div class="tip" style="margin-top:4px">点右上角 + 新建</div></div>') +
+        : '<div class="empty"><span class="empty-art">' + UI.art('memo') + '</span><div>' + (keyword ? '没有匹配的备忘' : '还没有备忘') + '</div><div class="tip" style="margin-top:4px">点右上角 + 新建</div></div>') +
       '</div>';
 
     root.querySelector('.j-add').onclick = () => openEditor();
