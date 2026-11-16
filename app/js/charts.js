@@ -24,7 +24,7 @@ const Charts = {
     const total = items.reduce((s, i) => s + i.value, 0);
     const cx = w / 2, cy = h / 2;
     const R = Math.min(w, h) / 2 - 4;
-    const LW = Math.min(26, R * 0.34);
+    const LW = Math.min(26, R * 0.4);
     if (!total) {
       ctx.beginPath();
       ctx.arc(cx, cy, R - LW / 2, 0, Math.PI * 2);
@@ -32,15 +32,31 @@ const Charts = {
       ctx.lineWidth = LW;
       ctx.stroke();
     } else {
+      // Fine guide rings and an inner highlight add depth without changing sector angles.
+      const hairline = getComputedStyle(document.documentElement).getPropertyValue('--hairline').trim() || '#e1e9e5';
+      [R + 1, R - LW - 3].forEach(radius => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = hairline;
+        ctx.lineWidth = .7;
+        ctx.stroke();
+      });
       let start = -Math.PI / 2;
       const gap = items.length > 1 ? 0.035 : 0;
       items.forEach(it => {
+        if (it.value <= 0) return;
         const ang = it.value / total * Math.PI * 2;
+        const inset = Math.min(gap, ang * .16) / 2;
         ctx.beginPath();
-        ctx.arc(cx, cy, R - LW / 2, start + Math.min(gap, ang * .16) / 2, start + ang - Math.min(gap, ang * .16) / 2);
+        ctx.arc(cx, cy, R - LW / 2, start + inset, start + ang - inset);
         ctx.strokeStyle = it.color;
         ctx.lineWidth = LW;
         ctx.lineCap = 'butt';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R - LW + 1, start + inset, start + ang - inset);
+        ctx.strokeStyle = 'rgba(255,255,255,.35)';
+        ctx.lineWidth = 1;
         ctx.stroke();
         start += ang;
       });

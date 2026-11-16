@@ -5,12 +5,13 @@
   --text: #2f3c36;
   --text-2: #57665e;
   --text-3: #68776e;
-  --hairline: #e2e9e3;
-  --input-bg: #f0f4f0;
-  --tint-surface: #edf5ef;
+  --hairline: #dfeae5;
+  --input-bg: #eef5f2;
+  --tint-surface: #edf7f2;
   --radius: 12px;
   --shadow: none;
 }
+
 body { font-size: 14px; }
 button, input, select, textarea { font-size: 14px; }
 input, select, textarea { border-radius: 8px; }
@@ -259,3 +260,119 @@ html[data-theme] .money-out { color: var(--calendar-expense); }
   #tabbar .tab svg { width: 21px; height: 21px; }
   #pageBody { padding-top: 20px; padding-bottom: 28px; }
 }
+
+/* A small landscape and glazed details keep the layout light and compact. */
+:root {
+  --scene-opacity: .92;
+  --scene-filter: none;
+  --scene-fade: var(--bg);
+  --card-glaze: #f1f9f5;
+  --detail-shadow: 0 2px 9px #2a665207;
+  --tile-blue: #edf3f8;
+  --tile-sand: #f7f3e9;
+  --tile-rose: #f9eeed;
+}
+html[data-theme="dark"] {
+  --scene-opacity: .25;
+  --scene-filter: saturate(.65);
+  --card-glaze: #293c33;
+  --detail-shadow: none;
+  --tile-blue: #29373d;
+  --tile-sand: #3b382c;
+  --tile-rose: #3d2f31;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --scene-opacity: .25;
+    --scene-filter: saturate(.65);
+    --card-glaze: #293c33;
+    --detail-shadow: none;
+    --tile-blue: #29373d;
+    --tile-sand: #3b382c;
+    --tile-rose: #3d2f31;
+  }
+}
+.overview-heading, :is(.assets-page, .worktime-page, .bill-report, .life-page, .settings-page)>.page-head {
+  position: relative;
+  isolation: isolate;
+  min-height: 60px;
+  padding: 0 2px 6px;
+  margin-bottom: 8px;
+}
+.overview-heading::before, :is(.assets-page, .worktime-page, .bill-report, .life-page, .settings-page)>.page-head::before {
+  content: '';
+  position: absolute;
+  inset: -8px -8px 0 20%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--scene-opacity);
+  filter: var(--scene-filter);
+  background: linear-gradient(90deg, var(--scene-fade), transparent 42%),
+    linear-gradient(0deg, var(--scene-fade), transparent 27%),
+    url('../images/summer-mist.png') right 58% / cover no-repeat;
+  border-radius: 0 10px 0 0;
+}
+.overview-heading>div { display: block; }
+.overview-heading h1 { margin-bottom: 1px; }
+.overview-heading span { font-size: 10px; }
+.life-page>.page-head { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+.life-page>.page-head .page-sub { font-size: 10px; }
+.overview-heading .visibility-toggle, .page-head .head-btn { background: var(--card); border: 1px solid var(--hairline); }
+.overview-heading .visibility-toggle { border-radius: 50%; }
+.wordmark span { font-family: "STSong", "Songti SC", "Noto Serif CJK SC", "SimSun", serif; letter-spacing: .07em; }
+.card, .cell-list, .balance-panel { box-shadow: var(--detail-shadow); }
+.overview-finance, .asset-overview, .balance-panel {
+  background: linear-gradient(115deg, var(--card-glaze), var(--card) 74%);
+  border-color: var(--hairline);
+}
+.overview-shortcuts { padding: 10px 0; }
+.overview-shortcuts button>span {
+  background: var(--tint-surface);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 0 0 2px var(--card), var(--detail-shadow);
+  border-radius: 11px 11px 8px 11px;
+}
+.overview-shortcuts button:nth-child(2)>span { background: var(--tile-blue); color: var(--info); }
+.overview-shortcuts button:nth-child(3)>span { background: var(--tile-sand); color: var(--warn); }
+.overview-shortcuts button:nth-child(4)>span { background: var(--tile-rose); color: var(--calendar-expense); }
+.overview-work { margin-bottom: 10px; }
+.overview-work h2, .overview-section h2, .life-agenda h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.overview-work h2::before, .overview-section h2::before, .life-agenda h2::before {
+  content: '';
+  width: 4px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: .55;
+}
+.overview-section h2 small { margin-left: 0; }
+.asset-shortcuts button, .settings-tools button { background: var(--card); box-shadow: var(--detail-shadow); }
+.settings-tools button { border: 1px solid var(--hairline); border-radius: 10px; }
+.settings-tools button:nth-child(2) { background: var(--tile-blue); }
+.settings-tools button:nth-child(3) { background: var(--tile-sand); }
+.settings-tools button:nth-child(4) { background: var(--tile-rose); }
+.worktime-summary { background: linear-gradient(0deg, var(--card-glaze), transparent); border-radius: 0 0 10px 10px; }
+.report-card h2 { display: flex; align-items: center; gap: 7px; }
+.report-card h2::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 2px; transform: rotate(45deg); opacity: .6; }
+.category-heading { padding: 5px 10px; background: linear-gradient(110deg, var(--card-glaze), var(--card)); border-radius: 10px; gap: 17px; }
+.category-heading strong { font-size: 16px; }
+.donut-caption b { font-size: 15px; font-weight: 600; }
+.category-dot { border-radius: 3px; }
+.plot-gradient.inc stop { stop-color: var(--report-in); }
+.plot-gradient.out stop { stop-color: var(--report-out-line); }
+.plot-selection { fill: var(--accent); opacity: .045; }
+.plot-line { stroke-width: 2; }
+.plot-point { stroke-width: 2; }
+.plot-halo { fill: none; stroke-width: 7; opacity: .13; }
+.plot-halo.inc { stroke: var(--report-in); }
+.plot-halo.out { stroke: var(--report-out-line); }
+.plot-bar { opacity: .82; }
+.plot-bar.is-selected { opacity: 1; }
+.plot-cursor { opacity: .4; }
+.trend-inspect { border-top: 0; background: var(--input-bg); padding: 3px 8px; border-radius: 8px; }
+html[data-theme="dark"] .bill-report { --report-out-line: #e3a0ab; }
+@media (prefers-color-scheme: dark) { html[data-theme="auto"] .bill-report { --report-out-line: #e3a0ab; } }

@@ -2,6 +2,7 @@
 
 /* All report series use integer minor units and the transactions visible in the current filter. */
 const FinanceReport = (() => {
+  let chartSequence = 0;
   function buckets(period, list) {
     const annual = period.kind === 'year';
     const rows = Array.from({length: annual ? 12 : period.days}, (_, i) => {
@@ -45,7 +46,9 @@ const FinanceReport = (() => {
   function categoryPanel(bookId, list, kind, total) {
     const items = categories(bookId, list, kind, total);
     const title = kind === 'out' ? '支出' : '收入';
-    const colors = ['#689d8a','#d6a183','#819fba','#b4a2c5','#c4ad72','#91ad7c','#a3aeb1'];
+    const colors = kind === 'out'
+      ? ['#c58087','#73a897','#8bacc2','#c7b47b','#98b18b','#9caaa9','#b2b7b3']
+      : ['#63a18c','#89afc3','#c6b27b','#b5909d','#98b18b','#9caaa9','#b2b7b3'];
     const ring = items.slice(0,6).map((c,i) => ({value:c.minor,color:colors[i]}));
     const rest = items.slice(6);
     if (rest.length) ring.push({value:rest.reduce((sum,c)=>sum+c.minor,0),color:colors[6]});
@@ -69,6 +72,8 @@ const FinanceReport = (() => {
   }
 
   function trend(container, allRows, period, chartType, changeType, openBucket) {
+    // Swipe previews can coexist with the active chart; each SVG needs its own paint IDs.
+    const paintId = 'trend-' + (++chartSequence);
     const today = U.todayStr();
     // Do not draw future dates as zero. Include explicitly entered future transactions.
     const cutoff = period.kind === 'year' ? today.slice(0,7) : today;
@@ -102,18 +107,23 @@ const FinanceReport = (() => {
       }).join('');
       const ticks = rows.map((r,i)=>i===0 || i===rows.length-1 || (i%Math.ceil(rows.length/5)===0 && i<rows.length-2)
         ? `<text x="${x(i)}" y="130" text-anchor="middle">${r.label}</text>` : '').join('');
-      let marks = '';
+      const defs = ['inc','out'].map(kind => `<linearGradient id="${paintId}-area-${kind}" class="plot-gradient ${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity=".18"/><stop offset="1" stop-opacity=".01"/></linearGradient>
+        <linearGradient id="${paintId}-bar-${kind}" class="plot-gradient ${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity="1"/><stop offset="1" stop-opacity=".62"/></linearGradient>`).join('');
+      let marks = '', areas = '';
       for (const kind of visible) {
         if (chartType==='line') {
           const points=rows.map((r,i)=>x(i)+','+y(r[kind])).join(' ');
-          marks+=`<polyline class="plot-line ${kind}" points="${points}"/><circle class="plot-point ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.7"/>`;
+          areas+=`<polygon class="plot-area ${kind}" points="${x(0)},${bottom} ${points} ${x(rows.length-1)},${bottom}" fill="url(#${paintId}-area-${kind})"/>`;
+          marks+=`<polyline class="plot-line ${kind}" points="${points}"/><circle class="plot-halo ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/><circle class="plot-point ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/>`;
         } else {
           const width = Math.min(12, slot * (visible.length === 1 ? 0.62 : 0.33));
           const offset = visible.length === 1 ? -width/2 : kind === 'inc' ? -width-.5 : .5;
-          marks+=rows.map((r,i)=>r[kind] ? `<rect class="plot-bar ${kind}" x="${x(i)+offset}" y="${y(r[kind])}" width="${width}" height="${bottom-y(r[kind])}" rx="1.4"/>` : '').join('');
+          marks+=rows.map((r,i)=>r[kind] ? `<rect class="plot-bar ${kind}${i===selected?' is-selected':''}" style="fill:url(#${paintId}-bar-${kind})" x="${x(i)+offset}" y="${y(r[kind])}" width="${width}" height="${bottom-y(r[kind])}" rx="${Math.min(3,width/2)}"/>` : '').join('');
         }
       }
-      plot.innerHTML=`<svg viewBox="0 0 ${w} 137" role="img" aria-label="${chartType==='line'?'折线':'柱状'}图，纵轴单位元；可切换下方日期读取收支">${grid}
+      const selectionWidth = Math.min(28,slot*.9);
+      plot.innerHTML=`<svg viewBox="0 0 ${w} 137" role="img" aria-label="${chartType==='line'?'折线':'柱状'}图，纵轴单位元；可切换下方日期读取收支"><defs>${defs}</defs>${grid}${areas}
+        <rect class="plot-selection" x="${x(selected)-selectionWidth/2}" y="${top}" width="${selectionWidth}" height="${bottom-top}" rx="4"/>
         <line class="plot-cursor" x1="${x(selected)}" y1="${top}" x2="${x(selected)}" y2="${bottom}"/>${marks}${ticks}</svg>`;
       const current=rows[selected];
       date.textContent=(period.kind==='year' ? current.label : Number(current.key.slice(5,7))+'月'+Number(current.key.slice(8))+'日')+' 明细';

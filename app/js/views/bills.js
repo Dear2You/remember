@@ -299,7 +299,7 @@ Views.bills = (() => {
           const rect=canvas.getBoundingClientRect();
           const dx=e.clientX-rect.left-rect.width/2, dy=e.clientY-rect.top-rect.height/2;
           const radius=Math.hypot(dx,dy), outer=rect.width/2-4;
-          if (radius>outer || radius<outer-Math.min(26,outer*.34)) return;
+          if (radius>outer || radius<outer-Math.min(26,outer*.4)) return;
           const angle=(Math.atan2(dy,dx)+Math.PI*2.5)%(Math.PI*2);
           const target=angle/(Math.PI*2)*(kind==='out'?fOut:fInc);
           let sum=0;
