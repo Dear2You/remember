@@ -41,3 +41,14 @@ test('重复待办跳过已完成的日期，备忘清单完成后撤销排程�
   assert.equal(s.importData(backup).ok,true);assert.equal(updates.at(-1).length,2);
   assert.equal(updates.at(-1)[1].time,'14:30');
 });
+
+test('日程提前提醒跨日、每周重复、关闭删除及时撤销，订阅暂停取消提醒',()=>{
+  const {s,updates}=app();
+  const e=s.addEvent({title:'早班',start:'2030-01-10 00:15',end:'2030-01-10 09:00',phoneRemind:true,remindMinutes:30,repeat:'weekly'});
+  let rule=updates.at(-1)[0];assert.equal(rule.kind,'event');assert.equal(rule.date,'2030-01-09');assert.equal(rule.time,'23:45');assert.equal(rule.repeat,'weekly');
+  s.updateEvent(e.id,{phoneRemind:false});assert.deepEqual(updates.at(-1),[]);
+  s.updateEvent(e.id,{phoneRemind:true});s.removeEvent(e.id);assert.deepEqual(updates.at(-1),[]);
+  const sub=s.addSubscription({name:'会员',amount:12,nextDue:'2030-02-01',phoneRemind:true,reminderDays:3});
+  rule=updates.at(-1)[0];assert.equal(rule.kind,'subscription');assert.equal(rule.date,'2030-01-29');
+  s.updateSubscription(sub.id,{paused:true});assert.deepEqual(updates.at(-1),[]);
+});

@@ -29,9 +29,11 @@ public final class ReminderReceiver extends BroadcastReceiver {
     static NotificationManager notifications(Context c) { return c.getSystemService(NotificationManager.class); }
 
     static void channel(Context c) {
-        if (Build.VERSION.SDK_INT >= 26 && notifications(c).getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL,"待办与备忘提醒",NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("按事项设定的时间通知");
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationChannel channel = notifications(c).getNotificationChannel(CHANNEL);
+            if (channel == null) channel = new NotificationChannel(CHANNEL,"日程与生活提醒",NotificationManager.IMPORTANCE_HIGH);
+            channel.setName("日程与生活提醒");
+            channel.setDescription("待办、备忘、日程和订阅续费通知");
             notifications(c).createNotificationChannel(channel);
         }
     }
@@ -107,7 +109,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
         for (int i=0;i<input.length();i++) {
             JSONObject r = input.getJSONObject(i);
             String kind = r.getString("kind"), id = r.getString("id");
-            if (!(kind.equals("task") || kind.equals("memo")) || id.isEmpty()) continue;
+            if (!(kind.equals("task") || kind.equals("memo") || kind.equals("event") || kind.equals("subscription")) || id.isEmpty()) continue;
             String key = kind + ":" + id;
             JSONObject prev = old.optJSONObject(key);
             boolean same = prev != null && prev.optString("date").equals(r.optString("date"))
@@ -232,7 +234,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
             String date = localDay(due);
             String kind = r.getString("kind");
             if (!post(c,key,kind,r.getString("id"),r.optString("title"),
-                    (kind.equals("task") ? "待办" : "备忘") + " · " + date + " " + r.optString("time"),due)) {
+                    (kind.equals("task") ? "待办" : kind.equals("event") ? "日程" : kind.equals("subscription") ? "续费提醒" : "备忘") + " · " + date + " " + r.optString("time"),due)) {
                 r.put("retryAt",now+15*60000L);
                 continue;
             }

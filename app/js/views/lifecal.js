@@ -6,8 +6,8 @@ Views.lifecal = (() => {
 
   function openEventSheet(edit, presetDate) {
     let state = edit
-      ? { title: edit.title, start: edit.start, end: edit.end, allDay: !!edit.allDay, location: edit.location || '', note: edit.note || '', color: edit.color, repeat: edit.repeat }
-      : { title: '', start: (presetDate || U.todayStr()) + ' 09:00', end: (presetDate || U.todayStr()) + ' 10:00', allDay: false, location: '', note: '', color: EVENT_COLORS[0], repeat: 'none' };
+      ? { title: edit.title, start: edit.start, end: edit.end || edit.start, allDay: !!edit.allDay, location: edit.location || '', note: edit.note || '', color: edit.color, repeat: edit.repeat,phoneRemind:!!edit.phoneRemind,remindMinutes:edit.remindMinutes || 0 }
+      : { title: '', start: (presetDate || U.todayStr()) + ' 09:00', end: (presetDate || U.todayStr()) + ' 10:00', allDay: false, location: '', note: '', color: EVENT_COLORS[0], repeat: 'none',phoneRemind:false,remindMinutes:15 };
     UI.sheet({
       title: edit ? '编辑日程' : '新建日程',
       content(body, close) {
@@ -29,6 +29,7 @@ Views.lifecal = (() => {
             '</div></div>' +
             '<div class="field"><input class="j-loc" placeholder="地点（选填）" maxlength="30" value="' + U.escapeHtml(state.location) + '"></div>' +
             '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="100" value="' + U.escapeHtml(state.note) + '"></div>' +
+            '<label class="notify-toggle"><input class="j-event-remind" type="checkbox" '+(state.phoneRemind?'checked':'')+' '+(Reminders.available()?'':'disabled')+'>提醒我</label><label class="field">提前提醒<select class="j-event-minutes">'+[[0,'开始时'],[5,'5 分钟'],[15,'15 分钟'],[30,'30 分钟'],[60,'1 小时'],[1440,'1 天']].map(([v,t])=>'<option value="'+v+'" '+(state.remindMinutes===v?'selected':'')+'>'+t+'</option>').join('')+'</select></label><p class="payroll-help">'+(Reminders.available()?'提醒权限可在「我的 → 手机提醒」检查。':'手机通知在安卓 App 中开启。')+'</p>'+
             '<div class="field-row">' +
             (edit ? '<button class="btn btn-danger j-del" style="flex:1">删除</button>' : '') +
             '  <button class="btn btn-primary j-ok" style="flex:2">保存</button>' +
@@ -41,12 +42,15 @@ Views.lifecal = (() => {
           body.querySelectorAll('.j-color').forEach(b => b.onclick = () => { state.color = b.dataset.c; render(); });
           body.querySelector('.j-loc').oninput = e => { state.location = e.target.value; };
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
+          body.querySelector('.j-event-remind').onchange=e=>{state.phoneRemind=e.target.checked;if(state.phoneRemind&&window.AndroidBridge)window.AndroidBridge.notificationAccess();};
+          body.querySelector('.j-event-minutes').onchange=e=>{state.remindMinutes=Number(e.target.value);};
           body.querySelector('.j-ok').onclick = () => {
             if (!state.title.trim()) { UI.toast('请输入标题', 'err'); return; }
             if (!state.start || !state.end) { UI.toast('请选择开始和结束日期', 'err'); return; }
             if ((state.allDay ? state.end.slice(0, 10) < state.start.slice(0, 10) : state.end < state.start)) { UI.toast('结束时间不能早于开始时间', 'err'); return; }
-            if (edit) { Store.updateEvent(edit.id, { title: state.title.trim(), start: state.start, end: state.end, allDay: state.allDay, location: state.location.trim(), note: state.note.trim(), color: state.color, repeat: state.repeat }); UI.toast('已保存'); }
-            else { Store.addEvent({ title: state.title, start: state.start, end: state.end, allDay: state.allDay, location: state.location, note: state.note, color: state.color, repeat: state.repeat }); UI.toast('日程已创建 ✓'); }
+            if(state.phoneRemind&&state.repeat!=='weekly'&&new Date(state.start.replace(' ','T')).getTime()-state.remindMinutes*60000<=Date.now()&&!(edit?.phoneRemind&&edit.start===state.start&&(edit.remindMinutes||0)===state.remindMinutes)){UI.toast('请选择未来的提醒时间','err');return;}
+            if (edit) { Store.updateEvent(edit.id, {...state,title:state.title.trim(),location:state.location.trim(),note:state.note.trim()}); UI.toast('已保存'); }
+            else { Store.addEvent(state); UI.toast('日程已创建 ✓'); }
             close();
           };
           const del = body.querySelector('.j-del');

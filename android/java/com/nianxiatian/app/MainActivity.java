@@ -129,7 +129,7 @@ public class MainActivity extends Activity {
         Uri uri = intent.getData();
         if (uri == null || !"nianxiatian".equals(uri.getScheme()) || !"reminder".equals(uri.getAuthority())) return;
         java.util.List<String> path = uri.getPathSegments();
-        if (path.size()!=3 || !("task".equals(path.get(0)) || "memo".equals(path.get(0)) || "test".equals(path.get(0)))) return;
+        if (path.size()!=3 || !("task".equals(path.get(0)) || "memo".equals(path.get(0)) || "event".equals(path.get(0)) || "subscription".equals(path.get(0)) || "test".equals(path.get(0)))) return;
         pendingReminder = new org.json.JSONArray(path).toString();
     }
 

@@ -25,7 +25,7 @@ Views.expense = (() => {
         accountId: editItem.accountId || lastAcc,
         fromId: editItem.fromId || (assetAccs[0] ? assetAccs[0].id : ''),
         toId: editItem.toId || (accsAll.find(a => a.type === 'liability') || accsAll[1] || accsAll[0] || {}).id || '',
-        note: editItem.note || '', date: editItem.date
+        note: editItem.note || '', date: editItem.date,paymentChannel:editItem.paymentChannel || ''
       };
     } else {
       state = {
@@ -91,7 +91,7 @@ Views.expense = (() => {
                 (isRepayMode
                   ? '<div class="repay-tip">💳 还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
-              : '<div class="field" style="margin-top:12px"><label>账户' + (state.type === 'out' ? '（负债账户=刷卡）' : '') + '</label><div class="acct-chips j-acc">' +
+              : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
                 accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + a.icon + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : '') + '</button>').join('') +
                 '</div></div>' +
                 '<div class="field"><label>一级分类</label><div class="cat-grid j-cats">' +
@@ -104,6 +104,8 @@ Views.expense = (() => {
                     '</div></div>'
                   : '')) +
 
+            (state.type==='out'?'<label class="field">支付渠道（选填）<select class="j-channel">'+['','微信','支付宝','银行卡','现金','其他'].map(c=>'<option value="'+c+'" '+((state.paymentChannel||'')===c?'selected':'')+'>'+(c||'未指定')+'</option>').join('')+'</select></label><p class="payroll-help">用微信或支付宝扣银行卡时，上方选实际扣款的银行卡。</p>':'')+
+            (editItem?.wageProject?'<p class="payroll-help">已关联 '+U.escapeHtml(editItem.wageProject)+' · '+U.escapeHtml(editItem.wageMonth)+' 工资，修改金额会同步更新结算。</p>':'')+
             '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="60" value="' + U.escapeHtml(state.note) + '"></div>' +
             '<div class="field field-row">' +
             '  <button class="chip j-today ' + (state.date === U.todayStr() ? 'on' : '') + '">今天</button>' +
@@ -185,6 +187,7 @@ Views.expense = (() => {
             setTimeout(() => { if (amt.isConnected && !quick.open && !body.contains(document.activeElement)) amt.focus(); },250);
           }
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; };
+          const channel=body.querySelector('.j-channel');if(channel)channel.onchange=e=>{state.paymentChannel=e.target.value;};
           body.querySelector('.j-date').onchange = e => { state.date = e.target.value || U.todayStr(); syncChips(); };
           body.querySelector('.j-today').onclick = () => { state.date = U.todayStr(); body.querySelector('.j-date').value = state.date; syncChips(); };
           body.querySelector('.j-yest').onclick = () => {
@@ -208,7 +211,8 @@ Views.expense = (() => {
               accountId: state.type === 'transfer' ? '' : state.accountId,
               fromId: state.type === 'transfer' ? state.fromId : '',
               toId: state.type === 'transfer' ? state.toId : '',
-              categoryId: state.type === 'transfer' ? '' : state.categoryId
+              categoryId: state.type === 'transfer' ? '' : state.categoryId,
+              paymentChannel:state.type==='out'?(state.paymentChannel || ''):''
             };
             let item;
             try {
@@ -317,7 +321,7 @@ Views.expense = (() => {
     const c = Store.category(t.categoryId);
     const root = c ? Store.catRoot(t.categoryId) : null;
     const name = c && c.parentId ? (root ? root.name + '·' + c.name : c.name) : (c ? c.name : '未分类');
-    return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + ((Store.book(t.bookId) || {}).name || '')) };
+    return { icon: c ? c.icon : '❔', title: name, sub: (t.note ? t.note + ' · ' : '') + (t.paymentChannel?t.paymentChannel+' · ':'')+ Store.accountName(t.accountId) + (curBook() ? '' : ' · ' + ((Store.book(t.bookId) || {}).name || '')) };
   }
   function tAmountHtml(t) {
     const sign = t.type === 'out' || t.type === 'advance' ? '−' : t.type === 'in' || t.type === 'reimbursement' ? '+' : '';

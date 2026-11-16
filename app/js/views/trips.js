@@ -37,6 +37,8 @@ Views.trips = (() => {
         <fieldset class="field trip-account-choice"><legend>${receipt?'收款':'付款'}账户</legend><div class="acct-chips">
         ${accounts.map(a => `<label><input type="radio" name="tripAccount" value="${esc(a.id)}" ${a.id===selected?'checked':''}><span>${esc(a.name)}</span></label>`).join('')}
         </div>${accounts.length?'':'<small>请先到「我的 → 账户管理」添加可用账户。</small>'}</fieldset>
+        ${!receipt?`<label class="field">费用分类<select id="tripCategory"><option value="">未分类</option>${Store.categories('out').map(c=>`<option value="${c.id}" ${c.id===item?.categoryId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+        <label class="field">支付渠道（选填）<select id="tripChannel">${['','微信','支付宝','银行卡','现金','其他'].map(c=>`<option value="${c}" ${c===(item?.paymentChannel || '')?'selected':''}>${c || '未指定'}</option>`).join('')}</select></label><p class="payroll-help">支付宝或微信扣银行卡时，上方选实际扣款银行卡。</p>`:''}
         <div class="field"><label for="tripDate">日期</label><input id="tripDate" type="date" value="${esc(item?.date || today())}"></div>
         <div class="field"><label for="tripNote">备注</label><input id="tripNote" maxlength="60" value="${esc(item?.note || '')}" placeholder="${receipt?'如第一批报销款':'如高铁票或住宿费'}"></div>
         ${item && !receipt ? '<label class="trip-personal"><input class="j-personal" type="checkbox">改记为个人支出</label>' : ''}
@@ -50,6 +52,7 @@ Views.trips = (() => {
           const patch = {type,tripId:trip.id,bookId:trip.bookId,accountId,
             amountMinor:Store.parseAmount(body.querySelector('#tripAmount').value),date:body.querySelector('#tripDate').value,
             note:body.querySelector('#tripNote').value.trim()};
+          if(!receipt){patch.categoryId=body.querySelector('#tripCategory').value;patch.paymentChannel=body.querySelector('#tripChannel').value;}
           if (!patch.date || !patch.amountMinor) throw new Error('请填写有效日期和金额');
           if (body.querySelector('.j-personal')?.checked) { patch.type = 'out'; patch.tripId = ''; }
           if (item) Store.updateTransaction(item.id,patch);
@@ -72,13 +75,17 @@ Views.trips = (() => {
     UI.sheet({title:trip.name,content(body) {
       const total = Store.tripTotals(trip.id), active = trip.id === Store.settings.activeTripId;
       const rows = Store.data.transactions.filter(t => t.tripId===trip.id).sort((a,b) => b.date.localeCompare(a.date) || b.createdAt-a.createdAt);
-      body.innerHTML = `<section class="entry-review"><div class="review-kind">待报销</div><strong class="num">${money(total.pending)}</strong>
+      body.innerHTML = `<section class="entry-review"><div class="review-kind">${Store.tripStatus(trip)} · 待报销</div><strong class="num">${money(total.pending)}</strong>
         <dl><dt>累计垫付</dt><dd>${money(total.advanced)}</dd><dt>已到账</dt><dd>${money(total.received)}</dd></dl></section>
         <div class="field-row trip-actions"><button class="btn btn-ghost j-advance">记垫付</button><button class="btn btn-primary j-receive" ${total.pending?'':'disabled'}>登记到账</button></div>
         <button class="trip-mode j-toggle">${active?'结束出差模式':'设为当前出差'}</button>
         ${rows.map(t => `<div class="trip-record"><button class="cell sub-item j-trip-row" data-id="${esc(t.id)}"><span class="c-main"><span class="c-title">${t.type==='advance'?'垫付':'报销到账'}${t.note?' · '+esc(t.note):''}</span>
         <span class="c-sub">${esc(t.date)} · ${esc(Store.accountName(t.accountId))}</span></span><b class="num">${money(t.amountMinor)}</b></button>
         <button class="trip-delete" data-id="${esc(t.id)}" aria-label="删除${t.type==='advance'?'垫付':'报销到账'}，${esc(t.date)}，${money(t.amountMinor)}">删除</button></div>`).join('')}
+        <div class="field-row"><button class="btn btn-ghost j-submit">${trip.submittedAt?'撤回提交标记':'标记已提交报销'}</button><button class="btn btn-ghost j-export-trip">导出本次明细</button></div>
+        <section class="trip-receipts"><header><h3>票据照片</h3><label class="chip">添加照片<input type="file" accept="image/jpeg,image/png,image/webp" class="j-ticket" hidden></label></header>
+        <p class="payroll-help">照片压缩后随完整备份保存。可添加机票、住宿等票据，导出的 CSV 包含文字明细。</p>
+        <div class="trip-ticket-grid">${(trip.receipts || []).map((r,i)=>`<div><button data-ticket="${i}"><img src="${esc(r.data)}" alt="${esc(r.name)}"></button><button class="text-action money-out" data-remove-ticket="${i}">删除照片</button></div>`).join('')}</div></section>
         <button class="trip-mode j-all">全部行程</button>`;
       const refresh = () => detail(trip);
       body.querySelector('.j-advance').onclick = () => entry(trip,'advance',null,refresh);
@@ -89,6 +96,29 @@ Views.trips = (() => {
         UI.toast(active?'已恢复日常记账':'记一笔将默认归入这次出差');
       };
       body.querySelector('.j-all').onclick = list;
+      body.querySelector('.j-submit').onclick=()=>{Store.mutate(()=>{trip.submittedAt=trip.submittedAt?'':today();});refresh();};
+      body.querySelector('.j-export-trip').onclick=()=>{
+        const csv=Store.exportCSV(trip.id),name='出差报销_'+today()+'.csv';
+        if(window.AndroidBridge?.saveDocument)window.AndroidBridge.saveDocument(name,csv,true);
+        else{const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+      };
+      body.querySelector('.j-ticket').onchange=async e=>{
+        const file=e.target.files[0];if(!file)return;
+        try {
+          if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>15*1024*1024)throw new Error('请选择小于 15 MB 的 JPG、PNG 或 WebP 照片');
+          if((trip.receipts || []).length>=10)throw new Error('本次行程最多保存 10 张票据照片');
+          const source=URL.createObjectURL(file),img=new Image();
+          try{await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(new Error('照片无法读取'));img.src=source;});}finally{URL.revokeObjectURL(source);}
+          const canvas=document.createElement('canvas'),scale=Math.min(1,1200/Math.max(img.width,img.height));canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+          const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          let data=canvas.toDataURL('image/jpeg',.72);if(data.length>220000)data=canvas.toDataURL('image/jpeg',.45);
+          if(data.length>300000||JSON.stringify(Store.data).length+data.length>2000000)throw new Error('票据照片空间不足，请先导出备份后整理旧照片');
+          if(!body.isConnected || Store.trip(trip.id)!==trip)return;
+          Store.mutate(()=>{(trip.receipts ||= []).push({name:file.name.slice(0,80),data});});refresh();
+        }catch(err){UI.toast(err.message,'err');}
+      };
+      body.querySelectorAll('[data-ticket]').forEach(b=>b.onclick=()=>{const r=trip.receipts[Number(b.dataset.ticket)];UI.sheet({title:r.name,content(box){box.innerHTML=`<img class="ticket-preview" src="${esc(r.data)}" alt="${esc(r.name)}">`;}});});
+      body.querySelectorAll('[data-remove-ticket]').forEach(b=>b.onclick=async()=>{if(await UI.confirm({title:'删除这张票据照片？',msg:'垫付和到账金额保持不变。',danger:true,okText:'删除'})){Store.mutate(()=>trip.receipts.splice(Number(b.dataset.removeTicket),1));refresh();}});
       body.querySelectorAll('.trip-delete').forEach(b => b.onclick = async () => {
         const item = rows.find(t => t.id === b.dataset.id);
         if (await removeEntry(item)) refresh();
@@ -120,7 +150,7 @@ Views.trips = (() => {
     UI.sheet({title:'出差报销',content(body) {
       body.innerHTML = '<button class="btn btn-primary btn-block j-new-trip">＋ 新建行程</button>' +
         (Store.data.trips.length ? Store.data.trips.map(t => `<button class="cell sub-item trip-list-item" data-id="${esc(t.id)}"><span class="c-main"><span class="c-title">${esc(t.name)}</span>
-          <span class="c-sub">${t.id===Store.settings.activeTripId?'出差中 · ':''}${esc(Store.book(t.bookId)?.name || '')}</span></span><span>待报销 ${money(Store.tripTotals(t.id).pending)} ›</span></button>`).join('')
+          <span class="c-sub">${t.id===Store.settings.activeTripId?'出差中 · ':''}${Store.tripStatus(t)} · ${esc(Store.book(t.bookId)?.name || '')}</span></span><span>待报销 ${money(Store.tripTotals(t.id).pending)} ›</span></button>`).join('')
           : '<p class="sub-empty">按行程归集垫付款，公司打款后可一次或分次登记到账。</p>');
       body.querySelector('.j-new-trip').onclick = create;
       body.querySelectorAll('.trip-list-item').forEach(b => b.onclick = () => detail(Store.trip(b.dataset.id)));

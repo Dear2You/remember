@@ -21,6 +21,17 @@ window.Reminders = (() => {
           doneDates:repeat === 'none' ? [] : r.doneDates || []});
       }
     }
+    for (const e of Store.data.events) {
+      if (!e.phoneRemind || !e.id || !e.start) continue;
+      const start=new Date(e.start.replace(' ','T'));
+      if (!Number.isFinite(start.getTime())) continue;
+      const at=new Date(start.getTime()-(Number(e.remindMinutes)||0)*60000);
+      result.push({kind:'event',id:e.id,title:e.title,date:U.dateStr(at),time:U.pad(at.getHours())+':'+U.pad(at.getMinutes()),repeat:e.repeat==='weekly'?'weekly':'none',doneDates:[]});
+    }
+    for (const s of Store.data.subscriptions) {
+      if(!s.phoneRemind || s.paused || !dateOK(s.nextDue))continue;
+      result.push({kind:'subscription',id:s.id,title:s.name+'续费',date:U.addDays(s.nextDue,-(Number(s.reminderDays)||0)),time:'09:00',repeat:'none',doneDates:[]});
+    }
     return result;
   }
 
@@ -190,6 +201,11 @@ window.Reminders = (() => {
     const pending = bridge().takeReminderLink();
     if (!pending) return;
     const [kind,id,date] = JSON.parse(pending);
+    if(kind==='event') {
+      const event=Store.data.events.find(e=>e.id===id);if(!event){UI.toast('日程已删除');return;}
+      Views.life.go('cal');Views.lifecal.openEventSheet(event);return;
+    }
+    if(kind==='subscription') {Views.subs.open('home');return;}
     if (kind === 'test') {
       App.go('settings');
       const reveal = () => {

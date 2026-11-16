@@ -14,6 +14,7 @@ Views.ai = (() => {
       return 'v'+window.__APP_VERSION+' 功能手册\n'+titles.map(t=>'· '+t).join('\n')+'\n\n发送其中一个标题可查看步骤，例如“删除报销到账”。';
     }
     if (guideSections.has(text)) return guideSections.get(text);
+    if(/月薪|工资|出勤|计薪/.test(text)&&/怎么|如何|在哪|哪里|设置|改|选|操作/.test(text))return guideSections.get('工时与薪资') || '';
     const tripTopics = [
       [/(?:删除|删掉|撤销|删).*(?:到账|报销)|(?:到账|报销).*(?:删除|删掉|撤销|删)/,'删除报销到账'],
       [/收款账户|到账账户|(?:到账|报销).*(?:账户|银行卡|零钱)|(?:换|改).*(?:收款|到账)/,'选择或更改收款账户'],
@@ -24,7 +25,7 @@ Views.ai = (() => {
     if (!offline || !/在哪|哪里|哪儿|怎么|如何|点哪|找不到|为啥|为什么|能不能|可不可以|可以.*吗|能.*吗|不会用/.test(text)) return '';
     const topics = [
       [/出差|报销|垫付/,'出差垫付与报销'], [/闹钟|通知|提醒/,'手机提醒、闹钟与日历'],
-      [/工时|时薪|日薪/,'工时与薪资'], [/汇率|订阅|会员|预算|净资产|账户管理/,'资产、预算与会员订阅'],
+      [/工时|时薪|日薪|月薪|工资/,'工时与薪资'], [/汇率|订阅|会员|预算|净资产|账户管理/,'资产、预算与会员订阅'],
       [/备份|坚果云|恢复|更新|主题|隐藏金额|CSV/i,'数据、显示与更新'],
       [/日程|备忘|习惯|待办|专注|倒数|纪念日/,'时光、备忘与习惯'], [/记账|查账|账单|转账|还款/,'记账与查账'],
       [/助手|api key|模型|对话/i,'AI 助手与操作范围']
@@ -94,6 +95,8 @@ Views.ai = (() => {
       '- 本月(' + U.ymLabel(ym) + ')支出：¥' + (stat.out / 100).toFixed(2) + '（一级分类：' + catStr + '）；收入：¥' + (stat.inc / 100).toFixed(2) + '；预算：' + budgetStr + '\n' +
       '- 账户：' + accStr + '；总资产 ¥' + (Store.totalAssets() / 100).toFixed(2) + '；总负债 ¥' + (Store.totalLiabilities() / 100).toFixed(2) + '；净资产 ¥' + (Store.netWorth() / 100).toFixed(2) + '\n' +
       '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；本月工时收入：' + workPayStr + '（' + ws.days + ' 天出勤）；今日已填工时：' + U.fmtHours(todayWork.hours) + (todayWork.missingHours ? '，另有日薪记录未填工时' : '') + '\n' +
+      '- 本月月薪方案：'+Store.salaryPlans(ym).map(p=>{const s=Store.salarySummary(p);return p.project+' 整月 '+Store.fmtMinor(p.baseMinor)+' 元，应出勤 '+s.days+' 天，已确认 '+s.paidDays+' 天，缺勤 '+s.absentDays+' 天，待确认 '+s.unconfirmed+' 天，预计 '+Store.fmtMinor(s.expected)+' 元';}).join('；')+'。已计工资不代表实际到账。月薪项目的出勤由用户在工时日历确认，不能再用普通时薪或日薪动作重复计入。\n'+
+      '- 待报销：'+Store.fmtMinor(Store.tripTotals().pending)+' 元。\n'+
       '- 打卡习惯：' + habits + '\n' +
       '- 今日待办(' + dg.tasksOpen + '项)：' + taskStr + '；逾期：' + overdueStr + '\n' +
       '- 下一场日程：' + nextEv + '；今日专注：' + focusStr + '\n' +
@@ -367,7 +370,7 @@ Views.ai = (() => {
     text = (text || '').trim();
     if (!text || sending) return;
     const cfg = Store.settings;
-    const report = QuickEntry.monthAnswer(text);
+    const report = Store.practicalAnswer(text) || QuickEntry.monthAnswer(text);
     const guide = report ? '' : guideAnswer(text,!cfg.aiKey);
     const answer = report || guide;
     const result = answer ? {} : QuickEntry.parse(text);

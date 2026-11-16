@@ -17,9 +17,17 @@ function fixture(overrides = {}) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/js', file + '.js'), 'utf8'), context);
   }
   const { Store: store, U: dates } = context.window;
+  context.window.UI.toast=()=>{};
   store.init();
   return { store, dates, storage };
 }
+
+test('存储写入失败时回滚交易和账户偏好，避免显示虚假的保存结果',()=>{
+  let fail=false;const values=new Map();const localStorage={getItem:k=>values.get(k)||null,setItem:(k,v)=>{if(fail)throw new Error('quota');values.set(k,v);}};
+  const {store}=fixture({localStorage});const before=JSON.stringify(store.data);
+  fail=true;assert.throws(()=>store.addTransaction({type:'in',accountId:'acc-bank',amountMinor:20000}),/未保存/);
+  assert.equal(JSON.stringify(store.data),before);assert.equal(store.accountBalance('acc-bank'),0);
+});
 
 test('重启和旧备份迁移保留全部账本、模型与缺省设置', () => {
   const { store, storage } = fixture();

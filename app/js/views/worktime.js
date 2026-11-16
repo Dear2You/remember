@@ -3,6 +3,7 @@
 Views.worktime = (() => {
   let ym = U.ymNow();
   let mode = 'cal'; // cal | list
+  let distribution = 'pay';
 
   function dayPayText(day) {
     if (Store.settings.hideAmount) return '••••';
@@ -17,6 +18,7 @@ Views.worktime = (() => {
   }
 
   function dayUnits(day) {
+    if(day.monthlyCount===day.count && day.paidDays===0)return '缺勤';
     if (day.missingHours === day.count) return day.paidDays + '天';
     return U.fmtHours(day.hours) + (day.missingHours ? '+' : '');
   }
@@ -26,6 +28,7 @@ Views.worktime = (() => {
   }
 
   function rateText(w) {
+    if (w.payMode === 'month') return '月薪折算 · ' + (w.paidDays === 0 ? '缺勤一天' : w.paidDays === .5 ? '出勤半天' : '出勤一天');
     if (w.payMode === 'day') return '¥' + UI.amount(w.dailyRateMinor) + '/天 × ' + w.paidDays + ' 天';
     const rate = Store.workRate(w, null);
     return rate == null ? '待设时薪' : '¥' + UI.amount(Math.round(rate * 100)) + '/h';
@@ -122,7 +125,7 @@ Views.worktime = (() => {
                 (day.unpriced && day.unpriced < day.count && !Store.settings.hideAmount ? '<p class="work-pay-note">* 另有 ' + day.unpriced + ' 条记录待设时薪。</p>' : '')
               : '<div class="empty" style="padding:14px 0"><span class="emoji">🗓️</span><div class="tip">这一天还没有记录</div></div>');
           listBox.querySelectorAll('.j-item').forEach(el => {
-            el.onclick = () => { editing = el.dataset.id; renderForm(); };
+            el.onclick = () => { const w=items.find(w=>w.id===el.dataset.id); if(w.payMode==='month'){Views.payroll.attendance(dateStr,w.salaryMonthId);return;} editing = el.dataset.id; renderForm(); };
             el.oncontextmenu = async e => {
               e.preventDefault();
               if (await UI.confirm({ title: '删除记录', msg: '删除这条工时记录？', danger: true, okText: '删除' })) {
@@ -137,6 +140,7 @@ Views.worktime = (() => {
           let payMode = (it || last || {}).payMode === 'day' ? 'day' : 'hour';
           const val = v => U.escapeHtml(v == null ? '' : v);
           formBox.innerHTML = `<div class="work-form">
+            ${!it?'<div class="work-templates">'+Store.allProjects().filter(p=>!Store.salaryPlanFor(p,dateStr.slice(0,7))).map(p=>`<button class="chip" data-template="${val(p)}">${val(p)}</button>`).join('')+'</div>':''}
             <div class="seg work-modes" role="group" aria-label="计薪方式"><button data-pay="hour">按时薪</button><button data-pay="day">按日薪</button></div>
             <label>项目<input class="j-proj" list="wage-projects-dl" placeholder="项目名称（选填）" maxlength="16" value="${val(it && it.project)}"></label>
             <datalist id="wage-projects-dl">${Store.allProjects().map(p => '<option value="'+val(p)+'">').join('')}</datalist>
@@ -193,6 +197,14 @@ Views.worktime = (() => {
           formBox.querySelectorAll('[data-pay]').forEach(btn => btn.onclick = () => { payMode = btn.dataset.pay; showMode(); });
           suggestRates();
           showMode();
+          formBox.querySelectorAll('[data-template]').forEach(b=>b.onclick=()=>{
+            const recent=[...Store.data.worktimes].reverse().find(w=>w.project===b.dataset.template&&w.payMode!=='month');
+            project.value=b.dataset.template;payMode=recent?.payMode==='day'?'day':'hour';
+            autoHourly=autoDaily=true;suggestRates();
+            if(recent?.rate!=null)rate.value=recent.rate;
+            if(recent?.hours!=null)get('.j-hours').value=recent.hours;
+            showMode();
+          });
           get('.j-ok').onclick = () => {
             try {
               const data = draft();
@@ -206,7 +218,8 @@ Views.worktime = (() => {
           const c = formBox.querySelector('.j-cancel-edit');
           if (c) c.onclick = () => { editing = null; renderForm(); };
         }
-        body.innerHTML = '<div class="j-list"></div><div class="j-form"></div>';
+        body.innerHTML = Views.payroll.dayButtons(dateStr)+'<div class="j-list"></div><div class="j-form"></div>';
+        body.querySelectorAll('[data-attendance]').forEach(b=>b.onclick=()=>Views.payroll.attendance(dateStr,b.dataset.attendance));
         const listBox = body.querySelector('.j-list');
         const formBox = body.querySelector('.j-form');
         renderList();
@@ -230,8 +243,11 @@ Views.worktime = (() => {
     const days = new Map();
     for (const [date, items] of entries) days.set(date, Store.workDaySummary(items));
 
-    const projArr = Object.entries(ws.byProject).filter(([,hours]) => hours > 0).sort((a, b) => b[1] - a[1]);
-    const projMax = projArr.length ? ws.byProject[projArr[0][0]] : 1;
+    const projects=Object.keys(ws.byProject).map(name=>({name,hours:ws.byProject[name],pay:ws.byProjectPay[name],
+      days:new Set(ws.list.filter(w=>w.project===name&&(w.payMode!=='month'||w.paidDays>0)).map(w=>w.date)).size}));
+    const projArr=projects.sort((a,b)=>b[distribution]-a[distribution]);
+    const projMax=Math.max(1,...projArr.map(p=>p[distribution]));
+    const salaryPlans=Store.salaryPlans(ym);
 
     function tile(c) {
       const day = days.get(c.date);
@@ -243,12 +259,20 @@ Views.worktime = (() => {
         const hours = dayUnits(day), pay = dayPayText(day);
         const level = day.hours <= 4 ? 1 : day.hours < 8 ? 2 : day.hours === 8 ? 3 : 4;
         classes.push(day.missingHours === day.count ? 'shift-daily' : 'shift-' + level);
+        if(day.monthlyCount===day.count&&day.paidDays===0)classes.push('shift-absent');
         const wageLabel = Store.settings.hideAmount ? '工资已隐藏' : '工资 ' + pay.replace('*','，部分待设时薪');
         label += (day.hours ? '，已记工时 ' + day.hours + ' 小时' : '') +
           (day.paidDays ? '，按日薪计 ' + day.paidDays + ' 天' : '') + (day.missingHours ? '，有工时未填' : '') + '，' + wageLabel;
         const amount = pay.length > 8 && pay.startsWith('¥')
           ? '¥' + UI.amount(day.pay,true).replace(/,/g,',<wbr>') + (day.unpriced ? '*' : '') : pay;
         details = `<span class="day-hours">${hours}</span><span class="day-pay${pay.length > 6 ? ' compact' : ''}">${amount}</span>`;
+      } else {
+        const scheduled=salaryPlans.filter(p=>p.dates.includes(c.date));
+        if(scheduled.length){
+          classes.push('work-scheduled');const status=c.date>U.todayStr()?'预计':'待确认';
+          const pay=scheduled.reduce((s,p)=>s+Store.salaryEntryPay({date:c.date,paidDays:1},p),0);
+          details=`<span class="day-hours">${status}</span><span class="day-pay compact">¥${UI.amount(pay)}</span>`;label+='，应出勤，'+status;
+        } else if(salaryPlans.length&&c.inMonth){details='<span class="day-hours rest-label">休息</span>';}
       }
       return `<td><button class="${classes.join(' ')}" data-date="${c.date}" aria-label="${label}"
         ${c.isToday ? 'aria-current="date"' : ''}><b>${c.day}</b>${details}</button></td>`;
@@ -259,7 +283,7 @@ Views.worktime = (() => {
     const calendar = mode === 'cal' ? `<table class="cal ledger-grid work-grid" aria-label="${U.ymLabel(ym)}工时与工资">
       <thead><tr>${[...'一二三四五六日'].map(d => '<th scope="col">周' + d + '</th>').join('')}</tr></thead>
       <tbody>${rows.map(week => '<tr>'+week.map(tile).join('')+'</tr>').join('')}</tbody></table>
-      <div class="work-key">工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多</div>
+      <div class="work-key">${salaryPlans.length?'已确认出勤为浅绿，缺勤为浅红；待确认和预计分开显示。':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
       ${partialPay ? '<p class="work-pay-note">* 当天有工时待设时薪，工资显示已计部分。</p>' : ''}
       ${partialHours ? '<p class="work-pay-note">工时后的 + 表示另有日薪记录未填实际工时。</p>' : ''}` : '';
 
@@ -306,19 +330,23 @@ Views.worktime = (() => {
       '    <div><div class="lab">出勤天数</div><div class="val num">' + ws.days + ' 天</div></div>' +
       '  </div>' +
 
-      '</section>' + listHtml +
+      '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym) + listHtml +
 
       (projArr.length
-        ? '<div class="card"><div class="section-title">项目工时分布</div>' + projArr.map(([p]) =>
+        ? '<div class="card"><div class="section-title">项目分布</div><div class="report-switch work-distribution">'+[['pay','工资'],['days','出勤天数'],['hours','已填小时']].map(([key,text])=>`<button data-distribution="${key}" aria-pressed="${distribution===key}">${text}</button>`).join('')+'</div>' + projArr.map(p =>
           '<div class="hbar-row">' +
-          '  <span class="hb-lab">' + U.escapeHtml(p) + '</span>' +
-          '  <span class="hb-track"><span class="hb-fill" style="width:' + (ws.byProject[p] / projMax * 100).toFixed(1) + '%;background:' + U.colorFor(p) + ';display:block;height:100%"></span></span>' +
-          '  <span class="hb-val num" style="font-size:11px">' + U.fmtHours(ws.byProject[p]) + (ws.byProjectPay[p] ? ' ¥' + UI.amount(ws.byProjectPay[p]) : '') + '</span>' +
+          '  <span class="hb-lab">' + U.escapeHtml(p.name) + '</span>' +
+          '  <span class="hb-track"><span class="hb-fill" style="width:' + (Store.settings.hideAmount&&distribution==='pay'?0:p[distribution]/projMax*100).toFixed(1) + '%;background:' + U.colorFor(p.name) + ';display:block;height:100%"></span></span>' +
+          '  <span class="hb-val num" style="font-size:11px">' + (distribution==='pay'?'¥'+UI.amount(p.pay):distribution==='days'?p.days+' 天':U.fmtHours(p.hours)) + '</span>' +
           '</div>').join('') + '</div>'
         : '') +
       '</div>';
 
     root.querySelector('.j-wage').onclick = openWageSheet;
+    root.querySelector('.j-salary-plan').onclick=()=>Views.payroll.planSheet(ym);
+    root.querySelector('.j-receipts').onclick=()=>Views.payroll.receipts(ym);
+    root.querySelectorAll('[data-distribution]').forEach(b=>b.onclick=()=>{distribution=b.dataset.distribution;App.refresh(true);});
+    Views.payroll.bind(root,ym);
     root.querySelector('.j-add').onclick = () => openDaySheet(U.todayStr().startsWith(ym) ? U.todayStr() : ym + '-15');
     root.querySelector('.j-prev').onclick = () => { ym = U.ymShift(ym, -1); App.refresh(true); };
     root.querySelector('.j-next').onclick = () => { ym = U.ymShift(ym, 1); App.refresh(true); };

@@ -77,6 +77,7 @@ const Store = {
       focusSessions: [],   // {id, taskId, mode:'pomodoro'|'countup'|'countdown', targetMin, actualSec, pausedSec, startedAt, endedAt, status:'done'|'broken', createdAt}
       subscriptions: [],   // amount 为每月订阅原币金额
       wageProjects: [],   // {id, name, rate(元/小时)} 项目时薪表
+      salaryMonths: [], // 月薪方案，按月保存应出勤日期，出勤记录以 salaryMonthId 关联
       worktimes: [], memos: [], habits: [], habitLogs: {}, chats: [],
       aiSessions: [],   // {id, title, messages:[{role,content,actions,ts}], createdAt, updatedAt}
       settings: {
@@ -143,6 +144,7 @@ const Store = {
       data.chats = [];
     }
     if (!Array.isArray(data.wageProjects)) data.wageProjects = [];
+    if (!Array.isArray(data.salaryMonths)) data.salaryMonths = [];
     data.settings.sgdRate = this.parseSubscriptionRate(data.settings.sgdRate) || def.settings.sgdRate;
     const savedRates = data.settings.subscriptionRates;
     data.settings.subscriptionRates = {};
@@ -213,8 +215,9 @@ const Store = {
 
   save(backup = true) {
     try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); }
-    catch (e) { UI.toast('本地存储失败，空间可能已满', 'err'); }
+    catch (e) { if(typeof UI!=='undefined')UI.toast('本地存储失败，空间可能已满', 'err'); return false; }
     if (backup) this._scheduleAutoBackup();
+    return true;
   },
 
   /* ---------- 自动备份到手机下载目录（卸载 App 不丢） ---------- */
@@ -248,7 +251,12 @@ const Store = {
   },
   on(evt, fn) { (this._listeners[evt] = this._listeners[evt] || []).push(fn); },
   emit(evt) { (this._listeners[evt] || []).forEach(f => { try { f(); } catch (e) { console.error(e); } }); },
-  mutate(fn) { fn(this.data); this.save(); this.emit('change'); },
+  mutate(fn) {
+    const before=JSON.stringify(this.data);
+    try {fn(this.data);if(!this.save())throw new Error('本次修改未保存，请检查设备剩余空间');}
+    catch(e){this.data=JSON.parse(before);throw e;}
+    this.emit('change');
+  },
   get settings() { return this.data.settings; },
 
   /* ---------- 金额工具 ---------- */
@@ -401,6 +409,10 @@ const Store = {
     }
     return {advanced,received,pending:advanced-received};
   },
+  tripStatus(trip) {
+    const t=this.tripTotals(trip.id);
+    return t.advanced&&t.pending===0?'已结清':t.received?'部分到账':trip.submittedAt?'已提交':'待提交';
+  },
   // 按日校验，防止修改、删除或回填日期后，到账金额超过当时的垫付。
   tripCovered(rows) {
     const daily = new Map();
@@ -434,10 +446,14 @@ const Store = {
       createdAt: now, updatedAt: now
     };
     if (o.tripId) item.tripId = o.tripId;
+    if (o.wageProject) { item.wageProject=o.wageProject; item.wageMonth=o.wageMonth; }
+    if (o.paymentChannel) item.paymentChannel=String(o.paymentChannel).slice(0,20);
+    if (o.subscriptionId) {item.subscriptionId=o.subscriptionId;item.subscriptionDue=o.subscriptionDue;}
     this.validateTransaction(item);
     this.checkTripChange(null,item);
     this.mutate(d => {
       d.transactions.push(item);
+      if(item.subscriptionId){const sub=d.subscriptions.find(s=>s.id===item.subscriptionId);if(sub.nextDue===item.subscriptionDue)sub.nextDue=this.nextSubscriptionDate(sub);}
       if (item.type === 'reimbursement') d.settings.lastReceiptAccountId = item.accountId;
       else if (item.type !== 'transfer' && item.accountId) d.settings.lastAccountId = item.accountId;
       if (item.bookId && !item.tripId) d.settings.lastBookId = item.bookId;
@@ -445,6 +461,10 @@ const Store = {
     return item;
   },
   validateTransaction(item, previousId) {
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')||U.dateStr(U.parseDate(item.date))!==item.date)throw new Error('请选择有效日期');
+    if(item.subscriptionId && (item.type!=='out'||!this.data.subscriptions.some(s=>s.id===item.subscriptionId)||!/^\d{4}-\d{2}-\d{2}$/.test(item.subscriptionDue || '')||this.data.transactions.some(t=>t.id!==previousId&&t.subscriptionId===item.subscriptionId&&t.subscriptionDue===item.subscriptionDue))) throw new Error('本次订阅扣款已登记或关联无效');
+    if ((item.wageProject || item.wageMonth) && (item.type !== 'in' || typeof item.wageProject !== 'string' ||
+      !item.wageProject.trim() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(item.wageMonth || ''))) throw new Error('工资关联需选择收入、项目和工资月份');
     if (!Number.isSafeInteger(item.amountMinor) || item.amountMinor <= 0) throw new Error('请输入有效金额');
     if (!['in','out','transfer','advance','reimbursement'].includes(item.type) || !this.book(item.bookId)) throw new Error('无效的账本或交易类型');
     if (item.type === 'advance' || item.type === 'reimbursement') {
@@ -473,12 +493,17 @@ const Store = {
     this.checkTripChange(it,next);
     this.mutate(d => {
       if (next.type === 'reimbursement' && next.accountId !== it.accountId) d.settings.lastReceiptAccountId = next.accountId;
+      if(next.subscriptionId&&!it.subscriptionId){const sub=d.subscriptions.find(s=>s.id===next.subscriptionId);if(sub.nextDue===next.subscriptionDue)sub.nextDue=this.nextSubscriptionDate(sub);}
       Object.assign(it,next);
     });
   },
   removeTransaction(id) {
     this.checkTripChange(this.data.transactions.find(t => t.id === id),null);
-    this.mutate(d => { d.transactions = d.transactions.filter(x => x.id !== id); });
+    this.mutate(d => {
+      const tx=d.transactions.find(x=>x.id===id), sub=tx?.subscriptionId&&d.subscriptions.find(s=>s.id===tx.subscriptionId);
+      if(sub&&sub.nextDue===this.nextSubscriptionDate(sub,tx.subscriptionDue))sub.nextDue=tx.subscriptionDue;
+      d.transactions = d.transactions.filter(x => x.id !== id);
+    });
   },
   isRepay(t) { return t.type === 'transfer' && this.account(t.toId) && this.account(t.toId).type === 'liability'; },
 
@@ -567,6 +592,7 @@ const Store = {
   /* ---------- 工时 / 薪资 ---------- */
   // 每条工时的时薪（元/小时）：优先记录快照 → 项目时薪 → 默认时薪
   workRate(w, unset = 0) {
+    if (w.payMode === 'month') { const p=this.salaryPlan(w.salaryMonthId); return p ? p.baseMinor/100/p.dates.length : unset; }
     if (w.payMode === 'day') return w.dailyRateMinor / 100;
     if (w.rate != null && w.rate >= 0) return w.rate;
     const wp = this.data.wageProjects.find(p => p.name === w.project);
@@ -574,6 +600,7 @@ const Store = {
     return this.settings.defaultRate || unset;
   },
   workPayMinor(w, rate = this.workRate(w)) {
+    if (w.payMode === 'month') return this.salaryEntryPay(w);
     const daily = w.payMode === 'day';
     const units = daily ? w.paidDays : Number(w.hours);
     const cents = daily ? w.dailyRateMinor : Math.round(rate * 100);
@@ -586,16 +613,16 @@ const Store = {
     let hours = 0, pay = 0, unpriced = 0, missingHours = 0, paidDays = 0;
     for (const w of items) {
       hours += Number(w.hours || 0);
-      if (w.payMode === 'day') {
+      if (w.payMode === 'day' || w.payMode === 'month') {
         paidDays += w.paidDays;
-        if (w.hours == null) missingHours++;
+        if (w.hours == null && (w.payMode !== 'month' || w.paidDays > 0)) missingHours++;
       }
       const rate = this.workRate(w, null);
       if (rate == null) unpriced++;
       else pay += this.workPayMinor(w, rate);
     }
     return {hours:Math.round(hours * 100) / 100, pay, unpriced, missingHours,
-      paidDays:Math.round(paidDays * 100) / 100, count:items.length};
+      paidDays:Math.round(paidDays * 100) / 100, count:items.length,monthlyCount:items.filter(w=>w.payMode==='month').length};
   },
   workHours(value) {
     const hours = Number(value);
@@ -610,6 +637,7 @@ const Store = {
       Number.isSafeInteger(hundredths) && Number.isSafeInteger(w.dailyRateMinor * hundredths);
   },
   workTerms(o) {
+    if (o.payMode === 'month') return this.salaryTerms(o);
     if (o.payMode === 'day') {
       if (!this.validDailyPay(o)) throw new Error('请填写日薪和计薪天数，最多两位小数');
       return {payMode:'day',dailyRateMinor:o.dailyRateMinor,paidDays:o.paidDays,rate:null,
@@ -620,6 +648,8 @@ const Store = {
     return {payMode:'hour',dailyRateMinor:null,paidDays:null,rate:rate == null ? null : Math.round(rate * 100) / 100,hours:this.workHours(o.hours)};
   },
   addWork(o) {
+    const date=o.date || U.todayStr();
+    if (this.salaryPlanFor && this.salaryPlanFor(o.project,date.slice(0,7))) throw new Error('该项目本月按月薪计，请在月薪出勤里确认日期');
     const item = {
       id: U.id(), date: o.date || U.todayStr(), project: (o.project || '未分类').trim() || '未分类',
       ...this.workTerms(o), note: o.note || '',
@@ -631,6 +661,9 @@ const Store = {
   updateWork(id, patch) {
     const it = this.data.worktimes.find(w => w.id === id);
     if (!it) return;
+    if (it.payMode === 'month') throw new Error('请在月薪出勤里修改或撤销当天确认');
+    const nextProject=patch.project ?? it.project,nextDate=patch.date ?? it.date;
+    if(this.salaryPlanFor&&(nextProject!==it.project||nextDate!==it.date)&&this.salaryPlanFor(nextProject,nextDate.slice(0,7)))throw new Error('该项目按月薪计，请在月薪出勤里确认');
     const terms = this.workTerms({...it,...patch});
     this.mutate(() => Object.assign(it,patch,terms,{id}));
   },
@@ -641,6 +674,7 @@ const Store = {
     const set = new Set();
     this.data.worktimes.forEach(w => set.add(w.project));
     this.data.wageProjects.forEach(p => set.add(p.name));
+    this.data.salaryMonths.forEach(p => set.add(p.project));
     return [...set];
   },
   dayWorkPayMinor(dateStr) {
@@ -650,7 +684,7 @@ const Store = {
     const list = this.monthWorktimes(ym);
     const total = list.reduce((s, w) => s + Number(w.hours || 0), 0);
     const pay = list.reduce((s, w) => s + this.workPayMinor(w), 0);
-    const days = new Set(list.map(w => w.date)).size;
+    const days = new Set(list.filter(w=>w.payMode!=='month'||w.paidDays>0).map(w => w.date)).size;
     const byProject = Object.create(null), byProjectPay = Object.create(null);
     list.forEach(w => {
       byProject[w.project] = (byProject[w.project] || 0) + Number(w.hours || 0);
@@ -858,6 +892,7 @@ const Store = {
       start: o.start || '', end: o.end || '', allDay: !!o.allDay,
       location: o.location || '', note: o.note || '',
       color: o.color || '#4a9bff', repeat: o.repeat === 'weekly' ? 'weekly' : 'none',
+      phoneRemind:!!o.phoneRemind,remindMinutes:[0,5,15,30,60,1440].includes(Number(o.remindMinutes))?Number(o.remindMinutes):0,
       createdAt: Date.now()
     };
     this.mutate(d => d.events.unshift(item));
@@ -960,13 +995,45 @@ const Store = {
   addSubscription(o) {
     const item = {
       id: U.id(), name: (o.name || '').trim() || '新订阅', amount: Math.round((Number(o.amount) || 0) * 100) / 100,
-      currency: o.currency || 'SGD', note: o.note || '', createdAt: Date.now()
+      currency: o.currency || 'SGD', note: o.note || '', createdAt: Date.now(),
+      ...this.subscriptionTerms(o)
     };
     this.mutate(d => d.subscriptions.push(item));
     return item;
   },
-  updateSubscription(id, patch) { this.mutate(d => { const it = d.subscriptions.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
-  removeSubscription(id) { this.mutate(d => { d.subscriptions = d.subscriptions.filter(x => x.id !== id); }); },
+  subscriptionTerms(o) {
+    const cycleMonths=o.cycleMonths==null?1:Number(o.cycleMonths), nextDue=o.nextDue || '';
+    if(![1,3,12].includes(cycleMonths)||nextDue&&(!/^\d{4}-\d{2}-\d{2}$/.test(nextDue)||U.dateStr(U.parseDate(nextDue))!==nextDue))throw new Error('请选择有效扣款周期和日期');
+    const anchorDay=Number(o.anchorDay)||Number(nextDue.slice(8))||1;
+    if(!Number.isInteger(anchorDay)||anchorDay<1||anchorDay>31)throw new Error('扣款日期锚点无效');
+    return {cycleMonths,nextDue,anchorDay,phoneRemind:!!o.phoneRemind,reminderDays:[0,1,3,7].includes(Number(o.reminderDays))?Number(o.reminderDays):3,paused:!!o.paused};
+  },
+  updateSubscription(id, patch) {
+    const it=this.data.subscriptions.find(x=>x.id===id);if(!it)return;
+    const terms=this.subscriptionTerms({...it,...patch});
+    this.mutate(()=>Object.assign(it,patch,terms,{id}));
+  },
+  removeSubscription(id) { this.mutate(d => {
+    d.subscriptions = d.subscriptions.filter(x => x.id !== id);
+    d.transactions.filter(t=>t.subscriptionId===id).forEach(t=>{delete t.subscriptionId;delete t.subscriptionDue;});
+  }); },
+  nextSubscriptionDate(sub,from=sub.nextDue) {
+    if(!from)return '';
+    const month=U.ymShift(from.slice(0,7),sub.cycleMonths || 1),{y,m}=U.ymParts(month);
+    return month+'-'+U.pad(Math.min(sub.anchorDay || Number(from.slice(8)),U.daysInMonth(y,m)));
+  },
+  recordSubscriptionPayment(id,fields) {
+    const sub=this.data.subscriptions.find(s=>s.id===id);
+    if(!sub||!sub.nextDue)throw new Error('请先设置本次扣款日期');
+    if(sub.paused)throw new Error('订阅已暂停，请先恢复');
+    const tx=this.addTransaction({...fields,type:'out',subscriptionId:id,subscriptionDue:sub.nextDue});
+    return tx;
+  },
+  linkSubscriptionPayment(id,transactionId) {
+    const sub=this.data.subscriptions.find(s=>s.id===id),tx=this.data.transactions.find(t=>t.id===transactionId);
+    if(!sub||!sub.nextDue||sub.paused||!tx||tx.type!=='out'||tx.subscriptionId)throw new Error('请选择未关联的普通支出');
+    this.updateTransaction(tx.id,{subscriptionId:id,subscriptionDue:sub.nextDue});
+  },
   parseSubscriptionRate(value) {
     if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+(?:\.\d+)?$/.test(value.trim()))) return null;
     const scaled = Math.round(Number(value) * 1e6);
@@ -986,9 +1053,10 @@ const Store = {
   subscriptionsTotalCNY() {
     let total = 0;
     for (const sub of this.data.subscriptions) {
+      if(sub.paused)continue;
       const minor = this.subscriptionCnyMinor(sub.amount, sub.currency);
       if (minor === null) return null;
-      total += minor;
+      total += Math.round(minor/(sub.cycleMonths || 1));
     }
     return total;
   },
@@ -1073,11 +1141,11 @@ const Store = {
   exportData() {
     return JSON.stringify({ app: 'nianxiatian', version: this.data.version, exportedAt: new Date().toISOString(), data: this.backupData() }, null, 2);
   },
-  exportCSV() {
+  exportCSV(tripId) {
     const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const typeLabel = { out: '支出', in: '收入', transfer: '转账/还款', advance:'出差垫付', reimbursement:'报销到账' };
-    const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注', '出差行程']];
-    [...this.data.transactions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
+    const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注', '出差行程','支付渠道','工资归属月份','工资项目']];
+    this.data.transactions.filter(t=>!tripId||t.tripId===tripId).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
       const cat = this.category(t.categoryId);
       const root = cat ? this.catRoot(t.categoryId) : null;
       let acc;
@@ -1091,7 +1159,7 @@ const Store = {
         typeLabel[t.type] || t.type,
         root && !cat.parentId ? root.name : (root ? root.name : ''),
         cat && cat.parentId ? cat.name : '',
-        acc, (t.amountMinor / 100).toFixed(2), t.note || '', this.trip(t.tripId)?.name || ''
+        acc, (t.amountMinor / 100).toFixed(2), t.note || '', this.trip(t.tripId)?.name || '',t.paymentChannel || '',t.wageMonth || '',t.wageProject || ''
       ]);
     });
     return '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n');
@@ -1121,6 +1189,7 @@ const Store = {
       if (typeof trip.id !== 'string' || !trip.id || trips.has(trip.id) || typeof trip.name !== 'string' || !trip.name.trim() || !d.books.some(b => b.id === trip.bookId)) return {ok:false,msg:'备份中的出差行程无效'};
       trips.set(trip.id,trip);
       tripRows.set(trip.id,[]);
+      if(trip.receipts && (!Array.isArray(trip.receipts)||trip.receipts.length>10||trip.receipts.some(r=>!r||typeof r.name!=='string'||typeof r.data!=='string'||r.data.length>300000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(r.data))))return {ok:false,msg:'票据照片格式无效'};
     }
     for (const t of d.transactions) {
       if (typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t.date) || !['out','in','transfer','advance','reimbursement'].includes(t.type) || !Number.isSafeInteger(t.amountMinor) || t.amountMinor <= 0 || !t.bookId) return { ok: false, msg: '备份内存在非法交易记录，已中止导入' };
@@ -1131,9 +1200,20 @@ const Store = {
       } else if (t.tripId) return {ok:false,msg:'报销记录类型无效'};
     }
     for (const rows of tripRows.values()) if (!this.tripCovered(rows)) return {ok:false,msg:'备份中的报销到账超过了当时的垫付'};
+    try {
+      for(const sub of d.subscriptions || [])this.subscriptionTerms(sub);
+      const seenPayments=new Set();
+      for(const tx of d.transactions)if(tx.subscriptionId){
+        if(tx.type!=='out'||!(d.subscriptions || []).some(s=>s.id===tx.subscriptionId)||!/^\d{4}-\d{2}-\d{2}$/.test(tx.subscriptionDue || '')||U.dateStr(U.parseDate(tx.subscriptionDue))!==tx.subscriptionDue)throw new Error('订阅扣款关联无效');
+        const key=tx.subscriptionId+'|'+tx.subscriptionDue;if(seenPayments.has(key))throw new Error('同一期订阅重复扣款');seenPayments.add(key);
+      }
+    }catch(e){return {ok:false,msg:e.message};}
+    if (this.validatePayrollBackup) {
+      try { this.validatePayrollBackup(d); } catch(e) { return {ok:false,msg:e.message}; }
+    }
     const isDate = date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date;
     const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' &&
-      (w.payMode === 'day' ? this.validDailyPay(w) && (w.hours == null || (Number.isFinite(w.hours) && w.hours > 0 && w.hours <= 24 && +w.hours.toFixed(2) === w.hours))
+      (w.payMode === 'month' ? !!this.validatePayrollBackup : w.payMode === 'day' ? this.validDailyPay(w) && (w.hours == null || (Number.isFinite(w.hours) && w.hours > 0 && w.hours <= 24 && +w.hours.toFixed(2) === w.hours))
         : (w.payMode == null || w.payMode === 'hour') && Number.isFinite(w.hours))) &&
       (d.transactions || []).every(t => isDate(t.date)) &&
       (d.events || []).every(e => typeof e.start === 'string' && (!e.end || typeof e.end === 'string')) &&

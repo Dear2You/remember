@@ -1,8 +1,8 @@
 {
-  "versionCode": 22500,
-  "versionName": "2.25",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.25/nianxiatian.apk",
-  "sha256": "e217f92632b2ae3c28d13c7e26dba6d5d26fe18d495826ee6ac7197bb28fa265",
-  "apkBlob": "87de687a64152278ced7c2cb910af119ccf014d6",
-  "note": "报销到账可直接点选收款账户，独立记住上次选择；在行程明细中可以直接删除到账或垫付，确认前可查看待报销余额。应用助手内置随版本更新的 Markdown 功能手册，支持离线操作指引。"
+  "versionCode": 22600,
+  "versionName": "2.26",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.26/nianxiatian.apk",
+  "sha256": "cb809a45911b65ad947df90d5f29827a3df268d82d5ba97cdb435081e700c988",
+  "apkBlob": "8b0d876897aec55b33bb336dd1927f2a1c2271b7",
+  "note": "月薪按法定工作日折算，支持半天、缺勤、批量出勤与旧日薪转换；工资到账可关联已有收入。新增支付渠道和余额核对、订阅周期及续费提醒、报销提交与票据照片、日程通知；首页与 AI 查询同步完善。"
 }

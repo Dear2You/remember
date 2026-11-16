@@ -11,6 +11,8 @@ Views.home = (() => {
     const amount = n => hidden ? '••••' : '¥' + Store.fmtMinorThousand(n);
     const minutes = Math.floor(digest.focusSec / 60);
     const subsTotal = Store.subscriptionsTotalCNY();
+    const work=Store.monthWorkSummary(today.slice(0,7)),tripPending=Store.tripTotals().pending;
+    const due=Store.data.subscriptions.filter(s=>!s.paused&&s.nextDue).sort((a,b)=>a.nextDue.localeCompare(b.nextDue))[0];
     const tools = [
       ['life', 'calendar', '时光日历', '日程与待办'],
       ['memo', 'memo', '备忘录', Store.data.memos.length + ' 条笔记'],
@@ -32,6 +34,12 @@ Views.home = (() => {
           <h1>今日手记</h1>
           <button class="cover-link" data-dest="life">翻开日历 ${UI.icon('arrow')}</button>
         </section>
+        <section class="card personal-dashboard"><h2>工作与收款</h2><div>
+          <button data-dest="worktime"><small>本月已计工资</small><strong>${amount(work.pay)}</strong><span>${work.days} 天已记出勤</span></button>
+          <button data-dest="wages"><small>工资结算</small><strong>核对到账 ›</strong><span>关联收入与工作记录</span></button>
+          <button data-dest="trips"><small>待报销</small><strong>${amount(tripPending)}</strong><span>查看行程进度</span></button>
+          <button data-dest="subs"><small>近期扣款</small><strong>${due?escHome(due.name):'设置续费日期'}</strong><span>${due?escHome(due.nextDue):'订阅与固定支出'}</span></button>
+        </div></section>
         <div class="journal-summary">
           <section class="day-panel">
             <header><h2>今日概览</h2><button class="text-action" data-dest="today">查看全部 ${UI.icon('arrow')}</button></header>
@@ -68,6 +76,8 @@ Views.home = (() => {
         else if (dest === 'today') Views.life.go(dest);
         else if (dest === 'life') Views.life.go('cal');
         else if (dest === 'subs') Views.subs.open('home');
+        else if (dest === 'trips') Views.trips.list();
+        else if (dest === 'wages') Views.payroll.receipts(today.slice(0,7));
         else App.go(dest);
       };
     });
@@ -77,5 +87,6 @@ Views.home = (() => {
       App.refresh();
     };
   }
+  function escHome(s){return U.escapeHtml(s);}
   return { mount };
 })();

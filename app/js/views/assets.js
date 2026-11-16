@@ -49,12 +49,12 @@ Views.assets = (() => {
     const accRow = a => {
       const {out,inc} = accountFlows.get(a.id) || {out:0,inc:0};
       const bal = Store.accountBalance(a.id);
-      return '<div class="cell">' +
+      return '<button class="cell asset-reconcile" data-account="'+a.id+'">' +
         '  <div class="c-ico">' + a.icon + '</div>' +
         '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + '</div>' +
         '  <div class="c-sub">本月支出 ¥' + UI.amount(out) + (inc ? ' · 收入 ¥' + UI.amount(inc) : '') + '</div></div>' +
         '  <div class="c-right"><div class="c-val num">' + amt(bal) + '</div></div>' +
-        '</div>';
+        '</button>';
     };
     const debtRow = a => {
       const bal = Store.accountBalance(a.id);
@@ -130,6 +130,7 @@ Views.assets = (() => {
       '</div>';
 
     root.querySelector('.j-analysis').onclick = () => Views.bills.openMonth();
+    root.querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>reconcile(b.dataset.account));
     root.querySelector('.j-eye').onclick = () => { Store.settings.hideAmount = !Store.settings.hideAmount; Store.save(); App.refresh(true); };
     root.querySelectorAll('.book-bar button[data-b]').forEach(b => b.onclick = () => {
       Store.settings.currentBookId = b.dataset.b;
@@ -146,5 +147,23 @@ Views.assets = (() => {
     root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId));
   }
 
-  return { mount };
+  function reconcile(id) {
+    const a=Store.account(id), balance=Store.accountBalance(id);
+    const rows=Store.data.transactions.filter(t=>t.accountId===id||t.fromId===id||t.toId===id).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+    UI.sheet({title:a.name+' · 余额核对',content(body){
+      body.innerHTML=`<section class="entry-review"><div>当前账面余额</div><strong>¥${UI.amount(balance,true)}</strong><small>期初 ¥${UI.amount(a.opening || 0)} ＋ 已记流水</small></section>
+        <label class="field">银行或支付 App 显示的实际余额（元）<input class="j-real" inputmode="decimal" placeholder="输入后比较差额"></label><p class="j-difference" aria-live="polite"></p>
+        <p class="payroll-help">核对期初余额、漏记流水和实际扣款账户。用支付宝扣银行卡时，账单应归入银行卡。点下面的流水可修改。</p>
+        <button class="btn btn-ghost btn-block j-accounts">查看账户及期初设置</button><h3 class="section-title">本账户最近 30 笔流水</h3>
+        ${rows.slice(0,30).map(t=>`<button class="cell asset-reconcile" data-review="${t.id}"><span class="c-main">${U.escapeHtml(Views.expense.tSummary(t).title)}<small class="c-sub">${U.escapeHtml(t.date+' · '+(t.note || ''))}</small></span>${Views.expense.tAmountHtml(t)}</button>`).join('')}`;
+      body.querySelector('.j-real').oninput=e=>{
+        const raw=e.target.value.trim(),minor=/^0(?:\.0{1,2})?$/.test(raw)?0:Store.parseAmount(raw),out=body.querySelector('.j-difference');
+        if(minor==null){out.textContent='';return;}
+        const diff=minor-balance;out.textContent=diff===0?'余额一致':`实际余额比账面${diff>0?'多':'少'} ¥${UI.amount(Math.abs(diff),true)}。核对后更正对应记录。`;
+      };
+      body.querySelector('.j-accounts').onclick=()=>Views.settings.openAccountsSheet();
+      body.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>Views.expense.openEntrySheet(rows.find(t=>t.id===b.dataset.review)));
+    }});
+  }
+  return { mount,reconcile };
 })();
