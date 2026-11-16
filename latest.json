@@ -1,8 +1,8 @@
 {
-  "versionCode": 23700,
-  "versionName": "2.37",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.37/nianxiatian.apk",
-  "sha256": "11d98089fd025bea5396d60f69d02573662af828079d45c39e714449333ad0aa",
-  "apkBlob": "c840b85dc5ba7d5eff90c53065dce1448f23a454",
-  "note": "v2.37：六套主题细化专属矢量图标、折线标记、柱图纹理与环形细节；保留主题下拉选择。修复环形图边缘点选不准，画布随宽度变化自动重绘，完善主题切换一致性。"
+  "versionCode": 23800,
+  "versionName": "2.38",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.38/nianxiatian.apk",
+  "sha256": "27f896e8be65e031efa1de441000a226d49b67d8e5fb73d53d2ef2149b000a8c",
+  "apkBlob": "7b44e25f2b045b2c18ed91ecb0258bbaf78d6115",
+  "note": "v2.38：手机页面两侧与底栏铺满，取消外围留白和悬浮边框；保留六套主题的图标与图表，修正日历边缘裁切，文字与输入保留内边距。"
 }
