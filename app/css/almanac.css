@@ -1,0 +1,149 @@
+/* A quieter home ledger and an open, full-width almanac. */
+.home-refined.handpage .home-book { border: 1px solid var(--hairline); border-radius: 15px; box-shadow: 0 4px 16px #284c3810; }
+.home-refined.handpage .home-cover { min-height: 68px; padding: 10px 14px 6px; }
+.home-refined.handpage .home-cover::before { opacity: .8; background-position: right 52%; }
+.home-date { display: flex; gap: 11px; align-items: center; text-align: left; min-height: 48px; }
+.home-date-leaf { display: flex; align-items: baseline; gap: 3px; padding-right: 12px; border-right: 1px solid var(--hairline); }
+.home-date-leaf b { font: 35px/1 Georgia,serif; color: var(--accent); }
+.home-date-leaf small { font: 11px var(--book-serif); color: var(--text-2); }
+.home-date>span:last-child strong { display: block; font: 600 13px/1.6 var(--book-serif); }
+.home-date>span:last-child small { display: block; font-size: 10px; color: var(--text-2); max-width: 180px; }
+.home-refined .home-cover .visibility-toggle { align-self: center; background: var(--paper-glass); border-color: transparent; min-width: 32px; min-height: 32px; }
+.home-refined.handpage .overview-finance { padding: 0 14px 10px; background: none; }
+.home-refined.handpage .overview-finance header { border: 0; min-height: 28px; }
+.home-refined.handpage .overview-finance header>span { color: var(--text); font-size: 12px; }
+.home-refined.handpage .overview-amounts { padding: 7px 0 9px; gap: 14px; }
+.home-refined.handpage .overview-amounts>span+span { padding-left: 14px; border-left: 1px solid var(--hairline); }
+.home-refined.handpage .overview-amounts strong { font: 500 clamp(21px,6vw,25px)/1.4 Georgia,var(--ui-font); }
+.home-refined.handpage .overview-amounts small { font-size: 10px; margin-bottom: 1px; }
+.home-refined.handpage .overview-finance footer { border-top: 1px solid var(--hairline); padding-top: 7px; }
+.home-refined.handpage .overview-shortcuts { padding: 12px 0 14px; }
+.home-refined.handpage .overview-shortcuts button>span { width: 38px; height: 36px; border-radius: 11px; box-shadow: inset 0 0 0 1px #63837414; }
+.home-refined .home-money, .home-refined.handpage .work-slip, .home-refined .home-notebook { border: 1px solid var(--hairline); border-radius: 12px; padding-inline: 12px; background: var(--paper-glass); box-shadow: 0 2px 7px #274a3607; }
+.home-refined .home-money { margin-bottom: 10px; padding-top: 10px; }
+.home-refined .home-money::before, .home-refined.handpage .work-slip::before { content: none; }
+.home-refined .home-money h2, .home-refined.handpage .work-slip h2 { color: var(--accent); font-size: 13px; }
+.home-refined .home-money-grid { gap: 12px; padding-top: 2px; }
+.home-refined .home-money-grid b { font-size: 19px; }
+.home-refined .home-money-grid>button+button { padding-left: 12px; }
+.home-refined .saving-track { height: 4px; background: var(--input-bg); }
+.home-refined .home-credit { background: var(--rose-wash); margin: 10px -5px -3px; padding: 7px; border: 0; border-radius: 7px; gap: 6px; }
+.home-refined.handpage .work-slip { padding-top: 8px; margin-bottom: 10px; }
+.home-refined .work-slip header { margin-bottom: 4px; }
+.home-refined.handpage .overview-work-values { padding-bottom: 9px; }
+.home-refined.handpage .overview-work-values strong { font: 18px/1.6 Georgia,var(--ui-font); }
+.home-refined .overview-work-values .overview-attendance { background: var(--blue-wash); color: var(--info); border-radius: 7px; }
+.home-refined .home-notebook { padding-block: 9px 0; }
+.home-refined .home-notebook .overview-section h2 { color: var(--text); font-size: 13px; }
+.home-refined .overview-agenda, .home-refined .overview-transactions { padding-inline: 0; }
+.home-refined .home-notebook .overview-section+ .overview-section { padding-top: 8px; border-top: 1px solid var(--hairline); }
+.home-refined .overview-tx-icon { background: var(--tint-surface); border-radius: 9px; }
+.home-refined .overview-tools { margin-top: 10px; border-radius: 10px; }
+
+/* The calendar reaches the page edges instead of nesting a small grid in a card. */
+.life-page.calendar-mode { width: calc(100% + 32px); max-width: 800px; margin-inline: -16px; overflow: hidden; overflow: clip; animation: none; }
+.life-page.calendar-mode>.page-head { margin-inline: 16px; margin-bottom: 5px; min-height: 40px; padding: 2px 2px 8px; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 10px; }
+.calendar-mode>.page-head::before { opacity: .45; }
+.calendar-mode>.j-subnav { margin-inline: 16px; margin-bottom: 8px !important; }
+.life-calendar-spread { background: var(--paper-glass); border-block: 1px solid var(--hairline); }
+.lc-toolbar { display: flex; align-items: center; padding: 7px 12px; gap: 2px; }
+.lc-toolbar>button { min-width: 34px; height: 36px; border-radius: 7px; font-size: 23px; color: var(--accent); }
+.lc-toolbar>button:disabled { opacity: .3; }
+.lc-month { position: relative; min-width: 122px; text-align: center; }
+.lc-month>span { font: 22px/1.6 Georgia,var(--book-serif); color: var(--text); }
+.lc-month small { font: 12px var(--book-serif); margin-inline: 2px 5px; }
+.lc-month input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.lc-month:focus-within { outline: 2px solid var(--accent); border-radius: 5px; }
+.lc-toolbar>.j-today { margin-left: auto; font-size: 12px; padding: 0 10px; background: var(--tint-surface); min-height: 34px; height: 34px; }
+.lc-toolbar>.lc-toolbar-add { margin-left: 5px; font-size: 21px; }
+.lc-weekdays, .lc-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); }
+.lc-weekdays { padding: 4px 0 7px; font-size: 10px; color: var(--text-3); text-align: center; }
+.lc-weekdays>span:nth-last-child(-n+2) { color: var(--calendar-expense); }
+.lc-grid { border-top: 1px solid var(--hairline); }
+.lc-cell { position: relative; display: flex; flex-direction: column; text-align: left; min-width: 0; min-height: 84px; padding: 5px 3px 4px; border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); transition: background .12s; }
+.lc-cell:nth-child(7n) { border-right: 0; }
+.lc-cell.weekend { background: color-mix(in srgb,var(--rose-wash) 30%,transparent); }
+.lc-cell.off { background: color-mix(in srgb,var(--rose-wash) 55%,transparent); }
+.lc-cell.work { background: color-mix(in srgb,var(--blue-wash) 48%,transparent); }
+.lc-cell.selected { background: var(--accent-weak); box-shadow: inset 0 0 0 1.5px var(--accent); z-index: 1; }
+.lc-day-top { display: flex; align-items: center; justify-content: space-between; min-height: 22px; padding-inline: 3px; }
+.lc-day-top b { display: grid; place-items: center; min-width: 23px; height: 23px; font: 18px/1 Georgia,var(--ui-font); }
+.lc-day-top i { font: 9px/1.2 var(--ui-font); color: var(--calendar-expense); }
+.work .lc-day-top i { color: var(--info); }
+.is-today .lc-day-top b { background: var(--accent); color: #fffdf3; border-radius: 50%; }
+.lc-lunar { font-size: 9px; line-height: 1.65; padding-left: 5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-festival { font-size: 9px; line-height: 1.6; color: var(--calendar-expense); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 5px; }
+.lc-items { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.lc-item { display: block; font-size: 9px; line-height: 15px; padding: 0 2px 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 2px; }
+.lc-item.event { border-left: 2px solid var(--event-color,var(--info)); background: var(--blue-wash); color: var(--text); }
+.lc-item.task { border-left: 2px solid var(--warn); background: var(--gold-wash); color: var(--text); }
+.lc-item.done { text-decoration: line-through; opacity: .6; }
+.lc-cell-foot { margin-top: auto; padding: 2px 2px 0; display: flex; justify-content: space-between; gap: 1px; color: var(--text-3); min-height: 12px; }
+.lc-cell-foot i, .lc-cell-foot small { font: 8px/1.3 var(--ui-font); white-space: nowrap; }
+.lc-cell-foot small { margin-left: auto; }
+.lc-cell-foot .all-done { color: var(--accent); }
+.lc-cell.outside { background: var(--input-bg); }
+.lc-cell.outside>* { opacity: .48; }
+.lc-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; z-index: 2; }
+.lc-key { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; font-size: 9px; color: var(--text-2); }
+.lc-key>span { display: flex; gap: 4px; align-items: center; }
+.lc-key i { width: 5px; height: 5px; border-radius: 50%; }
+.lc-key .event-dot { background: var(--info); }.lc-key .task-dot { background: var(--warn); }
+.lc-key button { margin-left: auto; color: var(--text-3); font-size: 9px; min-height: 25px; }
+.lc-day-agenda { background: var(--paper-glass); border-bottom: 1px solid var(--hairline); padding: 14px 16px; margin-top: 10px; }
+.lc-agenda-heading { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
+.lc-agenda-heading>div { flex: 1; min-width: 0; }
+.lc-agenda-heading h2 { font: 600 15px/1.5 var(--book-serif); margin: 0; }
+.lc-agenda-heading h2 small { font: 11px var(--ui-font); margin-left: 4px; color: var(--text-2); }
+.lc-agenda-heading p { font-size: 10px; line-height: 1.8; margin: 5px 0 8px; color: var(--text-3); }
+.lc-add { display: flex; gap: 2px; align-items: center; font-size: 11px; padding: 7px; border: 1px solid var(--hairline); border-radius: 7px; color: var(--accent); }
+.lc-add svg { width: 16px; height: 16px; }
+.lc-agenda-row { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 0; text-align: left; border-bottom: 1px solid var(--hairline); }
+.lc-agenda-row>span, .lc-task-edit { min-width: 0; flex: 1; text-align: left; }
+.lc-agenda-row b { font-size: 13px; font-weight: 500; display: block; overflow-wrap: anywhere; }
+.lc-agenda-row small { display: block; color: var(--text-2); font-size: 10px; margin-top: 3px; line-height: 1.7; }
+.lc-event-line { width: 3px; height: 29px; background: var(--event-color,var(--info)); border-radius: 3px; }
+.lc-chevron { font: 17px Georgia,serif; color: var(--text-3); }
+.lc-agenda-row .td-box { width: 22px; height: 22px; flex: none; }
+.lc-agenda-row.done b { text-decoration: line-through; opacity: .6; }
+.lc-add-task { min-height: 36px; color: var(--accent); font-size: 11px; }
+.lc-empty { font-size: 12px; line-height: 1.8; color: var(--text-2); padding: 12px 0 4px; }
+.lc-empty button { display: block; font-size: 11px; margin-top: 6px; }
+.lc-habits { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--hairline); }
+.lc-habits>span { font-size: 10px; color: var(--text-3); }
+.lc-habits button { min-height: 30px; padding: 5px 8px; border-radius: 6px; background: var(--input-bg); font-size: 11px; }
+.lc-habits button.done { background: var(--accent-weak); color: var(--accent); }
+.calendar-notes p { font-size: 13px; line-height: 1.9; color: var(--text-2); }
+.calendar-notes a { color: var(--accent); }
+.event-form .field { display: block; font-size: 12px; color: var(--text-2); }
+.event-form input, .event-form textarea, .event-form select { margin-top: 5px; }
+.event-options { display: flex; gap: 22px; padding: 0 0 16px; font-size: 13px; }
+.event-options label { display: flex; gap: 7px; align-items: center; }
+.event-options input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.event-dates { display: grid; grid-template-columns: 1fr; gap: 0; }
+.event-dates input { min-width: 0; width: 100%; }
+.event-colors { grid-template-columns: repeat(6,1fr); max-width: 320px; gap: 16px; }
+.event-colors button { height: 28px; border-radius: 8px; }
+.event-reminder-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap: 12px; margin-top: 12px; }
+.event-reminder-fields[hidden] { display: none; }
+@media(max-width:350px) {
+  .life-page.calendar-mode { width: calc(100% + 24px); margin-inline: -12px; }
+  .calendar-mode>.page-head, .calendar-mode>.j-subnav { margin-inline: 12px; }
+  .lc-cell { min-height: 80px; padding-inline: 2px; }
+  .lc-day-top { padding-inline: 1px; }
+  .lc-lunar, .lc-festival { padding-left: 3px; }
+  .lc-toolbar { padding-inline: 8px; }
+  .lc-month { min-width: 110px; }
+  .home-refined .home-money-grid b { font-size: 17px; }
+  .home-refined .home-credit { font-size: 9px; }
+  .home-refined.handpage .overview-work-values strong { font-size: 16px; }
+}
+@media(min-width:700px) {
+  .life-page.calendar-mode { margin-inline: auto; width: 100%; }
+  .life-calendar-spread { border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  .lc-cell { min-height: 110px; padding: 7px; }
+  .lc-item, .lc-lunar, .lc-festival { font-size: 11px; }
+  .lc-day-agenda { border: 1px solid var(--hairline); border-radius: 12px; }
+  .event-dates { grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+@media(prefers-reduced-motion:reduce) { .lc-cell { transition: none; } }

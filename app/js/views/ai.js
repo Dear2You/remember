@@ -78,7 +78,7 @@ Views.ai = (() => {
       t.title + (t.important ? '(重要' + (t.urgent ? '+紧急)' : ')') : (t.urgent ? '(紧急)' : ''))).join('、') || '无';
     const overdueStr = Store.tasksBy('overdue').slice(0, 4).map(t => t.title).join('、') || '无';
     const focusStr = Math.floor(dg.focusSec / 60) + '分钟/' + dg.focusCount + '次';
-    const nextEv = dg.nextEvent ? (dg.nextEvent.date + ' ' + dg.nextEvent.ev.start.slice(11) + ' ' + dg.nextEvent.ev.title) : '无';
+    const nextEv = dg.nextEvent ? (dg.nextEvent.date + ' ' + Store.eventTimeLabel(dg.nextEvent.ev,dg.nextEvent.date) + ' ' + dg.nextEvent.ev.title) : '无';
     const cdStr = Store.countdownsSorted().slice(0, 3).map(c => c.title + (Store.countdownDays(c) >= 0 ? '(还有' + Store.countdownDays(c) + '天)' : '(已过' + (-Store.countdownDays(c)) + '天)')).join('、') || '无';
     let budgetStr = '无';
     if (book) {

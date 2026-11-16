@@ -7,6 +7,13 @@ const WorkCalendar = window.WorkCalendar = (() => {
     2027: {off:[['01-01','01-03'],['02-05','02-13'],['04-03','04-05'],['05-01','05-05'],['06-09','06-09'],['09-15','09-15'],['10-01','10-07']],on:['01-31','02-14','05-08','09-26','10-09']}
   };
   const validMonth = m => typeof m === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
+  function dayInfo(date) {
+    const schedule = schedules[String(date).slice(0,4)], md = String(date).slice(5);
+    if (!schedule) return {known:false,kind:'',name:''};
+    if (schedule.on.includes(md)) return {known:true,kind:'work',name:'调休上班'};
+    const i = schedule.off.findIndex(([a,b]) => md >= a && md <= b);
+    return {known:true,kind:i < 0 ? '' : 'off',name:i < 0 ? '' : ['元旦','春节','清明节','劳动节','端午节','中秋节','国庆节'][i]+'假期'};
+  }
   function dates(month, kind = 'cn') {
     if (!validMonth(month)) throw new Error('请选择有效月份');
     const year = month.slice(0,4), schedule = schedules[year];
@@ -39,7 +46,7 @@ const WorkCalendar = window.WorkCalendar = (() => {
     for(let d=first;d<=last;d=U.addDays(d,7))rows.push(Array.from({length:7},(_,i)=>{const date=U.addDays(d,i);return {date,day:Number(date.slice(8)),inMonth:date>=start&&date<=end,isToday:date===U.todayStr()};}));
     return rows;
   }
-  return {dates,validMonth,period,monthFor,rangeDates,matrix,hasYear:y => !!schedules[y]};
+  return {dates,validMonth,dayInfo,period,monthFor,rangeDates,matrix,hasYear:y => !!schedules[y]};
 })();
 
 Object.assign(Store, {

@@ -52,3 +52,12 @@ test('日程提前提醒跨日、每周重复、关闭删除及时撤销，订�
   rule=updates.at(-1)[0];assert.equal(rule.kind,'subscription');assert.equal(rule.date,'2030-01-29');
   s.updateSubscription(sub.id,{paused:true});assert.deepEqual(updates.at(-1),[]);
 });
+
+test('全天日程指定提醒时刻、提前跨日及备份恢复一致，旧记录不擅自改时刻',()=>{
+  const {s,updates}=app();
+  const e=s.addEvent({title:'全天出差',start:'2030-01-10 00:00',end:'2030-01-11 00:00',allDay:true,allDayRemindTime:'09:30',phoneRemind:true,remindMinutes:1440});
+  let rule=updates.at(-1)[0];assert.equal(rule.date,'2030-01-09');assert.equal(rule.time,'09:30');
+  s.updateEvent(e.id,{allDayRemindTime:'08:15',remindMinutes:30});rule=updates.at(-1)[0];assert.equal(rule.date,'2030-01-10');assert.equal(rule.time,'07:45');
+  const backup=s.exportData();s.clearAll();s.importData(backup);assert.equal(updates.at(-1)[0].time,'07:45');
+  s.removeEvent(e.id);s.addEvent({title:'旧全天记录',start:'2030-01-10 10:00',allDay:true,phoneRemind:true,remindMinutes:15});assert.equal(updates.at(-1)[0].time,'09:45');
+});

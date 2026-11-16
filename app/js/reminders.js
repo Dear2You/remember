@@ -22,8 +22,8 @@ window.Reminders = (() => {
       }
     }
     for (const e of Store.data.events) {
-      if (!e.phoneRemind || !e.id || !e.start) continue;
-      const start=new Date(e.start.replace(' ','T'));
+      if (!e.phoneRemind || !e.id || !Store.eventValid(e)) continue;
+      const start=new Date(Store.eventReminderStart(e).replace(' ','T'));
       if (!Number.isFinite(start.getTime())) continue;
       const at=new Date(start.getTime()-(Number(e.remindMinutes)||0)*60000);
       result.push({kind:'event',id:e.id,title:e.title,date:U.dateStr(at),time:U.pad(at.getHours())+':'+U.pad(at.getMinutes()),repeat:e.repeat==='weekly'?'weekly':'none',doneDates:[]});

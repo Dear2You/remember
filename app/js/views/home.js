@@ -13,17 +13,17 @@ Views.home = (() => {
     const tasks=Store.tasksBy('today').filter(t=>!Store.taskDoneOn(t,today)).slice(0,2);
     const due=Store.data.subscriptions.filter(s=>!s.paused&&s.nextDue&&s.nextDue<=U.addDays(today,7)).sort((a,b)=>a.nextDue.localeCompare(b.nextDue))[0];
     const tripPending=Store.tripTotals().pending,review=Store.data.transactions.filter(t=>t.wageNeedsReview).length;
-    const event=digest.nextEvent;
+    const event=digest.nextEvent,calendar=CalendarInfo.day(today);
     const followups=[...tasks.map(t=>({route:'task',id:t.id,icon:'check',title:t.title,meta:t.dueTime || '今天'}))];
     if(digest.tasksOverdue)followups.push({route:'overdue',icon:'check',title:digest.tasksOverdue+' 项待办已逾期',meta:'待处理'});
-    if(event&&event.date<=U.addDays(today,7))followups.push({route:'today',icon:'calendar',title:event.ev.title,meta:U.fmtDay(event.date)+(event.ev.allDay?' 全天':' '+event.ev.start.slice(11))});
+    if(event&&event.date<=U.addDays(today,7))followups.push({route:'today',icon:'calendar',title:event.ev.title,meta:U.fmtDay(event.date)+' '+Store.eventTimeLabel(event.ev,event.date)});
     if(due)followups.push({route:'subs',icon:'subs',title:due.name,meta:shortDate(due.nextDue)+(due.nextDue<today?' 待核对扣款':' 续费')});
     if(review)followups.push({route:'wages',icon:'worktime',title:review+' 笔工资到账待核对',meta:'重新关联'});
     const quick=[['record-work','worktime','记工时'],['add-task','check','记待办'],['memo','memo','备忘录'],['trips','trip','出差报销']];
     const more=[['life','calendar','时光日历'],['habit','habit','习惯打卡'],['focus','focus','番茄专注'],['countdown','countdown','倒数日'],['subs','subs','会员订阅'],['ai','chat','AI 助手']];
-    root.innerHTML=`<div class="page overview-page handpage">
+    root.innerHTML=`<div class="page overview-page handpage home-refined">
       <section class="home-book"><header class="home-cover">
-        <h1 aria-label="今天 ${esc(U.fmtFull(today))}"><b>${Number(today.slice(8))}</b><span>${Number(today.slice(5,7))}月 · 周${'日一二三四五六'[U.parseDate(today).getDay()]}<small>${today.slice(0,4)} / 今天</small></span></h1>
+        <button class="home-date" data-dest="calendar-today" aria-label="今天 ${esc(U.fmtFull(today))}，打开日历"><span class="home-date-leaf"><b>${Number(today.slice(8))}</b><small>${Number(today.slice(5,7))}月</small></span><span><strong>周${'日一二三四五六'[U.parseDate(today).getDay()]}</strong><small>${esc(calendar.lunarFull.replace(/^.*年 /,''))}${calendar.festival||calendar.term?' · '+esc(calendar.festival||calendar.term):''}</small></span></button>
         <button class="visibility-toggle" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button></header>
       <section class="overview-finance"><header><span>${Number(today.slice(5,7))}月收支 <small>· ${esc(book?.name || '全部账本')}</small></span><button class="text-action" data-dest="month">账单 ›</button></header>
         <button class="overview-amounts" data-dest="month"><span><small>支出</small><strong class="money-out">${amount(stat.out)}</strong></span><span><small>收入</small><strong class="money-in">${amount(stat.inc)}</strong></span></button>
@@ -49,6 +49,7 @@ Views.home = (() => {
       else if(dest==='overdue')Views.lifetasks.openList('overdue');
       else if(dest==='today')Views.life.go('today');
       else if(dest==='life')Views.life.go('cal');
+      else if(dest==='calendar-today')Views.lifecal.openDate(today);
       else if(dest==='subs')Views.subs.open('home');
       else if(dest==='money'||dest==='savings')Views.money.open('home');
       else if(dest==='trips')Views.trips.list();

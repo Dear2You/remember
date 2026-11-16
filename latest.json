@@ -1,8 +1,8 @@
 {
-  "versionCode": 23200,
-  "versionName": "2.32",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.32/nianxiatian.apk",
-  "sha256": "ac8eb28db79b52dd6f2b5c26fcf5701b85817ac165815964ceb74a9bd5cdab50",
-  "apkBlob": "d29d71602bc1e84c683c8cf7f7fdf8c73cec98b4",
-  "note": "v2.32：流水明细放到账单第一页；转账/提现支持手续费内扣或额外扣，预览扣款到账并同步改删；修复 Android 键盘遮挡与输入框定位；水墨浅色界面增加青绿、红色和暖金层次；新增购物/外卖/奶茶专项额度、联培预算建议、白条信用消费与待还提醒。"
+  "versionCode": 23300,
+  "versionName": "2.33",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.33/nianxiatian.apk",
+  "sha256": "da2f96fb27ef604ebe5fba08f15bfe35e8266b237a9fd237a74f3ad07166736c",
+  "apkBlob": "52e00a034b22bbe0818271c5f98e993af825e2f9",
+  "note": "v2.33：首页统一为清新水墨账页，整理收支、预算与工作层级；时光改为铺满页面的大月历，显示农历、节日节气及 2026/2027 放假调休，格内展示日程、待办和打卡。点日期管理全部安排，支持年月选择、回到今天和全天提醒时刻；修复午夜结束多占一天、跨天时间标签、下一场日程排序、非法日期及重复保存等问题。"
 }

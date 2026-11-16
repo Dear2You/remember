@@ -946,19 +946,35 @@ const Store = {
   quadrantOf(t) { return t.important && t.urgent ? 1 : (t.important ? 2 : (t.urgent ? 3 : 4)); },
 
   /* ---------- 日程 ---------- */
+  eventValid(e) {
+    const stamp=s=>typeof s==='string' && /^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):[0-5]\d$/.test(s) && U.dateStr(U.parseDate(s.slice(0,10)))===s.slice(0,10);
+    if(!e || !stamp(e.start) || !stamp(e.end || e.start))return false;
+    if(e.allDay ? (e.end || e.start).slice(0,10)<e.start.slice(0,10) : (e.end || e.start)<e.start)return false;
+    return !e.allDayRemindTime || /^([01]\d|2[0-3]):[0-5]\d$/.test(e.allDayRemindTime);
+  },
+  eventColor(e) {return /^#[0-9a-f]{6}$/i.test(e?.color)?e.color:'#537f97';},
+  eventReminderStart(e) {return e.allDay&&e.allDayRemindTime?e.start.slice(0,10)+' '+e.allDayRemindTime:e.start;},
   addEvent(o) {
     const item = {
       id: U.id(), title: (o.title || '').trim() || '新日程',
       start: o.start || '', end: o.end || '', allDay: !!o.allDay,
       location: o.location || '', note: o.note || '',
-      color: o.color || '#4a9bff', repeat: o.repeat === 'weekly' ? 'weekly' : 'none',
+      color: this.eventColor(o), repeat: o.repeat === 'weekly' ? 'weekly' : 'none',
+      allDayRemindTime:o.allDayRemindTime || '',
       phoneRemind:!!o.phoneRemind,remindMinutes:[0,5,15,30,60,1440].includes(Number(o.remindMinutes))?Number(o.remindMinutes):0,
       createdAt: Date.now()
     };
+    if(!this.eventValid(item))throw new Error('请选择有效的日程日期，结束不能早于开始');
     this.mutate(d => d.events.unshift(item));
     return item;
   },
-  updateEvent(id, patch) { this.mutate(d => { const it = d.events.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  updateEvent(id, patch) {
+    const old=this.data.events.find(e=>e.id===id);if(!old)return;
+    const next={...old,...patch,id:old.id};
+    if(!this.eventValid(next))throw new Error('请选择有效的日程日期，结束不能早于开始');
+    next.color=this.eventColor(next);
+    this.mutate(d=>Object.assign(d.events.find(e=>e.id===id),next));
+  },
   removeEvent(id) { this.mutate(d => { d.events = d.events.filter(x => x.id !== id); }); },
   // 某日期的日程（含每周重复虚拟展开，不复制源记录）
   eventOccurrence(ev, date) {
@@ -969,31 +985,44 @@ const Store = {
       start = U.addDays(first, weeks * 7);
     }
     const span = Math.max(0, U.daysBetween(first, (ev.end || ev.start).slice(0, 10)) - 1);
-    return { start, end: U.addDays(start, span) };
+    const finish=U.addDays(start,span),clock=(ev.end || ev.start).slice(11);
+    const end=!ev.allDay&&span>0&&clock==='00:00'?U.addDays(finish,-1):finish;
+    return {start,end,finish,endAt:finish+' '+(ev.allDay?'23:59':clock)};
+  },
+  eventTimeLabel(ev,date) {
+    if(ev.allDay)return '全天';
+    const r=this.eventOccurrence(ev,date),start=ev.start.slice(11),end=(ev.end || ev.start).slice(11);
+    const endClock=r.finish>r.end&&end==='00:00'?'24:00':end;
+    if(r.start===r.end)return start===endClock?start:start+'–'+endClock;
+    if(date===r.start)return start+' 起 · 跨天';
+    if(date===r.end)return endClock+' 结束';
+    return '全天 · 跨天';
   },
   eventsOn(dateStr) {
     return this.data.events.filter(ev => {
-      if (!ev.start) return false;
+      if (!this.eventValid(ev)) return false;
       const { start, end } = this.eventOccurrence(ev, dateStr);
       return start <= dateStr && dateStr <= end;
-    }).sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.slice(11).localeCompare(b.start.slice(11)));
+    }).sort((a, b) => {
+      const start=e=>this.eventOccurrence(e,dateStr).start<dateStr?'00:00':e.start.slice(11);
+      return Number(b.allDay)-Number(a.allDay) || start(a).localeCompare(start(b));
+    });
   },
-  nextEvent() {
-    const today = U.todayStr();
-    const now = new Date();
+  nextEvent(now = new Date()) {
+    const today = U.dateStr(now);
     const clock = U.pad(now.getHours()) + ':' + U.pad(now.getMinutes());
     let best = null;
     let bestTime = '';
     for (const ev of this.data.events) {
-      if (!ev.start) continue;
+      if (!this.eventValid(ev)) continue;
       const occurrence = this.eventOccurrence(ev, today);
       let date = occurrence.start;
-      if (occurrence.end < today || (occurrence.end === today && !ev.allDay && (ev.end || ev.start).slice(11) < clock)) {
+      if (occurrence.end < today || occurrence.endAt < today+' '+clock) {
         if (ev.repeat !== 'weekly') continue;
         date = U.addDays(date, 7);
       }
       if (date < today) date = today;
-      const time = date + ' ' + (ev.allDay ? '00:00' : ev.start.slice(11));
+      const time = date + ' ' + (ev.allDay || date===today&&date>occurrence.start ? '00:00' : ev.start.slice(11));
       if (!best || time < bestTime) { best = { ev, date }; bestTime = time; }
     }
     return best;
@@ -1280,7 +1309,7 @@ const Store = {
       (w.payMode === 'month' ? !!this.validatePayrollBackup : w.payMode === 'day' ? this.validDailyPay(w) && (w.hours == null || (Number.isFinite(w.hours) && w.hours > 0 && w.hours <= 24 && +w.hours.toFixed(2) === w.hours))
         : (w.payMode == null || w.payMode === 'hour') && Number.isFinite(w.hours))) &&
       (d.transactions || []).every(t => isDate(t.date)) &&
-      (d.events || []).every(e => typeof e.start === 'string' && (!e.end || typeof e.end === 'string')) &&
+      (d.events || []).every(e => this.eventValid(e)) &&
       (d.countdowns || []).every(c => isDate(c.date)) &&
       (d.memos || []).every(m => (!m.items || (Array.isArray(m.items) && m.items.every(object)))) &&
       (d.tasks || []).every(t => !t.doneDates || Array.isArray(t.doneDates)) &&

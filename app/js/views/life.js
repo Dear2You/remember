@@ -6,7 +6,7 @@ Views.life = (() => {
   function mount(root, selected = sub, preview = false) {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
-      '<div class="page life-page">' +
+      '<div class="page life-page ' + (selected==='cal'?'calendar-mode':'') + '">' +
       '  <div class="page-head"><div class="page-title">时光</div><span class="page-sub j-sub"></span></div>' +
       '  <div class="seg j-subnav" style="margin-bottom:14px">' +
       '    <button data-s="cal" class="' + (selected === 'cal' ? 'on' : '') + '">日历</button>' +
@@ -65,11 +65,11 @@ Views.life = (() => {
 
       // 下一场日程
       (dg.nextEvent
-        ? '<div class="card" style="border-left:3px solid ' + dg.nextEvent.ev.color + '">' +
+        ? '<div class="card" style="border-left:3px solid ' + Store.eventColor(dg.nextEvent.ev) + '">' +
           '  <div class="section-title">下一场日程</div>' +
           '  <div style="font-weight:700;font-size:15.5px">' + U.escapeHtml(dg.nextEvent.ev.title) + '</div>' +
           '  <div style="font-size:12.5px;color:var(--text-2);margin-top:3px">' + (dg.nextEvent.date === today ? '今天' : U.fmtDay(dg.nextEvent.date)) + ' ' +
-          (dg.nextEvent.ev.allDay ? '全天' : dg.nextEvent.ev.start.slice(11)) +
+          Store.eventTimeLabel(dg.nextEvent.ev,dg.nextEvent.date) +
           (dg.nextEvent.ev.location ? ' · ' + U.escapeHtml(dg.nextEvent.ev.location) : '') + '</div>' +
           '</div>'
         : '') +
