@@ -40,9 +40,90 @@
   };
   const accountKeys = {'💚':'wechat','🔵':'alipay','💳':'card','💵':'cash','🏦':'bank','💰':'wallet','🪙':'coin','👛':'purse','📈':'chart','🎯':'target'};
   const categoryKeys = {'🍜':'food','🚌':'travel','🛒':'shopping','📚':'book','🏠':'house','💊':'medical','🎮':'game','📱':'phone','🎁':'gift','📝':'memo','💰':'coin','🧧':'envelope','✨':'coin'};
+  // Keep the object's meaning, but give each scene its own drawing vocabulary.
+  // These are inline vectors: no downloads, duplicate SVG IDs or saved icon migrations.
+  const scenes = {
+    starry: {
+      house:'<path d="m5 15 11-10 11 10M8 13v14h16V13M14 27v-8h5v8"/><circle class="art-node" cx="16" cy="5" r="1.7"/><circle class="art-node" cx="5" cy="15" r="1.2"/><circle class="art-node" cx="27" cy="15" r="1.2"/>',
+      wallet:'<path d="M6 10h18l3 4v12H6ZM6 10l16-5v5M27 16h-7v6h7"/><circle class="art-node" cx="22" cy="19" r="1.2"/><path class="art-detail" d="M10 14h5l3-2"/>',
+      worktime:'<path d="M5 9h19v17H5ZM5 13h19M9 5v6m11-6v6"/><circle class="art-paper" cx="23" cy="23" r="6"/><path d="M23 19v4l3 2"/><circle class="art-node" cx="10" cy="18" r="1"/>',
+      book:'<path d="M7 5h19v23H7ZM11 5v23"/><path class="art-detail" d="m15 19 3-8 5 5-8 3"/><circle class="art-node" cx="18" cy="11" r="1.2"/><circle class="art-node" cx="23" cy="16" r="1.2"/>',
+      calendar:'<path d="M5 8h22v20H5ZM10 5v6m12-6v6M5 13h22m-17 6 5 4 7-6"/><circle class="art-node" cx="10" cy="19" r="1.3"/><circle class="art-node" cx="15" cy="23" r="1.3"/><circle class="art-node" cx="22" cy="17" r="1.3"/>',
+      person:'<circle cx="16" cy="10" r="5"/><path d="M6 27c0-6 4-10 10-10s10 4 10 10Z"/><path class="art-detail" d="m10 24 6-4 6 4"/><circle class="art-node" cx="16" cy="20" r="1.2"/>',
+      edit:'<path d="m8 21 14-16 5 5-14 16-7 2ZM19 8l5 5M6 28l4-3"/><path class="art-detail" d="m19 26 5-3 4 4"/><circle class="art-node" cx="24" cy="23" r="1.2"/>'
+    },
+    coast: {
+      house:'<path class="art-wash" d="m4 14 12-9 12 9Z"/><path d="m4 14 12-9 12 9M8 14v11h16V14m-10 9v-5h4v5"/><path class="art-detail" d="M3 28q3-3 6 0t6 0t6 0t7 0"/>',
+      wallet:'<rect class="art-paper" x="4" y="8" width="24" height="18" rx="7"/><path class="art-wash" d="M22 14h6v8h-6a4 4 0 0 1 0-8Z"/><circle cx="23" cy="18" r=".8"/><path class="art-detail" d="M8 12q3-2 6 0t6 0"/>',
+      worktime:'<rect class="art-paper" x="5" y="7" width="21" height="21" rx="6"/><path d="M5 13h21M10 4v6m11-6v6"/><circle class="art-wash" cx="21" cy="22" r="7"/><path d="M21 18v4l3 2M9 19h3"/>',
+      book:'<path class="art-paper" d="M5 7q5-3 11 0 6-3 11 0v20q-5-3-11 0-6-3-11 0Z"/><path d="M16 7v20"/><path class="art-detail" d="M8 13q2-1 5 0m6 0q2-1 5 0M8 18q2-1 5 0m6 0q2-1 5 0"/>',
+      calendar:'<rect class="art-paper" x="4" y="7" width="24" height="21" rx="6"/><path d="M4 13h24M10 4v6m12-6v6M9 18h2m4 0h2m4 0h2"/><path class="art-detail" d="M8 23q2-2 5 0t5 0t6 0"/>',
+      person:'<circle class="art-wash" cx="16" cy="10" r="6"/><path d="M6 27c0-6 4-10 10-10s10 4 10 10"/><path class="art-detail" d="M8 26q4-3 8 0t8 0"/>',
+      edit:'<path class="art-wash" d="m8 21 13-15q2-2 4 0l2 2q2 2 0 4L14 26l-8 2Z"/><path d="m20 8 5 5M8 21l6 5"/><path class="art-detail" d="M18 28q3-2 6 0t5 0"/>'
+    },
+    future: {
+      house:'<path class="art-wash" d="M5 14 16 4l11 10v14H5Z"/><path d="M5 14 16 4l11 10v14H5ZM13 28v-9h6v9M9 14h3m8 0h3"/><path class="art-detail" d="M2 9V4h5m18 0h5v5"/>',
+      wallet:'<path class="art-paper" d="M4 7h20l4 4v16H4ZM4 12h24"/><path class="art-wash" d="M20 16h8v7h-8Z"/><path d="M23 19h2M8 22h6m-6-3h3"/>',
+      worktime:'<path class="art-paper" d="M5 6h18l4 4v17H5ZM5 12h22M10 3v6m12-6v6"/><path class="art-wash" d="M18 17h11v12H18Z"/><path d="M23 20v4h3M9 17h4m-4 5h4"/>',
+      book:'<path class="art-paper" d="M6 4h17l4 4v21H6ZM11 4v25"/><path d="M16 10h6m-6 5h6m-6 5h3"/><path class="art-detail" d="M23 23v3h-4"/>',
+      calendar:'<path class="art-paper" d="M4 7h20l4 4v17H4ZM4 13h24M10 3v7m12-7v7"/><path class="art-wash" d="M9 17h4v4H9Zm10 0h4v4h-4Z"/><path d="M9 25h4m6 0h4"/>',
+      person:'<path class="art-paper" d="m16 3 6 3v8l-6 3-6-3V6ZM5 28v-6l7-3h8l7 3v6Z"/><path class="art-detail" d="M13 10h6M10 24h4m7 0h2"/>',
+      edit:'<path class="art-wash" d="m6 22 16-17h5v5L11 27H6Z"/><path d="m19 8 5 5M6 27l5-5M16 29h12"/><path class="art-detail" d="M3 16v-5h5m21 6v6h-4"/>'
+    },
+    forest: {
+      house:'<path class="art-paper" d="m6 14 10-9 10 9v14H6Z"/><path d="m3 15 13-12 13 12M13 28v-9h6v9M8 14h3m10 0h3"/><path class="art-detail" d="M5 22h5m12 3h4"/>',
+      wallet:'<path class="art-paper" d="M5 9h22v18H5q-3-9 0-18Z"/><path class="art-wash" d="M16 21c-1-7 4-9 10-8 0 6-4 10-10 8Z"/><path d="m16 22 7-6M8 13h4m-4 4h3"/>',
+      worktime:'<path class="art-paper" d="M5 7h20v21H5ZM5 13h20"/><path d="M9 4v6m12-6v6M8 18h3m-3 5h3"/><circle class="art-wash" cx="23" cy="23" r="6"/><path d="M23 19v4l3 2"/><path class="art-detail" d="M2 4q5-1 5 5"/>',
+      book:'<path class="art-paper" d="M6 5h21v23H6ZM10 5v23"/><path class="art-wash" d="M16 21c-3-6 1-10 7-10 1 6-1 10-7 10Z"/><path d="m15 24 6-10"/>',
+      calendar:'<path class="art-paper" d="M5 7h22v21H5ZM5 13h22"/><path d="M9 4v6m14-6v6M9 18h2m5 0h2m-9 6h2"/><path class="art-wash" d="M19 25c-2-4 1-6 5-6 0 4-2 6-5 6Z"/>',
+      person:'<circle class="art-paper" cx="15" cy="10" r="6"/><path d="M5 28c0-7 4-11 10-11s10 4 10 11"/><path class="art-wash" d="M22 26c-2-5 1-8 6-8 0 5-2 8-6 8Z"/><path d="m21 28 5-7"/>',
+      edit:'<path class="art-wash" d="m7 22 14-17 6 5-14 16-7 2Z"/><path d="m19 8 5 5M7 22l6 4"/><path class="art-detail" d="M19 29q0-6 9-6-1 7-9 6Zm0 0 6-4"/>'
+    },
+    sunset: {
+      house:'<path class="art-paper" d="M6 28V15a10 10 0 0 1 20 0v13ZM13 28v-8a3 3 0 0 1 6 0v8"/><path class="art-detail" d="M10 15h12M12 11h8"/>',
+      wallet:'<path class="art-wash" d="M7 11h18l4 14q-13 6-26 0Z"/><path d="M7 11h18M12 11V8a4 4 0 0 1 8 0v3"/><circle cx="16" cy="19" r="3"/><path class="art-detail" d="M8 25h16"/>',
+      worktime:'<rect class="art-paper" x="5" y="6" width="22" height="22" rx="8"/><path d="M5 13h22M10 3v7m12-7v7"/><circle class="art-wash" cx="22" cy="23" r="6"/><path d="M22 19v4l3 2M9 18h4m-4 5h3"/>',
+      book:'<path class="art-paper" d="M6 5h15q6 0 6 6v17H6ZM10 5v23"/><path class="art-wash" d="M14 18a5 5 0 0 1 10 0Z"/><path class="art-detail" d="M14 21h10m-8 3h6"/>',
+      calendar:'<rect class="art-paper" x="5" y="7" width="22" height="21" rx="7"/><path d="M5 13h22M10 4v6m12-6v6"/><path class="art-wash" d="M11 23a5 5 0 0 1 10 0Z"/><path class="art-detail" d="M10 25h12"/>',
+      person:'<circle class="art-wash" cx="16" cy="10" r="6"/><path d="M5 28v-2a11 9 0 0 1 22 0v2Z"/><path class="art-detail" d="M10 24q6-5 12 0"/>',
+      edit:'<path class="art-paper" d="m7 20 9-12 9 9-12 9-7 2ZM16 8l5-5 8 8-4 6"/><path d="m6 28 10-10m-3 2 3-2"/><circle cx="17" cy="17" r="1.3"/>'
+    }
+  };
+  const ornaments = {
+    ink:'<path d="M3 12V4h8M21 28h8v-8"/><path class="art-seal" d="M24 3h5v5h-5Z"/>',
+    starry:'<ellipse cx="16" cy="16" rx="15" ry="12" transform="rotate(-30 16 16)"/><path d="m26 1 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z"/>',
+    coast:'<circle cx="16" cy="16" r="15"/><path d="M2 25q3-3 6 0t6 0m12-20h3M3 6h3"/>',
+    future:'<path d="M2 10V2h8m12 0h8v8M2 22v8h8m12 0h8v-8"/><path d="M13 2h6m-6 28h6"/>',
+    forest:'<path d="M3 27C-1 14 3 5 9 2M4 19q-4-4-1-8 5 1 3 6m-1-7q0-5 4-6 2 5-2 7M22 30q7-2 8-11"/>',
+    sunset:'<path d="M2 25V15a14 14 0 0 1 28 0v10M4 29h24m-19 2h14"/>'
+  };
+  const tools = {
+    starry:{check:'<path d="M7 5h18v23H7ZM11 11l2 2 4-5m-6 12 2 2 4-5M20 12h2m-2 9h2"/><circle class="art-node" cx="13" cy="13" r="1"/>',trip:'<path d="M4 11h24v16H4ZM11 11V6h10v5m-12 0v16m14-16v16"/><path class="art-detail" d="m12 22 4-7 4 7Z"/>',chart:'<path d="M5 5v23h23M8 21l6-10 7 6 6-12"/><circle class="art-node" cx="8" cy="21" r="1.5"/><circle class="art-node" cx="14" cy="11" r="1.5"/><circle class="art-node" cx="21" cy="17" r="1.5"/><circle class="art-node" cx="27" cy="5" r="1.5"/>'},
+    coast:{check:'<rect class="art-paper" x="6" y="5" width="20" height="24" rx="7"/><path d="m10 12 3 3 6-6m-9 12 3 3 6-6"/><path class="art-detail" d="M10 27q3-2 6 0t6 0"/>',trip:'<rect class="art-paper" x="4" y="10" width="24" height="17" rx="6"/><path d="M11 10V6h10v4"/><path class="art-wash" d="M4 22q4-4 8 0t8 0t8 0v5H4Z"/>',chart:'<path d="M4 5v23h25"/><path class="art-wash" d="M7 24c6 0 3-12 10-12s6-7 11-7v19Z"/><path d="M7 24c6 0 3-12 10-12s6-7 11-7"/>'},
+    future:{check:'<path class="art-paper" d="M6 5h16l5 5v19H6ZM11 3h9v5h-9Z"/><path d="m10 14 2 2 4-5m-6 12 2 2 4-5M20 15h3m-3 9h3"/>',trip:'<path class="art-paper" d="M4 10h20l4 4v14H4ZM11 10V5h10v5"/><path d="M4 17h24m-16-2v5h8v-5M8 24h3m11 0h2"/>',chart:'<path d="M5 4v24h24"/><path class="art-wash" d="M9 17h4v7H9Zm7-5h4v12h-4Zm7-7h4v19h-4Z"/><path class="art-detail" d="M9 20h4m3-5h4m3-7h4"/>'},
+    forest:{check:'<path class="art-paper" d="M6 5h20v24H6Z"/><path d="m10 12 2 2 4-5m-6 12 2 2 4-5M20 12h3"/><path class="art-wash" d="M20 25c-2-4 0-7 5-7 0 5-2 7-5 7Z"/>',trip:'<path class="art-paper" d="M4 11h24v17H4ZM11 11V6h10v5M8 11v17m16-17v17"/><path class="art-wash" d="M14 23c-1-5 1-7 6-7 0 5-2 7-6 7Z"/>',chart:'<path d="M5 4v24h24M9 24v-6m8 6V11m8 13V6"/><path class="art-wash" d="M9 18c-4-1-5-4-4-6 4 0 5 3 4 6Zm8-7c-1-4 2-6 5-5 0 4-2 5-5 5Zm8-5c-3-1-4-3-3-5 3 0 4 2 3 5Z"/>'},
+    sunset:{check:'<path class="art-paper" d="M6 28V13a10 10 0 0 1 20 0v15Z"/><path d="m11 13 3 3 6-6m-9 13 3 3 6-6"/>',trip:'<rect class="art-paper" x="4" y="11" width="24" height="17" rx="7"/><path d="M11 11V9a5 5 0 0 1 10 0v2"/><path class="art-wash" d="M11 24a5 5 0 0 1 10 0Z"/><path class="art-detail" d="M9 25h14"/>',chart:'<path d="M5 5v23h24"/><path class="art-wash" d="M9 24v-6a2 2 0 0 1 4 0v6Zm7 0V12a2 2 0 0 1 4 0v12Zm7 0V7a2 2 0 0 1 4 0v17Z"/>'}
+  };
+  Object.keys(scenes).forEach(scene=>Object.assign(scenes[scene],tools[scene],{memo:scenes[scene].book}));
+  function artwork(key, scene) {
+    return '<g class="art-ornament" stroke-width=".8">'+ornaments[scene]+'</g><g class="art-object" transform="translate(3.2 3.2) scale(.8)">'+(scenes[scene]?.[key] || paths[key])+'</g>';
+  }
+  function currentScene() {
+    const scene=document.documentElement.dataset.visualStyle;
+    return Object.prototype.hasOwnProperty.call(ornaments,scene)?scene:'ink';
+  }
   UI.art = name => {
     const key = Object.prototype.hasOwnProperty.call(paths,name) ? name : 'book';
-    return `<svg class="art-icon art-${key}" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[key]}</svg>`;
+    const scene=currentScene();
+    return `<svg class="art-icon art-${key}" data-art="${key}" data-art-scene="${scene}" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${artwork(key,scene)}</svg>`;
+  };
+  UI.refreshArt = () => {
+    const scene=currentScene();
+    document.querySelectorAll('svg[data-art]').forEach(svg=>{
+      if(svg.dataset.artScene===scene)return;
+      const key=Object.prototype.hasOwnProperty.call(paths,svg.dataset.art)?svg.dataset.art:'book';
+      svg.innerHTML=artwork(key,scene);svg.dataset.artScene=scene;
+    });
   };
   UI.accountIcon = account => accountKeys[account?.icon] ? UI.art(accountKeys[account.icon]) :
     account?.icon ? `<span class="account-custom-icon" aria-hidden="true">${U.escapeHtml(account.icon)}</span>` : UI.art('wallet');

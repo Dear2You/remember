@@ -27,6 +27,8 @@ const Appearance = (() => {
     root.dataset.theme = state.mode;
     root.dataset.tone = state.dark ? 'dark' : 'light';
     root.dataset.palette = state.palette;
+    // Persistent navigation and open sheets also need the scene's actual vector shapes.
+    if (window.UI?.refreshArt) UI.refreshArt();
     // Read the actual CSS surface, so native edges cannot drift from a new palette.
     const color = getComputedStyle(root).getPropertyValue('--bg').trim();
     if (/^#[\da-f]{6}$/i.test(color)) {

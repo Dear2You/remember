@@ -60,7 +60,7 @@ const FinanceReport = (() => {
       return `<details class="cat-detail"><summary class="category-row" aria-label="${U.escapeHtml(c.name)}，展开分类明细">${body}</summary>
         <div class="subcategories">${subrows.map(sub=>`<div><span>${U.escapeHtml(sub.name)}</span><span>¥${UI.amount(sub.minor,true)}</span></div>`).join('')}<button class="j-category-ledger" data-id="${U.escapeHtml(c.id)}">查看 ${c.count} 笔流水 ›</button></div></details>`;
     };
-    const html = `<section class="card report-card"><header><h2>分类占比</h2><div class="report-switch">
+    const html = `<section class="card report-card"><header><h2>${UI.art?.('chart') || ''}分类占比</h2><div class="report-switch">
       ${[['out','支出'],['in','收入']].map(([v,t])=>`<button class="j-category-kind" data-value="${v}" aria-pressed="${v===kind}">${t}</button>`).join('')}</div></header>
       ${total ? `<div class="category-heading"><div class="donut-wrap"><canvas class="j-donut" data-h="108" width="108" height="108" role="img" aria-label="${title}分类占比，详见下方列表"></canvas><div class="donut-caption"><b>${items.length} 类</b><small>${title}</small></div></div>
         <div><small>${title}最多</small><strong>${U.escapeHtml(items[0].name)}</strong><span>¥${UI.amount(items[0].minor,true)}</span></div></div>
@@ -81,7 +81,7 @@ const FinanceReport = (() => {
     const rows = allRows.slice(0,end);
     let selected = 0;
     rows.forEach((r,i) => { if (r.inc || r.out) selected=i; });
-    container.innerHTML = `<header><h2>收支走势</h2><div class="report-switch">
+    container.innerHTML = `<header><h2>${UI.art?.('chart') || ''}收支走势</h2><div class="report-switch">
       <button data-chart="line">折线</button><button data-chart="bar">柱状</button></div></header>
       <div class="flow-key"><button data-series="inc" aria-label="显示收入" aria-pressed="true"><i class="flow-dot inc"></i>收入</button><button data-series="out" aria-label="显示支出" aria-pressed="true"><i class="flow-dot out"></i>支出</button><small>单位：元</small></div>
       <div class="flow-plot"></div><div class="trend-inspect">
@@ -96,6 +96,7 @@ const FinanceReport = (() => {
     const x=i=>left+slot*(i+.5);
     function paint() {
       const scene = document.documentElement.dataset.visualStyle;
+      const skin = Charts.skin(scene);
       const max = Math.max(1,...rows.map(r=>Math.max(...visible.map(key=>r[key]))));
       const unit = Math.pow(10, Math.floor(Math.log10(max)));
       const scale = Math.max(2, ([1,1.5,2,2.5,3,4,5,6,8,10].find(n=>n*unit>=max) || 10)*unit);
@@ -108,12 +109,21 @@ const FinanceReport = (() => {
       const ticks = rows.map((r,i)=>i===0 || i===rows.length-1 || (i%Math.ceil(rows.length/5)===0 && i<rows.length-2)
         ? `<text x="${x(i)}" y="130" text-anchor="middle">${r.label}</text>` : '').join('');
       const defs = ['inc','out'].map(kind => `<linearGradient id="${paintId}-area-${kind}" class="plot-gradient ${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity=".18"/><stop offset="1" stop-opacity=".01"/></linearGradient>
-        <linearGradient id="${paintId}-bar-${kind}" class="plot-gradient ${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity="1"/><stop offset="1" stop-opacity=".62"/></linearGradient>`).join('');
+        <linearGradient id="${paintId}-bar-${kind}" class="plot-gradient ${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-opacity="1"/><stop offset="1" stop-opacity=".45"/></linearGradient>`).join('')+
+        `<pattern id="${paintId}-grain" width="6" height="6" patternUnits="userSpaceOnUse"><path class="bar-grain" d="${skin.bar==='stem'?'M2 0v6':skin.bar==='module'?'M0 5.5h6':skin.bar==='brush'?'M1 0l2 6M5 0l1 3':'M0 5Q3 3 6 5'}"/></pattern>`;
+      function marker(kind,px,py) {
+        const cls=`class="plot-point ${kind}"`;
+        if(skin.marker==='seal')return `<rect ${cls} x="${px-3}" y="${py-3}" width="6" height="6" rx=".6"/>`;
+        if(skin.marker==='diamond')return `<path ${cls} d="M${px} ${py-4}l4 4-4 4-4-4Z"/>`;
+        if(skin.marker==='leaf')return `<path ${cls} d="M${px-3} ${py+3}Q${px-5} ${py-4} ${px+3} ${py-3}Q${px+5} ${py+4} ${px-3} ${py+3}Z"/>`;
+        if(skin.marker==='star')return `<path ${cls} d="M${px} ${py-5}l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5Z"/>`;
+        return `<circle ${cls} cx="${px}" cy="${py}" r="${skin.marker==='sun'?4:3.5}"/>`;
+      }
       let marks = '', areas = '';
       for (const kind of visible) {
         if (chartType==='line') {
           const points=rows.map((r,i)=>x(i)+','+y(r[kind])).join(' ');
-          if (scene==='coast' || scene==='sunset') {
+          if (skin.smooth) {
             // Endpoint tangents remain horizontal, so a smooth segment stays between its real values.
             const path=rows.reduce((d,r,i)=>i ? d+` C${(x(i-1)+x(i))/2},${y(rows[i-1][kind])} ${(x(i-1)+x(i))/2},${y(r[kind])} ${x(i)},${y(r[kind])}` : `M${x(0)},${y(r[kind])}`,'');
             areas+=`<path class="plot-area ${kind}" d="${path} L${x(rows.length-1)},${bottom} L${x(0)},${bottom} Z" fill="url(#${paintId}-area-${kind})"/>`;
@@ -122,11 +132,21 @@ const FinanceReport = (() => {
             areas+=`<polygon class="plot-area ${kind}" points="${x(0)},${bottom} ${points} ${x(rows.length-1)},${bottom}" fill="url(#${paintId}-area-${kind})"/>`;
             marks+=`<polyline class="plot-line ${kind}" points="${points}"/>`;
           }
-          marks+=`<circle class="plot-halo ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/><circle class="plot-point ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="3.5"/>`;
+          if(scene==='starry'||scene==='forest')marks+=rows.map((r,i)=>r[kind]&&i!==selected?`<circle class="plot-node ${kind}" cx="${x(i)}" cy="${y(r[kind])}" r="${scene==='starry'?1.7:1.3}"/>`:'').join('');
+          marks+=`<circle class="plot-halo ${kind}" cx="${x(selected)}" cy="${y(rows[selected][kind])}" r="${scene==='sunset'?6:3.5}"/>`+marker(kind,x(selected),y(rows[selected][kind]));
         } else {
           const width = Math.min(12, slot * (visible.length === 1 ? 0.62 : 0.33));
           const offset = visible.length === 1 ? -width/2 : kind === 'inc' ? -width-.5 : .5;
-          marks+=rows.map((r,i)=>r[kind] ? `<rect class="plot-bar ${kind}${i===selected?' is-selected':''}" style="fill:url(#${paintId}-bar-${kind})" x="${x(i)+offset}" y="${y(r[kind])}" width="${width}" height="${bottom-y(r[kind])}" rx="${scene==='future'?.6:Math.min(3,width/2)}"/>` : '').join('');
+          marks+=rows.map((r,i)=>{
+            if(!r[kind])return '';
+            const px=x(i)+offset,py=y(r[kind]),height=bottom-py;
+            const radius=skin.bar==='module'||skin.bar==='brush'?0:Math.min(width/2,height/2,skin.bar==='arch'?7:3);
+            const shape=`x="${px}" y="${py}" width="${width}" height="${height}" rx="${radius}"`;
+            let detail='';
+            if(['brush','module','stem','tide'].includes(skin.bar))detail=`<rect class="bar-texture" ${shape} fill="url(#${paintId}-grain)"/>`;
+            if(skin.bar==='beam')detail=`<line class="bar-cap ${kind}" x1="${px}" y1="${py}" x2="${px+width}" y2="${py}"/>`;
+            return `<rect class="plot-bar ${kind}${i===selected?' is-selected':''}" style="fill:url(#${paintId}-bar-${kind})" ${shape}/>`+detail;
+          }).join('');
         }
       }
       const selectionWidth = Math.min(28,slot*.9);
@@ -153,7 +173,7 @@ const FinanceReport = (() => {
       paint();
     });
     plot.onclick=e=>{
-      const rect=plot.getBoundingClientRect();
+      const rect=plot.querySelector('svg').getBoundingClientRect();
       selected=Math.max(0,Math.min(rows.length-1,Math.floor(((e.clientX-rect.left)*w/rect.width-left)/slot)));
       paint();
     };

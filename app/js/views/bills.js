@@ -296,17 +296,8 @@ Views.bills = (() => {
       if (canvas) {
         Charts.donut(canvas,category.ring);
         canvas.onclick = e => {
-          const rect=canvas.getBoundingClientRect();
-          const dx=e.clientX-rect.left-rect.width/2, dy=e.clientY-rect.top-rect.height/2;
-          const radius=Math.hypot(dx,dy), outer=rect.width/2-4;
-          if (radius>outer || radius<outer-Math.min(26,outer*.4)) return;
-          const angle=(Math.atan2(dy,dx)+Math.PI*2.5)%(Math.PI*2);
-          const target=angle/(Math.PI*2)*(kind==='out'?fOut:fInc);
-          let sum=0;
-          const index=category.ring.findIndex(c=>{
-            sum+=c.value;
-            return sum>target;
-          });
+          const index=Charts.donutIndex(canvas,category.ring,e.clientX,e.clientY);
+          if(index<0)return;
           const entry=area.querySelector('.category-list').children[index];
           if (entry && entry.tagName==='DETAILS') { entry.open=true; entry.querySelector('summary').focus(); }
         };

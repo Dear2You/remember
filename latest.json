@@ -1,8 +1,8 @@
 {
-  "versionCode": 23600,
-  "versionName": "2.36",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.36/nianxiatian.apk",
-  "sha256": "a8a3048402f0871161fc10854eced821988b82c66b9280c282ed1fed461a9e8f",
-  "apkBlob": "74e21306dd08d794b2dc6cc8dcbe81b35bc94be8",
-  "note": "v2.36：新增松间晨雾、落日余温主题及对应图表细节；主题与配色改为紧凑下拉选择，各主题独立记忆配色，支持明暗切换和完整备份恢复。"
+  "versionCode": 23700,
+  "versionName": "2.37",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.37/nianxiatian.apk",
+  "sha256": "11d98089fd025bea5396d60f69d02573662af828079d45c39e714449333ad0aa",
+  "apkBlob": "c840b85dc5ba7d5eff90c53065dce1448f23a454",
+  "note": "v2.37：六套主题细化专属矢量图标、折线标记、柱图纹理与环形细节；保留主题下拉选择。修复环形图边缘点选不准，画布随宽度变化自动重绘，完善主题切换一致性。"
 }
