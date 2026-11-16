@@ -372,7 +372,7 @@ Views.settings = (() => {
   function mount(root) {
     const wasOpen = !!root.querySelector('.settings-ai[open]');
     const accountDescription = () => '资产账户 ' + Store.accounts(true).filter(a=>a.type !== 'liability').length +
-      ' · 负债账户 ' + Store.accounts(true).filter(a=>a.type === 'liability').length + ' · 净资产 ¥' + UI.amount(Store.netWorth());
+      ' · 负债账户 ' + Store.accounts(true).filter(a=>a.type === 'liability').length;
     const dataWasOpen = !!root.querySelector('.settings-data[open]');
     const diagnosticsOpen = !!root.querySelector('.reminder-diagnostics[open]');
     const s = Store.settings;
@@ -381,7 +381,7 @@ Views.settings = (() => {
       '<div class="page settings-page">' +
       '  <div class="page-head"><div><div class="page-title">我的</div></div></div>' +
 
-      '  <div class="card"><div class="section-title">常用工具</div>' +
+      '  <div class="settings-shortcuts">' +
       '    <div class="settings-tools">' +
       [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
         '<button class="j-mod" data-r="' + route + '">' + UI.icon(symbol) + label + '</button>').join('') +
@@ -391,9 +391,9 @@ Views.settings = (() => {
       '  <div class="card"><div class="section-title">账本与预算</div>' +
       [
         ['j-books','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
-        ['j-budget','预算设置',book ? book.name + ' · 本月总预算与分类预算' : '选择账本设置预算'],
+        ['j-budget','预算设置',book ? book.name + ' · 本月预算' : '选择账本设置预算'],
         ['j-accounts','账户管理',accountDescription()],
-        ['j-cats','分类管理','收入与支出的一级、二级分类']
+        ['j-cats','分类管理','收入与支出分类']
       ].map(([cls,title,desc]) => `<button class="set-row settings-nav ${cls}">
         <span><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
       '  </div>' +
@@ -458,7 +458,7 @@ Views.settings = (() => {
       '    <div style="font-size:13px;color:var(--text-2);line-height:1.9">' +
       '      <div><b>那年夏天</b> · 个人生活管理 · v' + (window.__APP_VERSION || '1.15') + '</div>' +
       '      <div>多账本记账（转账/还款） · 工时薪资 · 时光日程 · AI 助手</div>' +
-      '      <div style="color:var(--text-3)">金额以“分”精确存储；净资产=资产−负债；数据保存在本机，请定期导出备份。</div>' +
+      '      <div style="color:var(--text-3)">数据保存在本机，可导出备份或开启坚果云自动备份。</div>' +
       '    </div>' +
       '  </div>' +
       '</div>';

@@ -122,13 +122,15 @@ Views.lifecal = (() => {
     const rows = U.monthMatrix(y, m);
     const today = U.todayStr();
 
+    const agenda=[...Store.eventsOn(today).map(ev=>({title:ev.title,meta:ev.allDay?'全天':ev.start.slice(11)})),...Store.tasksDueOn(today).filter(t=>!Store.taskDoneOn(t,today)).map(t=>({title:t.title,meta:t.dueTime || '待办'}))];
+
     root.innerHTML =
       '<div class="month-nav">' +
       '  <button class="mn-btn j-prev">‹</button>' +
       '  <div class="mn-label">' + U.ymLabel(ym) + '</div>' +
       '  <button class="mn-btn j-next">›</button>' +
       '</div>' +
-      '<div class="card">' +
+      '<div class="card life-calendar">' +
       '  <table class="cal"><thead><tr>' +
       ['一', '二', '三', '四', '五', '六', '日'].map(d => '<th>' + d + '</th>').join('') +
       '  </tr></thead><tbody>' +
@@ -148,9 +150,9 @@ Views.lifecal = (() => {
         }).join('') + '</tr>'
       ).join('') +
       '  </tbody></table>' +
-      '  <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:8px">🔵日程 · 🟠到期待办 · 🟢已打卡 · 点日期添加/查看</div>' +
+      '  <div class="life-calendar-key"><span><i class="event-dot"></i>日程</span><span><i class="task-dot"></i>待办</span><span><i class="habit-dot"></i>打卡</span><small>点日期查看</small></div>' +
       '</div>' +
-      '<button class="btn btn-primary btn-block j-add" style="margin-top:4px">＋ 新建日程</button>';
+      `<section class="life-agenda"><header><h2>${today.startsWith(ym)?'今天的安排':'安排日程'}</h2><button class="text-action j-add">＋ 新建日程</button></header>${today.startsWith(ym)?`<button class="card life-agenda-list j-day" data-date="${today}">${agenda.length?agenda.slice(0,3).map(x=>`<span><b>${U.escapeHtml(x.title)}</b><small>${U.escapeHtml(x.meta)}</small></span>`).join(''):'<span class="life-agenda-empty">今天暂无安排，点这里添加 ›</span>'}</button>`:''}</section>`;
 
     root.querySelector('.j-prev').onclick = () => { ym = U.ymShift(ym, -1); ctx.refresh(); };
     root.querySelector('.j-next').onclick = () => { ym = U.ymShift(ym, 1); ctx.refresh(); };

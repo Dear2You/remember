@@ -7,7 +7,7 @@ Views.life = (() => {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
       '<div class="page life-page">' +
-      '  <div class="page-head"><div><div class="page-title">时光 · ' + ({ today: '今日', tasks: '事项', cal: '日历', more: '更多' })[selected] + '</div><div class="page-sub j-sub"></div></div></div>' +
+      '  <div class="page-head"><div class="page-title">时光</div><span class="page-sub j-sub"></span></div>' +
       '  <div class="seg j-subnav" style="margin-bottom:14px">' +
       '    <button data-s="cal" class="' + (selected === 'cal' ? 'on' : '') + '">日历</button>' +
       '    <button data-s="today" class="' + (selected === 'today' ? 'on' : '') + '">今日</button>' +
@@ -30,7 +30,7 @@ Views.life = (() => {
     else if (selected === 'tasks') Views.lifetasks.mount(subbody, ctx);
     else if (selected === 'cal') Views.lifecal.mount(subbody, ctx);
     else mountMore(subbody);
-    root.querySelector('.j-sub').textContent = ({ today: U.fmtFull(U.todayStr()), tasks: '待办 · 四象限 · 重复', cal: '日程 · 待办 · 打卡叠加', more: '全部生活模块' })[selected];
+    root.querySelector('.j-sub').textContent = ({ today: U.fmtFull(U.todayStr()), tasks: '待办事项', cal: '日程与待办', more: '生活工具' })[selected];
   }
 
   /* ---------- 今日工作台（只读引用各模块，不建副本） ---------- */

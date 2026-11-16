@@ -109,6 +109,9 @@ const U = {
 
 /* ============ UI 组件（Toast / Confirm / Sheet） ============ */
 const iconPaths = {
+    trip: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V4h8v3M8 11v6m8-6v6"/>',
+    transfer: '<path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/>',
+    chat: '<path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 13h6"/>',
     worktime: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 4h2m4 0h2"/>',
     memo: '<path d="M5 3h11l3 3v15H5zM15 3v5h4M8 12h8m-8 4h5"/>',

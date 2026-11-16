@@ -13,14 +13,10 @@ Views.assets = (() => {
     const book = Store.book(bookId);
     const books = Store.books();
     const stat = Store.monthStats(bookId, ym);
-    const todayOut = Store.todayOut();
     const accs = Store.accounts(true);
     const assets = accs.filter(a => a.type !== 'liability');
     const debts = accs.filter(a => a.type === 'liability');
     const totalA = Store.totalAssets(), totalL = Store.totalLiabilities();
-    const subsTotal = Store.subscriptionsTotalCNY();
-    const subsCount = Store.data.subscriptions.length;
-    const subsMonthly = subsTotal === null ? '待补汇率' : '¥' + UI.amount(subsTotal) + '/月';
 
     // 预算卡
     let budgetCard = '';
@@ -31,7 +27,7 @@ Views.assets = (() => {
         .map(c => ({ c, b: Store.getBudget(book.id, ym, c.id), u: Store.budgetUsed(book.id, ym, c.id) }))
         .filter(x => x.b && x.u > x.b.amountMinor).slice(0, 2);
       if (total && total.amountMinor > 0) {
-        const pct = Math.min(used / total.amountMinor, 1);
+        const pct = hide ? 0 : Math.min(used / total.amountMinor, 1);
         budgetCard =
           '<div class="card">' +
           '  <div class="section-title">月预算 <span class="link j-budget">设置 ›</span></div>' +
@@ -66,68 +62,19 @@ Views.assets = (() => {
         '</div>';
     };
 
-    root.innerHTML =
-      '<div class="page">' +
-      '  <div class="page-head">' +
-      '    <div><div class="page-title">资产</div><div class="page-sub">' + (book ? book.icon + ' ' + U.escapeHtml(book.name) : '全部账本') + '</div></div>' +
-      '    <button class="head-btn j-eye">' + (hide
-        ? '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><path d="M3 3l18 18"/></svg>'
-        : '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>') + '</button>' +
-      '  </div>' +
-
-      // 账本切换
-      '  <div class="book-bar">' +
-      '    <button class="chip ' + (!bookId ? 'on' : '') + '" data-b="">全部账本</button>' +
-      books.map(b => '<button class="chip ' + (bookId === b.id ? 'on' : '') + '" data-b="' + b.id + '">' + b.icon + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
-      '    <button class="chip j-book-mgr">＋</button>' +
-      '  </div>' +
-
-      // 月概览（原首页内容并入）
-      '  <div class="card">' +
-      '    <div class="section-title">' + U.ymLabel(ym) + '概况 <button class="link j-analysis">收支分析 ›</button></div>' +
-      '    <div class="stat-grid">' +
-      '      <div><div class="lab">支出</div><div class="val money-out">' + amt(stat.out) + '</div></div>' +
-      '      <div><div class="lab">收入</div><div class="val money-in">' + amt(stat.inc) + '</div></div>' +
-      '      <div><div class="lab">结余</div><div class="val" style="color:' + (stat.net >= 0 ? 'var(--accent)' : 'var(--danger)') + '">' + (hide ? '✱✱✱' : (stat.net >= 0 ? '+' : '-') + UI.amount(Math.abs(stat.net), true)) + '</div></div>' +
-      '    </div>' +
-      '    <div style="text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--text-2)">今日支出 <b class="money-out num">' + amt(todayOut) + '</b>' +
-      (subsCount ? ' · 固定订阅 <b class="money-out num">' + subsMonthly + '</b>' : '') + '</div>' +
-      '  </div>' +
-
-      budgetCard +
-
-      // 净资产（负债默认隐藏）
-      '  <div class="card">' +
-      '    <div class="section-title">净资产 <span class="link j-mgr">管理账户 ›</span></div>' +
-      '    <div style="font-size:28px;font-weight:800;color:' + (totalA - totalL >= 0 ? 'var(--accent)' : 'var(--danger)') + ';margin-bottom:6px" class="num">' + amt(totalA - totalL) + '</div>' +
-      '    <div style="font-size:11.5px;color:var(--text-3)">总资产 ' + amt(totalA) + (showDebts ? ' − 负债 ' + amt(totalL) : '') + '</div>' +
-      (showDebts && debts.length
-        ? '<div style="margin-top:8px">' + debts.map(debtRow).join('') + '</div>'
-        : '') +
-      '  </div>' +
-
-      // 隐藏资产（负债）开关
-      (debts.length
-        ? '<button class="hidden-assets-btn j-toggle-debt" style="margin-bottom:12px">' +
-          (showDebts ? '收起负债账户' : '查看负债账户') + '</button>'
-        : '') +
-
-      '  <div class="field-row" style="margin-bottom:14px">' +
-      '    <button class="btn btn-primary j-transfer" style="flex:1">🔁 转账 / 还款</button>' +
-      '    <button class="btn btn-grad j-subscribe" style="flex:1">💳 会员支出' + (subsCount ? ' ' + subsMonthly : '') + '</button>' +
-      '  </div>' +
-
-      // 资产账户
-      '<button class="cell sub-item trip-link j-trips"><span class="c-main"><b class="c-title">出差报销</b><span class="c-sub">' +
-      (Store.settings.activeTripId ? '当前行程 · '+U.escapeHtml(Store.trip(Store.settings.activeTripId)?.name || '') : '按行程记垫付和到账') +
-      '</span></span><span>待报销 ' + amt(Store.tripTotals().pending) + ' ›</span></button>' +
-      '<div class="section-title" style="padding:0 2px">资产账户</div>' +
-      (assets.length
-        ? '<div class="cell-list" style="margin-bottom:14px">' + assets.map(accRow).join('') + '</div>'
-        : '<div class="empty" style="padding:12px 0"><div class="tip">暂无资产账户</div></div>') +
-
-      '<div class="card" style="border:1px dashed var(--hairline);font-size:12px;color:var(--text-3);line-height:1.8">信用卡消费计入支出，还款记为转账。</div>' +
-      '</div>';
+    root.innerHTML=`<div class="page assets-page">
+      <div class="page-head"><div class="page-title">资产</div><button class="head-btn j-eye" aria-label="${hide?'显示金额':'隐藏金额'}">${UI.icon(hide?'off':'eye')}</button></div>
+      <section class="card asset-overview"><header><span>净资产 <small>· 全部账户</small></span><button class="text-action j-mgr">管理账户 ›</button></header><strong class="asset-total num">${amt(totalA-totalL)}</strong>
+        <footer><span>总资产 ${amt(totalA)}</span>${debts.length?`<button class="j-toggle-debt">${showDebts?'收起负债':'查看负债'} ›</button>`:''}</footer>
+        ${showDebts?`<div class="asset-debts"><div class="section-title">负债合计 ${amt(totalL)}</div>${debts.map(debtRow).join('')}</div>`:''}</section>
+      <nav class="asset-shortcuts" aria-label="资产操作"><button class="j-transfer">${UI.icon('transfer')}<span>转账 / 还款</span></button><button class="j-subscribe">${UI.icon('subs')}<span>会员订阅</span></button><button class="j-trips">${UI.icon('trip')}<span>出差报销</span></button></nav>
+      ${Store.tripTotals().pending?`<button class="asset-pending j-trip-pending"><span>待报销</span><b>${amt(Store.tripTotals().pending)} ›</b></button>`:''}
+      <div class="section-title asset-section-title">资产账户 <small>点账户核对余额</small></div>
+      <div class="cell-list asset-account-list">${assets.length?assets.map(accRow).join(''):'<div class="empty">暂无资产账户</div>'}</div>
+      <section class="card asset-month"><header><h2>本月收支</h2><button class="text-action j-analysis">收支分析 ›</button></header>
+        <div class="book-bar"><button class="chip ${!bookId?'on':''}" data-b="">全部账本</button>${books.map(b=>`<button class="chip ${bookId===b.id?'on':''}" data-b="${b.id}">${U.escapeHtml(b.name)}</button>`).join('')}<button class="chip j-book-mgr" aria-label="管理账本">＋</button></div>
+        <div class="stat-grid"><div><div class="lab">支出</div><div class="val money-out num">${amt(stat.out)}</div></div><div><div class="lab">收入</div><div class="val money-in num">${amt(stat.inc)}</div></div><div><div class="lab">结余</div><div class="val num">${amt(stat.net)}</div></div></div>
+      </section>${budgetCard}<p class="asset-footnote">信用卡消费记支出，还款用转账。</p></div>`;
 
     root.querySelector('.j-analysis').onclick = () => Views.bills.openMonth();
     root.querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>reconcile(b.dataset.account));
@@ -142,7 +89,7 @@ Views.assets = (() => {
     const toggleDebt = root.querySelector('.j-toggle-debt');
     if (toggleDebt) toggleDebt.onclick = () => { showDebts = !showDebts; App.refresh(true); };
     root.querySelector('.j-transfer').onclick = () => Views.expense.openEntrySheet(null, 'transfer');
-    root.querySelector('.j-trips').onclick = Views.trips.list;
+    root.querySelectorAll('.j-trips,.j-trip-pending').forEach(b=>b.onclick=Views.trips.list);
     root.querySelector('.j-subscribe').onclick = () => Views.subs.open('assets');
     root.querySelectorAll('.j-budget').forEach(b => b.onclick = () => Views.settings.openBudgetSheet(bookId));
   }

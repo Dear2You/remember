@@ -326,5 +326,6 @@ Views.bills = (() => {
     topMode='report'; periods.report.kind='month'; periods.report.anchor=U.todayStr();
     Views.expense.clearFilter(); statKind=''; App.go('bills');
   }
-  return {mount,openMonth};
+  function openDetails(date=U.todayStr()){topMode='detail';periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
+  return {mount,openMonth,openDetails};
 })();

@@ -4,7 +4,7 @@ Views.worktime = (() => {
   let ym = U.ymNow();
   let mode = 'cal'; // cal | list
   let distribution = 'pay';
-  let scope = 'period', initialized = false;
+  let scope = 'month', initialized = false;
   function openPeriod(){const p=Store.primarySalaryPlan();scope='period';ym=p?.month || U.ymNow();initialized=true;App.go('worktime');}
 
   function dayPayText(day) {
@@ -233,7 +233,7 @@ Views.worktime = (() => {
   /* ---------- 页面 ---------- */
   function mount(root) {
     const primary=Store.primarySalaryPlan() || [...Store.data.salaryMonths].sort((a,b)=>b.month.localeCompare(a.month))[0];
-    if(!initialized){if(primary)ym=WorkCalendar.monthFor(U.todayStr(),primary.cycleStartDay || 1);initialized=true;}
+    if(!initialized){if(primary&&scope==='period')ym=WorkCalendar.monthFor(U.todayStr(),primary.cycleStartDay || 1);initialized=true;}
     const cycle=scope==='period'?(primary?.cycleStartDay || 1):1;
     const range=WorkCalendar.period(ym,cycle),ws=Store.rangeWorkSummary(range.start,range.end);
     const rows=WorkCalendar.matrix(range.start,range.end);
@@ -287,7 +287,7 @@ Views.worktime = (() => {
     const calendar = mode === 'cal' ? `<table class="cal ledger-grid work-grid" aria-label="${U.ymLabel(ym)}工时与工资">
       <thead><tr>${[...'一二三四五六日'].map(d => '<th scope="col">周' + d + '</th>').join('')}</tr></thead>
       <tbody>${rows.map(week => '<tr>'+week.map(tile).join('')+'</tr>').join('')}</tbody></table>
-      <div class="work-key">${salaryPlans.length?'已确认出勤为浅绿，缺勤为浅红；待确认和预计分开显示。':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
+      <div class="work-key">${salaryPlans.length?'浅绿：已确认 · 浅红：缺勤 · 虚线：待确认／预计':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
       ${partialPay ? '<p class="work-pay-note">* 当天有工时待设时薪，工资显示已计部分。</p>' : ''}
       ${partialHours ? '<p class="work-pay-note">工时后的 + 表示另有日薪记录未填实际工时。</p>' : ''}` : '';
 
@@ -310,7 +310,7 @@ Views.worktime = (() => {
     })();
 
     root.innerHTML =
-      '<div class="page">' +
+      '<div class="page worktime-page">' +
       '  <div class="page-head">' +
       '    <div class="page-title">记工时</div>' +
       '    <div class="work-actions">' +
@@ -319,7 +319,7 @@ Views.worktime = (() => {
       '    </div>' +
       '  </div>' +
 
-      (primary?'<div class="work-scope report-switch" role="group" aria-label="统计范围">'+[['period','工资周期'],['month','自然月']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
+      (primary?'<div class="work-scope report-switch" role="group" aria-label="统计范围">'+[['month','自然月'],['period','工资周期']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
       '    <header class="work-monthbar"><div class="work-month">' +
       '      <button class="j-prev" aria-label="上个月">‹</button><h2>' + (scope==='period'&&primary?Number(ym.slice(5))+'月结算期':U.ymLabel(ym)) + '</h2>' +

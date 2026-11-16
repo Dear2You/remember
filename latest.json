@@ -1,8 +1,8 @@
 {
-  "versionCode": 22700,
-  "versionName": "2.27",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.27/nianxiatian.apk",
-  "sha256": "8509cf148b34bbcdf6650a830921904ae14316bde30fccfe3bdf0e54c65754c6",
-  "apkBlob": "69889a61888ec7f585609b1c3dd7fb8ced138648",
-  "note": "新增跨月计薪：支持21日至次月20日等工资周期，入职起算与发薪日分开设置，旧记录先预览再调整，到账归属可重新核对。首页重排本期工资、待确认出勤与自然月收支，工时可切周期和自然月，更新应用内AI操作手册。"
+  "versionCode": 22800,
+  "versionName": "2.28",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.28/nianxiatian.apk",
+  "sha256": "08c019288c92fedb62b47c427fc484ec5ff11643da733e1169eda3811fbff790",
+  "apkBlob": "4ea648f610e90108ead2c33b01f6598b6579a622",
+  "note": "重新设计紧凑界面：缩小标题、金额和卡片留白，统一各页字体与导航。首页优先展示收支、常用操作、工作摘要和最近账单；资产页优先展示账户。工时自然月放在第一个并默认打开，工资周期保留第二个。时光日历显示今日安排，更新AI操作手册。"
 }
