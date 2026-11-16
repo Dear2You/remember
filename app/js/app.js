@@ -18,11 +18,14 @@ const App = {
       assets: Views.assets, settings: Views.settings, ai: Views.ai,
       worktime: Views.worktime, memo: Views.memo, habit: Views.habit,
       life: Views.life, countdown: Views.countdown, focus: Views.focus,
-      subs: Views.subs
+      subs: Views.subs, money: Views.money
     };
     document.querySelectorAll('#tabbar .tab').forEach(btn => {
+      const labels={home:['house','首页'],assets:['wallet','资产'],worktime:['worktime','工时'],bills:['book','账单'],life:['calendar','时光'],settings:['person','我的']};
+      const [icon,label]=labels[btn.dataset.route];btn.innerHTML=UI.art(icon)+'<span>'+label+'</span>';
       btn.addEventListener('click', () => this.go(btn.dataset.route));
     });
+    document.querySelector('#tabbar .tab-plus').innerHTML=UI.art('edit')+'<span>记一笔</span>';
     document.querySelector('#tabbar .tab-plus').addEventListener('click', () => {
       Views.expense.openEntrySheet();
     });
@@ -80,8 +83,8 @@ const App = {
     if (redirect) { location.hash = '#/' + redirect; return; }
     this.route = this.routes[route] ? route : 'home';
     // 子页高亮映射：时光子页→时光，订阅→资产，旧报表/明细→账单
-    const tabRoute = ({ countdown: 'life', focus: 'life', memo: 'life', habit: 'life', subs: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
-    document.querySelectorAll('#tabbar .tab').forEach(b => b.classList.toggle('on', b.dataset.route === tabRoute));
+    const tabRoute = ({ countdown: 'life', focus: 'life', memo: 'life', habit: 'life', subs: 'assets', money: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
+    document.querySelectorAll('#tabbar .tab').forEach(b => {const selected=b.dataset.route===tabRoute;b.classList.toggle('on',selected);if(selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
     document.getElementById('fab').classList.toggle('on', this.route === 'ai');
     const body = document.getElementById('pageBody');
     body.scrollTop = 0;

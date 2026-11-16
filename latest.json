@@ -1,8 +1,8 @@
 {
-  "versionCode": 23000,
-  "versionName": "2.30",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.30/nianxiatian.apk",
-  "sha256": "b9f63d5eb9d71a2de880b87ccfdb52cfd05ee5bea111c46d64d3a7b94cf49f1d",
-  "apkBlob": "b33222cc606abfdb39ff6c4f7b73576ee9d0e957",
-  "note": "首页重排为清爽手账：日期山水、月度收支、工作便笺与流水细线分区；资产账户默认收起，点击展开查看余额和管理账户；账户、分类及常用工具更换细描插画图标；备忘录、倒数日、专注、订阅和 AI 页面补齐统一装饰；订阅汇率设置折叠收纳；更新内置 AI 使用手册。"
+  "versionCode": 23100,
+  "versionName": "2.31",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.31/nianxiatian.apk",
+  "sha256": "50a74c463fb077cdaee37cd3719043bece6cbdcd1d00ef48989993ede9d44b52",
+  "apkBlob": "a99fd0561d8c56a2e39b1336e87b0bb80ea87597",
+  "note": "整页浅青水墨背景，底部导航与记账弹窗统一淡彩图标，首页补齐月度计划；工时同一项目合并为一张卡，支持下拉切换计薪周期；新增全账本消费上限、每日可花额度、超预算核对与月存钱计划；自动识别建行卡为主要存钱账户，支持存钱目标、存入取出、流水编辑删除与备份恢复；内置 AI 手册同步更新。"
 }

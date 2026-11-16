@@ -80,8 +80,7 @@ Views.settings = (() => {
   }
 
   /* ---------- 预算管理（总预算 + 一级分类预算，两套口径） ---------- */
-  function openBudgetSheet(bookId) {
-    const ym = U.ymNow();
+  function openBudgetSheet(bookId, ym = U.ymNow()) {
     const books = Store.books();
     if (!bookId && books.length === 1) bookId = books[0].id;
     UI.sheet({
@@ -92,7 +91,7 @@ Views.settings = (() => {
           body.innerHTML = '<div class="section-title">选择要设置预算的账本</div>' + books.map(b =>
             '<button class="set-row settings-nav j-pick-book" data-id="' + U.escapeHtml(b.id) + '"><span>' +
             U.escapeHtml(b.name) + '</span><span aria-hidden="true">›</span></button>').join('');
-          body.querySelectorAll('.j-pick-book').forEach(b => b.onclick = () => openBudgetSheet(b.dataset.id));
+          body.querySelectorAll('.j-pick-book').forEach(b => b.onclick = () => openBudgetSheet(b.dataset.id,ym));
           return;
         }
         const roots = Store.rootCategories('out');
@@ -118,7 +117,7 @@ Views.settings = (() => {
               const used = Store.budgetUsed(book.id, ym, c.id);
               const rowHtml =
                 '<div class="cell">' +
-                '  <div class="c-ico">' + c.icon + '</div>' +
+                '  <div class="c-ico">' + UI.categoryIcon(c) + '</div>' +
                 '  <div class="c-main"><div class="c-title">' + U.escapeHtml(c.name) + '</div>' +
                 '  <div class="c-sub">已用 ¥' + UI.amount(used) + (b ? ' · ' + (used > b.amountMinor ? '<span style="color:var(--danger)">超支 ¥' + UI.amount(used - b.amountMinor) + '</span>' : '剩余 ¥' + UI.amount(b.amountMinor - used)) : ' · 未设预算') + '</div></div>' +
                 '  <input class="j-cb num" data-id="' + c.id + '" type="' + (Store.settings.hideAmount ? 'password' : 'text') + '" inputmode="decimal" aria-label="' + U.escapeHtml(c.name) + '预算（元）" placeholder="¥" style="max-width:86px;text-align:center" value="' + (b ? b.amountMinor / 100 : '') + '">' +
@@ -391,7 +390,7 @@ Views.settings = (() => {
       '  <div class="card"><div class="section-title">账本与预算</div>' +
       [
         ['j-books','book','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
-        ['j-budget','chart','预算设置',book ? book.name + ' · 本月预算' : '选择账本设置预算'],
+        ['j-budget','sprout','预算与存钱','月消费上限、分类预算与存钱目标'],
         ['j-accounts','wallet','账户管理',accountDescription()],
         ['j-cats','shopping','分类管理','收入与支出分类']
       ].map(([cls,icon,title,desc]) => `<button class="set-row settings-nav ${cls}">
@@ -484,7 +483,7 @@ Views.settings = (() => {
 
     root.querySelectorAll('.j-mod').forEach(b => b.onclick = () => App.go(b.dataset.r));
     root.querySelector('.j-books').onclick = openBooksSheet;
-    root.querySelector('.j-budget').onclick = () => openBudgetSheet(s.currentBookId);
+    root.querySelector('.j-budget').onclick = () => Views.money.open('settings');
     root.querySelector('.j-accounts').onclick = openAccountsSheet;
     root.querySelector('.j-cats').onclick = openCategoriesSheet;
 

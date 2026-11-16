@@ -14,6 +14,7 @@ Views.ai = (() => {
       return 'v'+window.__APP_VERSION+' 功能手册\n'+titles.map(t=>'· '+t).join('\n')+'\n\n发送其中一个标题可查看步骤，例如“删除报销到账”。';
     }
     if (guideSections.has(text)) return guideSections.get(text);
+    if(/预算|存钱|攒钱|存入|取出/.test(text)&&/怎么|如何|在哪|哪里|设置|修改|删除|操作/.test(text))return guideSections.get('预算与存钱') || '';
     if(/月薪|工资|出勤|计薪/.test(text)&&/怎么|如何|在哪|哪里|设置|改|选|操作/.test(text))return guideSections.get('工时与薪资') || '';
     const tripTopics = [
       [/(?:删除|删掉|撤销|删).*(?:到账|报销)|(?:到账|报销).*(?:删除|删掉|撤销|删)/,'删除报销到账'],
@@ -86,6 +87,7 @@ Views.ai = (() => {
     }
     const todayOut = Store.todayOut();
     const todayWork = Store.workDaySummary(Store.dayWorktimes(today));
+    const spending=Store.moneySummary(ym);
 
     return '你是「那年夏天」App 内置的 AI 助手，帮用户管理记账、工时、备忘录和打卡习惯。用中文回答，简洁友好，适当用 emoji。\n' +
       AI_GUIDE + '\n\n用户询问功能或操作步骤时，只解释，不输出 action。只有用户明确要执行下面列出的动作时才使用对应的 action。手册中由用户在界面操作的功能，给出路径，不能用普通收支动作代记报销。\n' +
@@ -97,6 +99,7 @@ Views.ai = (() => {
       '- 今日支出：¥' + (todayOut / 100).toFixed(2) + '；自然月已计工资（非实收）：' + workPayStr + '（' + ws.days + ' 天出勤）；今日已填工时：' + U.fmtHours(todayWork.hours) + (todayWork.missingHours ? '，另有日薪记录未填工时' : '') + '\n' +
       '- 当前计薪方案（发薪日每月 '+Store.nextPayday().day+' 日，不代表计薪起止）：'+Store.salaryPlansOn(today).map(p=>{const s=Store.salarySummary(p);return p.project+' ['+Store.salaryRangeLabel(p)+(p.cycleConfirmed?'':'，区间待确认')+'] 入职起算 '+(p.employmentStart || '未设置')+'，完整一期 '+Store.fmtMinor(p.baseMinor)+' 元，应出勤 '+s.days+' 天，已确认 '+s.paidDays+' 天，缺勤 '+s.absentDays+' 天，待确认 '+s.unconfirmed+' 天，预计 '+Store.fmtMinor(s.expected)+' 元';}).join('；')+'。已计工资不代表实际到账。月薪项目的出勤由用户在工时日历确认，不能再用普通时薪或日薪动作重复计入。\n'+
       '- 待报销：'+Store.fmtMinor(Store.tripTotals().pending)+' 元。\n'+
+      '- 全账本自然月消费上限：'+Store.fmtMinor(spending.limit)+' 元（0 表示未设），已用 '+Store.fmtMinor(spending.spent)+'，剩余 '+Store.fmtMinor(spending.remaining)+'；本月计划存下 '+Store.fmtMinor(spending.savingTarget)+'，存钱账户本月净增加 '+Store.fmtMinor(spending.saved)+'。主要存钱账户：'+(Store.preferredSavingAccount()?.name || '未指定')+'。存钱目标：'+Store.data.savingGoals.map(g=>g.name+' '+Store.fmtMinor(Store.accountBalance(g.accountId))+'/'+Store.fmtMinor(g.targetMinor)).join('；')+'。计划与目标由用户在「预算与存钱」操作，不可伪称已经修改或完成银行转账。\n'+
       '- 打卡习惯：' + habits + '\n' +
       '- 今日待办(' + dg.tasksOpen + '项)：' + taskStr + '；逾期：' + overdueStr + '\n' +
       '- 下一场日程：' + nextEv + '；今日专注：' + focusStr + '\n' +
@@ -145,7 +148,8 @@ Views.ai = (() => {
           if (!cat && a.category) cat = Store.addCategory({ name: a.category, kind, icon: '🏷️' });
           if (!cat) cat = findCategory(kind, kind === 'in' ? '其他收入' : '其他支出') || Store.categories(kind)[0];
           const choices = Store.accounts(true).filter(acc => kind !== 'in' || acc.type !== 'liability');
-          const acc = a.account ? findAccount(a.account) : (choices.find(x => x.id === Store.settings.lastAccountId) || choices[0]);
+          const everyday=kind==='out'?choices.filter(x=>!Store.savingAccountIds().has(x.id)):choices;
+          const acc = a.account ? findAccount(a.account) : (everyday.find(x => x.id === Store.settings.lastAccountId) || everyday[0] || choices[0]);
           if (!acc) throw new Error('未找到可用账户');
           let bookId = a.book ? (findBook(a.book) || {}).id : '';
           if (!bookId) bookId = Store.settings.currentBookId || (Store.books()[0] || {}).id;
@@ -156,9 +160,10 @@ Views.ai = (() => {
           });
           const rootCat = cat ? Store.catRoot(cat.id) : null;
           const catLabel = rootCat && rootCat.id !== cat.id ? rootCat.name + '·' + cat.name : (cat ? cat.name : '');
+          const budgetNote=Store.budgetImpact(item,item.id).filter(r=>r.over>0).map(r=>r.label+'已超出 ¥'+UI.amount(r.over)).join('；');
           const label = (kind === 'in' ? '已记收入 ' : '已记支出 ') + catLabel + ' ¥' + Store.fmtMinor(minor) +
             (acc ? ' · ' + acc.name : '') + (item.note ? ' · ' + item.note : '') + '（' + U.fmtDay(item.date) + '·' + ((Store.book(item.bookId) || {}).name || '') + '）';
-          return { label, itemId: item.id };
+          return { label:label+(budgetNote?'\n'+budgetNote:''), itemId: item.id };
         }
         case 'add_transfer': {
           const minor = Store.parseAmount(a.amount);
@@ -370,7 +375,7 @@ Views.ai = (() => {
     text = (text || '').trim();
     if (!text || sending) return;
     const cfg = Store.settings;
-    const report = Store.practicalAnswer(text) || QuickEntry.monthAnswer(text);
+    const report = Store.moneyAnswer(text) || Store.practicalAnswer(text) || QuickEntry.monthAnswer(text);
     const guide = report ? '' : guideAnswer(text,!cfg.aiKey);
     const answer = report || guide;
     const result = answer ? {} : QuickEntry.parse(text);

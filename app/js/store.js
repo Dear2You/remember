@@ -70,6 +70,8 @@ const Store = {
       transactions: [],
       trips: [], // {id, name, bookId}，垫付和到账流水通过 tripId 归入行程
       budgets: [],      // {id, bookId, month:'YYYY-MM', categoryId:''|一级id, amountMinor}
+      moneyPlans: [],   // 全账本月度消费上限与存钱计划，可从指定月份起沿用
+      savingGoals: [],  // 一个目标对应一个资产账户，进度由真实记账余额计算
       // ===== 时光模块（life_，独立于财务）=====
       tasks: [],           // {id, title, note, dueDate:'YYYY-MM-DD', dueTime:'HH:mm', important, urgent, repeat:'none'|'daily'|'weekly'|'monthly', done(bool 非重复), doneDates:[], completedAt, cancelled, createdAt}
       events: [],          // {id, title, start:'YYYY-MM-DD HH:mm', end, allDay, location, note, color, repeat:'none'|'weekly', createdAt}
@@ -87,6 +89,7 @@ const Store = {
         currentBookId: 'book-life',   // '' = 全部账本
         lastAccountId: '', lastBookId: 'book-life', lastReceiptAccountId: '',
         activeTripId: '',
+        savingAccountId: null,       // null 时识别建行卡，空字符串表示不单独指定
         sgdRate: 5.30,                 // 1 SGD = x CNY（可在线更新）
         subscriptionRates: {},         // 其他外币，1 单位原币对应的人民币
         defaultRate: 0,                // 默认时薪（元/小时），项目未单独设置时使用
@@ -124,6 +127,8 @@ const Store = {
     if (!Array.isArray(data.trips)) data.trips = [];
     if (!data.trips.some(t => t.id === data.settings.activeTripId)) data.settings.activeTripId = '';
     if (!Array.isArray(data.budgets)) data.budgets = [];
+    if (!Array.isArray(data.moneyPlans)) data.moneyPlans = [];
+    if (!Array.isArray(data.savingGoals)) data.savingGoals = [];
     // v4 时光模块集合（旧版本无这些 key 时补空）
     if (!Array.isArray(data.tasks)) data.tasks = [];
     if (!Array.isArray(data.events)) data.events = [];
@@ -358,11 +363,14 @@ const Store = {
     this.mutate(d => d.accounts.push(item));
     return item;
   },
-  updateAccount(id, patch) { this.mutate(d => { const it = d.accounts.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); }); },
+  updateAccount(id, patch) {
+    if (patch.type === 'liability' && (this.data.savingGoals.some(g => g.accountId === id) || this.preferredSavingAccount?.()?.id===id)) throw new Error('存钱账户需保持资产类型');
+    this.mutate(d => { const it = d.accounts.find(x => x.id === id); if (it) Object.assign(it, patch, { id: it.id }); });
+  },
   removeAccount(id) {
-    const used = this.data.transactions.some(t => t.accountId === id || t.fromId === id || t.toId === id);
+    const used = this.data.transactions.some(t => t.accountId === id || t.fromId === id || t.toId === id) || this.data.savingGoals.some(g => g.accountId === id);
     if (used) return false;
-    this.mutate(d => { d.accounts = d.accounts.filter(a => a.id !== id); });
+    this.mutate(d => { d.accounts = d.accounts.filter(a => a.id !== id); if(d.settings.savingAccountId===id)d.settings.savingAccountId=''; });
     return true;
   },
 
@@ -1214,6 +1222,9 @@ const Store = {
     }catch(e){return {ok:false,msg:e.message};}
     if (this.validatePayrollBackup) {
       try { this.validatePayrollBackup(d); } catch(e) { return {ok:false,msg:e.message}; }
+    }
+    if (this.validateMoneyBackup) {
+      try { this.validateMoneyBackup(d); } catch(e) { return {ok:false,msg:e.message}; }
     }
     const isDate = date => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && U.dateStr(U.parseDate(date)) === date;
     const validRecords = (d.worktimes || []).every(w => isDate(w.date) && typeof w.project === 'string' &&

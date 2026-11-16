@@ -14,8 +14,10 @@ Views.expense = (() => {
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
-    const lastAcc = Store.settings.lastAccountId && accsAll.find(a => a.id === Store.settings.lastAccountId)
+    let lastAcc = Store.settings.lastAccountId && accsAll.find(a => a.id === Store.settings.lastAccountId)
       ? Store.settings.lastAccountId : (assetAccs[0] ? assetAccs[0].id : '');
+    const savingIds=Store.savingAccountIds();
+    if(!editItem && (presetKind || 'out')==='out' && savingIds.has(lastAcc))lastAcc=(assetAccs.find(a=>!savingIds.has(a.id)) || assetAccs[0] || {}).id || '';
     let state;
     if (editItem) {
       state = {
@@ -43,6 +45,8 @@ Views.expense = (() => {
     UI.sheet({
       title: editItem ? '编辑账单' : '记一笔',
       content(body, close) {
+        body.classList.add('entry-sheet');body.closest('.sheet-panel').classList.add('ledger-entry-panel');
+        body.closest('.sheet-panel').querySelector('.sheet-title').insertAdjacentHTML('afterbegin',UI.art('edit'));
         function render() {
           const isTransfer = state.type === 'transfer';
           const advance = tripExpense && state.type === 'out';
@@ -71,15 +75,15 @@ Views.expense = (() => {
               '<button class="btn btn-primary" type="submit">填入账单</button></div><small role="status"></small></form></details>' : '') +
             (activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
             '<div class="field"'+(advance?' hidden':'')+'><label>账本</label><div class="acct-chips j-book">' +
-            books.map(b => '<button class="chip ' + (state.bookId === b.id ? 'on' : '') + '" data-id="' + b.id + '">' + b.icon + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
+            books.map(b => '<button class="chip ' + (state.bookId === b.id ? 'on' : '') + '" data-id="' + b.id + '">' + UI.art('book') + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
             '</div></div>' +
             '<div class="seg j-type" style="margin-bottom:14px">' +
-            '  <button data-t="out" class="' + (state.type === 'out' ? 'on' : '') + '">支出</button>' +
-            '  <button data-t="in" class="' + (state.type === 'in' ? 'on' : '') + '">收入</button>' +
-            '  <button data-t="transfer" class="' + (isTransfer ? 'on' : '') + '">转账/还款</button>' +
+            '  <button data-t="out" class="' + (state.type === 'out' ? 'on' : '') + '">'+UI.art('wallet')+'支出</button>' +
+            '  <button data-t="in" class="' + (state.type === 'in' ? 'on' : '') + '">'+UI.art('coin')+'收入</button>' +
+            '  <button data-t="transfer" class="' + (isTransfer ? 'on' : '') + '">'+UI.art('transfer')+'转账/还款</button>' +
             '</div>' +
 
-            '<input class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="' + U.escapeHtml(state.amount) + '" autocomplete="off">' +
+            '<div class="entry-amount '+(state.type==='out'?'money-out':state.type==='in'?'money-in':'')+'"><span>¥</span><input aria-label="金额（元）" class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="' + U.escapeHtml(state.amount) + '" autocomplete="off"><small>'+(isTransfer?'转账金额':advance?'垫付金额':state.type==='out'?'支出金额':'收入金额')+'</small></div><div class="entry-budget-check" aria-live="polite"></div>' +
 
             (isTransfer
               ? '<div class="field" style="margin-top:12px"><label>转出账户（资产）</label><div class="acct-chips j-from">' +
@@ -89,10 +93,10 @@ Views.expense = (() => {
                 accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' +
                 (isRepayMode
-                  ? '<div class="repay-tip">💳 还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
+                  ? '<div class="repay-tip">'+UI.art('card')+'还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
-                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : '') + '</button>').join('') +
+                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
                 '</div></div>' +
                 '<div class="field"><label>一级分类</label><div class="cat-grid j-cats">' +
                 roots.map(c => '<button class="cat-item ' + (rootCat && rootCat.id === c.id ? 'on' : '') + '" data-id="' + c.id + '"><span class="ci">' + UI.categoryIcon(c) + '</span><span>' + U.escapeHtml(c.name) + '</span></button>').join('') +
@@ -100,7 +104,7 @@ Views.expense = (() => {
                 (rootCat && subs.length
                   ? '<div class="field"><label>二级分类（' + U.escapeHtml(rootCat.name) + '）</label><div class="acct-chips j-subs">' +
                     '<button class="chip ' + (!root.parentId ? 'on' : '') + '" data-id="' + rootCat.id + '">按一级记</button>' +
-                    subs.map(s => '<button class="chip ' + (root.id === s.id ? 'on' : '') + '" data-id="' + s.id + '">' + s.icon + ' ' + U.escapeHtml(s.name) + '</button>').join('') +
+                    subs.map(s => '<button class="chip ' + (root.id === s.id ? 'on' : '') + '" data-id="' + s.id + '">' + UI.categoryIcon(rootCat) + ' ' + U.escapeHtml(s.name) + '</button>').join('') +
                     '</div></div>'
                   : '')) +
 
@@ -112,7 +116,7 @@ Views.expense = (() => {
             '  <button class="chip j-yest">昨天</button>' +
             '  <input type="date" class="j-date" style="flex:1" value="' + state.date + '">' +
             '</div>' +
-            '</div><div class="field-row">' +
+            '</div><div class="field-row entry-submit">' +
             (reviewing ? '<button class="btn btn-ghost j-amend" style="flex:1">修改</button>' : '') +
             (editItem ? '<button class="btn btn-danger j-del" style="flex:1">删除</button>' : '') +
             '  <button class="btn btn-primary j-save" style="flex:2">' + (reviewing ? '确认记账' : '保存') + '</button>' +
@@ -145,6 +149,7 @@ Views.expense = (() => {
             if (!b) return;
             state.bookId = b.dataset.id;
             body.querySelectorAll('.j-book button').forEach(x => x.classList.toggle('on', x === b));
+            paintBudget();
           };
           body.querySelector('.j-type').onclick = e => {
             const b = e.target.closest('button[data-t]');
@@ -181,7 +186,7 @@ Views.expense = (() => {
             subsBox.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
           };
           const amt = body.querySelector('.j-amount');
-          amt.oninput = e => { state.amount = e.target.value; };
+          amt.oninput = e => { state.amount = e.target.value; paintBudget(); };
           if (focusAmount) {
             focusAmount=false;
             setTimeout(() => { if (amt.isConnected && !quick.open && !body.contains(document.activeElement)) amt.focus(); },250);
@@ -194,9 +199,15 @@ Views.expense = (() => {
             const y = new Date(); y.setDate(y.getDate() - 1);
             state.date = U.dateStr(y); body.querySelector('.j-date').value = state.date; syncChips();
           };
-          function syncChips() { body.querySelector('.j-today').classList.toggle('on', state.date === U.todayStr()); }
+          function syncChips() { body.querySelector('.j-today').classList.toggle('on', state.date === U.todayStr()); paintBudget(); }
+          function paintBudget() {
+            const rules=Store.budgetImpact({...state,type:advance?'advance':state.type,amountMinor:Store.parseAmount(state.amount)},editItem?.id);
+            const target=body.querySelector('.entry-budget-check');
+            target.innerHTML=rules.map(r=>'<span class="'+(r.remaining<0?'money-out':'')+'">'+U.escapeHtml(r.label)+' · '+(r.remaining<0?'记下后超出 ¥':'记下后剩余 ¥')+UI.amount(Math.abs(r.remaining))+'</span>').join('');
+          }
+          paintBudget();
 
-          body.querySelector('.j-save').onclick = () => {
+          body.querySelector('.j-save').onclick = async () => {
             if (saving) return;
             const minor = Store.parseAmount(state.amount);
             if (!minor) { UI.toast('请输入正确金额（大于 0，最多两位小数）', 'err'); return; }
@@ -216,6 +227,10 @@ Views.expense = (() => {
             };
             let item;
             try {
+              const warnings=Store.budgetImpact(payload,editItem?.id).filter(r=>r.needsConfirm);
+              if(warnings.length&&!await UI.confirm({title:'这笔会超出预算',msg:warnings.map(r=>r.label+'将超出 ¥'+UI.amount(r.over)).join('；')+'。如果已经花了这笔钱，仍可如实记下。',okText:'仍然记下',cancelText:'再想一下'})){
+                saving=false;body.querySelector('.j-save').textContent=reviewing?'确认记账':'保存';return;
+              }
               if (editItem) Store.updateTransaction(editItem.id, payload);
               else item = Store.addTransaction(payload);
             } catch (e) {

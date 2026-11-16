@@ -2,6 +2,7 @@
 
 Views.payroll = (() => {
   const esc=U.escapeHtml, money=n=>'¥'+UI.amount(n,true);
+  const selectedCycles=new Map();
   const label=u=>u===1?'出勤一天':u===0.5?'出勤半天':'缺勤一天';
   function planSheet(month, edit) {
     const prior=[...Store.data.salaryMonths].filter(p=>p.month<month).sort((a,b)=>b.month.localeCompare(a.month))[0];
@@ -116,12 +117,21 @@ Views.payroll = (() => {
     }});
   }
   function cards(month,plans=Store.salaryPlans(month)) {
-    return plans.map(p=>{const s=Store.salarySummary(p);return `<section class="card salary-card"><header><h2>${esc(p.project)}</h2><button class="chip" data-plan="${p.id}">计薪设置</button></header>
+    const groups=new Map();plans.forEach(p=>{if(!groups.has(p.project))groups.set(p.project,[]);groups.get(p.project).push(p);});
+    return [...groups].map(([project,items])=>{
+      items.sort((a,b)=>a.month.localeCompare(b.month));
+      const key=month+'|'+project,today=U.todayStr();
+      const selected=items.find(p=>p.id===selectedCycles.get(key)) || items.find(p=>{const r=Store.salaryRange(p);return today>=r.start&&today<=r.end;}) || items.find(p=>p.month===month) || items[0];
+      return `<section class="card salary-card salary-project" data-cycle-key="${esc(key)}"><header><h2>${UI.art('worktime')}${esc(project)}</h2><small>月薪折算</small></header>
+      ${items.length>1?`<label class="salary-cycle-picker">查看计薪区间<select class="j-salary-cycle" aria-label="${esc(project)}计薪区间">${items.map(p=>`<option value="${p.id}" ${p.id===selected.id?'selected':''}>${esc(Store.salaryRangeLabel(p))}</option>`).join('')}</select></label><p class="salary-cycle-note">这个自然月跨越 ${items.length} 个计薪区间，切换查看。日历只汇总所选范围内的出勤。</p>`:''}
+      ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>本期方案</span><button class="chip" data-plan="${p.id}">计薪设置</button></div>
       <p class="payroll-help">${esc(Store.salaryRangeLabel(p))}${p.cycleConfirmed?'':' · 计薪区间待确认'}</p><div class="salary-main"><span>本期预计工资</span><strong>${money(s.expected)}</strong><small>未确认及未来工作日按正常出勤估算</small></div>
       <div class="salary-stats"><span>已计工资<b>${money(s.earned)}</b></span><span>缺勤扣薪<b class="money-out">${money(s.deducted)}</b></span><span>应出勤<b>${s.eligibleDays} 天</b></span><span>已确认出勤<b>${s.paidDays} 天</b></span></div>
-      <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></section>`;}).join('');
+      <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></div>`;}).join('')}</section>`;
+    }).join('');
   }
   function bind(root,month) {
+    root.querySelectorAll('.j-salary-cycle').forEach(select=>select.onchange=()=>{const card=select.closest('.salary-project');selectedCycles.set(card.dataset.cycleKey,select.value);card.querySelectorAll('[data-salary-panel]').forEach(p=>{p.hidden=p.dataset.salaryPanel!==select.value;});});
     root.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>planSheet(Store.salaryPlan(b.dataset.plan).month,Store.salaryPlan(b.dataset.plan)));
     root.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batch(Store.salaryPlan(b.dataset.batch)));
   }

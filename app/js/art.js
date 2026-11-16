@@ -3,6 +3,8 @@
 /* Small, local illustrations. Saved icon choices stay unchanged in backups. */
 (() => {
   const paths = {
+    person: '<circle class="art-wash" cx="17" cy="11" r="7"/><circle class="art-paper" cx="15" cy="10" r="6"/><path class="art-wash" d="M4 29c0-7 5-11 12-11s12 4 12 11Z"/><path d="M4 28c0-6 4-10 11-10s11 4 11 10M11 23l4 4 4-4"/>',
+    sprout: '<path class="art-wash" d="M16 16C7 17 4 12 4 6c7-1 12 3 12 10Zm1-4C16 5 21 2 28 3c0 7-5 11-11 9Z"/><path d="M16 23V13m0 3L9 10m7 3 7-5"/><path class="art-paper" d="M4 24h24l-3 6H7Z"/><path d="M10 27h12"/>',
     worktime: '<rect class="art-wash" x="5" y="6" width="21" height="23" rx="3"/><rect class="art-paper" x="4" y="5" width="21" height="22" rx="3"/><path d="M4 11h21M9 3v5m11-5v5M8 16h3m-3 5h3"/><circle class="art-wash" cx="23" cy="23" r="7"/><path d="M23 19v4l3 2"/>',
     check: '<rect class="art-wash" x="7" y="6" width="19" height="24" rx="3"/><rect class="art-paper" x="5" y="5" width="20" height="23" rx="3"/><rect class="art-wash" x="11" y="3" width="9" height="5" rx="2"/><path d="m9 14 2 2 3-4m-5 10 2 2 3-4M18 15h3m-3 7h3"/>',
     memo: '<path class="art-wash" d="M5 7c4-2 8-1 11 1 3-2 7-3 11-1v22c-4-2-8-1-11 1-3-2-7-3-11-1Z"/><path class="art-paper" d="M3 5c5-2 9-1 13 1 4-2 8-3 13-1v21c-5-2-9-1-13 1-4-2-8-3-13-1Z"/><path d="M16 6v21M7 11l5 1m-5 4 5 1m8-5 5-1m-5 6 5-1"/><path class="art-wash" d="M23 4v7l-2-1-2 2V5"/>',

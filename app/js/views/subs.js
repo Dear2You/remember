@@ -77,13 +77,17 @@ Views.subs = (() => {
         <label class="field">账本<select class="j-book">${Store.books().map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select></label>
         <label class="field">支出分类<select class="j-category">${Store.categories('out').map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
         <label class="field">实际扣款日<input class="j-date" type="date" value="${U.todayStr()}"></label><button class="btn btn-primary btn-block">确认扣款并记账</button></form>`;
-      body.querySelector('form').onsubmit=e=>{e.preventDefault();try{
+      let saving=false;
+      body.querySelector('form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;try{
         const existing=body.querySelector('.j-existing').value;
         if(existing){Store.linkSubscriptionPayment(sub.id,existing);close();UI.toast('已关联原账单并更新扣款日');return;}
         if(!body.querySelector('.j-account').value)throw new Error('请选择实际扣款账户');
-        Store.recordSubscriptionPayment(sub.id,{amountMinor:Store.parseAmount(body.querySelector('.j-paid').value),accountId:body.querySelector('.j-account').value,bookId:body.querySelector('.j-book').value,categoryId:body.querySelector('.j-category').value,date:body.querySelector('.j-date').value,note:sub.name+' · '+sub.nextDue+' 订阅'});
+        const fields={amountMinor:Store.parseAmount(body.querySelector('.j-paid').value),accountId:body.querySelector('.j-account').value,bookId:body.querySelector('.j-book').value,categoryId:body.querySelector('.j-category').value,date:body.querySelector('.j-date').value,note:sub.name+' · '+sub.nextDue+' 订阅'};
+        const warnings=Store.budgetImpact({...fields,type:'out'}).filter(r=>r.needsConfirm);
+        if(warnings.length&&!await UI.confirm({title:'本次扣款超出预算',msg:warnings.map(r=>r.label+'将超出 ¥'+UI.amount(r.over)).join('；')+'。已发生的扣款仍可如实登记。',okText:'仍然登记'}))return;
+        Store.recordSubscriptionPayment(sub.id,fields);
         close();UI.toast('已记支出并更新下次扣款日');
-      }catch(err){UI.toast(err.message,'err');}};
+      }catch(err){UI.toast(err.message,'err');}finally{saving=false;}};
     }});
   }
   function moneyForExisting(t){return '¥'+UI.amount(t.amountMinor);}

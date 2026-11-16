@@ -29,6 +29,7 @@ Views.home = (() => {
         <button class="overview-amounts" data-dest="month"><span><small>支出</small><strong class="money-out">${amount(stat.out)}</strong></span><span><small>收入</small><strong class="money-in">${amount(stat.inc)}</strong></span></button>
         <footer><span>结余 <b>${amount(stat.net)}</b></span><small>按实际收付款</small></footer></section></section>
       <nav class="overview-shortcuts" aria-label="常用操作">${quick.map(([route,icon,label])=>`<button data-dest="${route}"><span>${UI.art(icon)}</span>${label}</button>`).join('')}</nav>
+      ${Views.money.homeCard()}
       <section class="overview-work work-slip"><header><h2>${UI.art('worktime')}${plan?'本期工作':'本月工作'}</h2><button class="text-action" data-dest="plan">${period?shortDate(period.start)+' – '+shortDate(period.end):'设置工资'} ›</button></header>
         <div class="overview-work-values"><button data-dest="worktime"><small>已计工资</small><strong>${amount(salary?salary.earned:work.pay)}</strong></button><button data-dest="${plan?'wages':'worktime'}"><small>${plan?'已关联到账':'已记出勤'}</small><strong>${plan?amount(wages.received):work.days+' 天'}</strong></button><button class="overview-attendance" data-dest="${plan&&salary.unconfirmed?'attendance':'worktime'}">${plan&&salary.unconfirmed?salary.unconfirmed+' 天待确认':'查看工时'} ›</button></div>
         <footer><button data-dest="payday">${payday.days===0?'今天发薪':'距发薪 '+payday.days+' 天'}<span> · 每月 ${payday.day} 日</span></button>${plan&&!plan.cycleConfirmed?'<button class="period-pending" data-dest="plan">计薪区间待确认 ›</button>':`<button data-dest="${tripPending?'trips':plan?'wages':'worktime'}">${tripPending?'待报销 '+amount(tripPending):plan?'核对工资到账':'自然月汇总'} ›</button>`}</footer></section>
@@ -49,6 +50,7 @@ Views.home = (() => {
       else if(dest==='today')Views.life.go('today');
       else if(dest==='life')Views.life.go('cal');
       else if(dest==='subs')Views.subs.open('home');
+      else if(dest==='money'||dest==='savings')Views.money.open('home');
       else if(dest==='trips')Views.trips.list();
       else if(dest==='payday')Views.payroll.paydaySheet();
       else if(dest==='plan')Views.payroll.planSheet(plan?.month || U.ymNow(),plan);

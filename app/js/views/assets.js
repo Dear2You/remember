@@ -48,7 +48,7 @@ Views.assets = (() => {
       const bal = Store.accountBalance(a.id);
       return '<button class="cell asset-reconcile" data-account="'+a.id+'">' +
         '  <div class="c-ico">' + UI.accountIcon(a) + '</div>' +
-        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + '</div>' +
+        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (Store.savingAccountIds().has(a.id)?'<span class="account-purpose">存钱</span>':'') + '</div>' +
         '  <div class="c-sub">本月支出 ¥' + UI.amount(out) + (inc ? ' · 收入 ¥' + UI.amount(inc) : '') + '</div></div>' +
         '  <div class="c-right"><div class="c-val num">' + amt(bal) + '</div></div>' +
         '</button>';
@@ -69,6 +69,7 @@ Views.assets = (() => {
         <footer><span>总资产 ${amt(totalA)}</span>${debts.length?`<button class="j-toggle-debt">${showDebts?'收起负债':'查看负债'} ›</button>`:''}</footer>
         ${showDebts?`<div class="asset-debts"><div class="section-title">负债合计 ${amt(totalL)}</div>${debts.map(debtRow).join('')}</div>`:''}</section>
       <nav class="asset-shortcuts" aria-label="资产操作"><button class="j-transfer">${UI.art('transfer')}<span>转账 / 还款</span></button><button class="j-subscribe">${UI.art('subs')}<span>会员订阅</span></button><button class="j-trips">${UI.art('trip')}<span>出差报销</span></button></nav>
+      <button class="asset-money-link j-money">${UI.art('sprout')}<span><b>预算与存钱</b><small>${Store.preferredSavingAccount()?U.escapeHtml(Store.preferredSavingAccount().name)+' · 存钱账户':'安排每月花销，攒一份备用金'}</small></span><i>›</i></button>
       ${Store.tripTotals().pending?`<button class="asset-pending j-trip-pending"><span>待报销</span><b>${amt(Store.tripTotals().pending)} ›</b></button>`:''}
       <details class="account-drawer" ${accountsOpen?'open':''}><summary>${UI.art('wallet')}<span><b>资产账户 <small>${assets.length} 个</small></b><small>${assets.length?'展开查看余额与流水':'添加你的第一个账户'}</small></span><i class="fold-chevron" aria-hidden="true"></i></summary>
         <div class="cell-list asset-account-list">${assets.length?assets.map(accRow).join(''):'<div class="empty">暂无资产账户</div>'}</div><button class="drawer-manage j-mgr">管理账户 ›</button></details>
@@ -78,6 +79,7 @@ Views.assets = (() => {
       </section>${budgetCard}<p class="asset-footnote">信用卡消费记支出，还款用转账。</p></div>`;
 
     root.querySelector('.j-analysis').onclick = () => Views.bills.openMonth();
+    root.querySelector('.j-money').onclick=()=>Views.money.open('assets');
     root.querySelector('.account-drawer').ontoggle = e => { if(e.target.isConnected) accountsOpen = e.target.open; };
     root.querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>reconcile(b.dataset.account));
     root.querySelector('.j-eye').onclick = () => { Store.settings.hideAmount = !Store.settings.hideAmount; Store.save(); App.refresh(true); };

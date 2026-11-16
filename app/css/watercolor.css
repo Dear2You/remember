@@ -1,0 +1,187 @@
+/* A continuous ink landscape, with readable paper surfaces above it. */
+:root { --landscape-opacity: .56; --paper-glass: #ffffffed; --nav-paper: #fcfefbef; }
+html[data-theme="dark"] { --landscape-opacity: .09; --paper-glass: #232c27f2; --nav-paper: #232c27f5; }
+@media (prefers-color-scheme: dark) { html[data-theme="auto"] { --landscape-opacity: .09; --paper-glass: #232c27f2; --nav-paper: #232c27f5; } }
+#app { isolation: isolate; }
+#app::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: url('../images/summer-scroll.png') center / cover no-repeat; opacity: var(--landscape-opacity); }
+.masthead { background: var(--nav-paper); }
+.card, .cell-list, .home-book, .account-drawer { background-color: var(--paper-glass); }
+#pageBody { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+
+/* Seven familiar destinations, drawn with the same illustrated objects. */
+#tabbar { left: 6px; right: 6px; bottom: 6px; padding: 5px 0 calc(5px + env(safe-area-inset-bottom)); border: 1px solid var(--hairline); border-radius: 17px; background: var(--nav-paper); box-shadow: 0 2px 16px #2849370d; }
+#tabbar button { min-width: 0; min-height: 51px; gap: 3px; position: relative; font-size: 10px; font-weight: 450; }
+#tabbar .tab .art-icon { width: 29px; height: 29px; padding: 1px; border-radius: 0; stroke-width: 1.35; color: inherit; background: transparent; transition: transform .2s; }
+#tabbar .tab .art-wash { fill-opacity: .10; }
+#tabbar .tab.on { color: var(--accent); font-weight: 600; }
+#tabbar .tab.on .art-icon { transform: translateY(-1px); }
+#tabbar .tab.on .art-wash { fill-opacity: .27; }
+#tabbar .tab.on::after { content: ''; position: absolute; width: 13px; height: 2px; border-radius: 2px; background: var(--accent); bottom: -2px; opacity: .55; }
+#tabbar .tab-plus .art-icon { width: 35px; height: 32px; padding: 3px; border-radius: 10px 4px 10px 4px; background: var(--accent-weak); color: var(--accent); border: 1px solid var(--hairline); stroke-width: 1.4; }
+#tabbar .tab-plus { font-size: 10px; gap: 1px; }
+.account-purpose { margin-left: 5px; font: 9px/1.6 var(--ui-font); border: 1px solid var(--hairline); color: var(--accent); border-radius: 3px; padding: 1px 4px; vertical-align: middle; }
+
+/* The home page is a filled journal spread: date, finances, intentions, daily work. */
+.handpage .home-book { border-radius: 6px 18px 6px 6px; border-bottom: 3px double var(--hairline); box-shadow: 0 3px 0 -1px var(--paper-glass),0 4px 0 -1px var(--hairline); }
+.handpage .home-cover { min-height: 87px; padding-top: 9px; }
+.handpage .home-cover::before { background-position: right 59%; opacity: var(--scene-opacity); }
+.handpage .home-cover h1>b { font-size: 43px; }
+.handpage .home-cover h1>span { font-family: var(--book-serif); font-size: 13px; }
+.handpage .home-cover h1 small { font-family: var(--ui-font); letter-spacing: .11em; }
+.handpage .overview-shortcuts { padding: 13px 0 12px; }
+.home-money { margin: 0 0 14px; padding: 10px 12px 11px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 5px 12px 5px 5px; position: relative; }
+.home-money::before { content: ''; position: absolute; width: 25px; height: 2px; top: -1px; right: 13px; background: var(--accent); opacity: .4; }
+.home-money>header, .monthly-saving>header, .saving-goals>header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.home-money h2 { display: flex; align-items: center; gap: 5px; font: 600 12px/1.5 var(--book-serif); margin: 0; }
+.home-money h2 svg { width: 21px; height: 21px; }
+.home-money .text-action { font-size: 10px; }
+.home-money-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.home-money-grid>button { min-width: 0; text-align: left; }
+.home-money-grid>button+button { border-left: 1px solid var(--hairline); padding-left: 16px; }
+.home-money-grid small { display: block; font-size: 10px; color: var(--text-2); }
+.home-money-grid b { display: block; font: 500 17px/1.5 Georgia,var(--book-serif); padding: 3px 0; }
+.home-money-grid>button>span { display: block; font-size: 9px; color: var(--text-3); margin-top: 5px; }
+.saving-track { height: 4px; background: var(--hairline); overflow: hidden; border-radius: 4px; margin: 6px 0; }
+.saving-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: .58; }
+.saving-track.over i { background: var(--calendar-expense); }
+.handpage .work-slip { background: var(--paper-glass); }
+.home-notebook { padding: 3px 10px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 4px 4px 12px 4px; }
+.handpage .overview-tools { background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 7px; padding: 0 10px; }
+.asset-money-link { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; background: var(--paper-glass); }
+.asset-money-link>span { flex: 1; }
+.asset-money-link b { font: 600 13px/1.5 var(--book-serif); display: block; }
+.asset-money-link small { font-size: 10px; color: var(--text-3); }
+.asset-money-link i { font-style: normal; color: var(--text-3); }
+
+/* Entry panel: a small receipt with illustrated categories and a visible budget check. */
+.ledger-entry-panel { border-radius: 19px 19px 0 0; border: 1px solid var(--hairline); background: var(--card); }
+.ledger-entry-panel .sheet-head { position: relative; padding-bottom: 10px; margin-bottom: 8px; }
+.ledger-entry-panel .sheet-title { display: flex; align-items: center; gap: 8px; font-size: 18px; }
+.ledger-entry-panel .sheet-title svg { width: 27px; height: 27px; }
+.entry-sheet .field { margin-bottom: 11px; }
+.entry-sheet .field>label, .entry-sheet label.field { font-size: 11px; color: var(--text-2); }
+.entry-sheet input, .entry-sheet select { font-size: 13px; border-radius: 6px; border: 1px solid var(--hairline); min-height: 38px; }
+.entry-sheet .sentence-entry { border: 1px dashed var(--hairline); background: transparent; border-radius: 6px; margin-bottom: 11px; }
+.entry-sheet .sentence-entry summary { padding: 9px 10px; font-size: 12px; color: var(--accent); }
+.entry-sheet .j-type { background: transparent; border-radius: 0; border-block: 1px solid var(--hairline); padding: 5px 0; gap: 5px; }
+.entry-sheet .j-type button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 39px; font-size: 12px; border-radius: 6px; }
+.entry-sheet .j-type svg { width: 23px; height: 23px; }
+.entry-sheet .j-type button.on { background: var(--accent-weak); box-shadow: none; }
+.entry-sheet .j-type [data-t="out"].on { color: var(--calendar-expense); background: color-mix(in srgb,var(--calendar-expense) 8%,var(--card)); }
+.entry-amount { display: flex; align-items: baseline; gap: 8px; padding: 9px 11px 10px; background: var(--tint-surface); border-radius: 4px 12px 4px 4px; border-bottom: 2px solid var(--hairline); }
+.entry-amount>span { font: 25px/1.4 Georgia,serif; }
+.entry-amount>.amount-input { width: 0; flex: 1; min-width: 0; border: 0; border-radius: 0; padding: 0; font: 32px/1.4 Georgia,serif; color: inherit; background: transparent; text-align: left; }
+.entry-amount>small { font-size: 10px; color: var(--text-3); white-space: nowrap; }
+.entry-budget-check { font-size: 10px; color: var(--text-2); line-height: 1.8; margin: 6px 0 9px; }
+.entry-budget-check:empty { display: none; }
+.entry-budget-check>span { display: block; }
+.entry-sheet .cat-grid { gap: 7px; }
+.entry-sheet .cat-item { min-height: 64px; padding: 5px 2px; border: 1px solid transparent; border-radius: 6px; font-size: 10px; }
+.entry-sheet .cat-item .ci { width: 35px; height: 35px; background: transparent; box-shadow: none; border-radius: 0; }
+.entry-sheet .cat-item .art-icon { width: 30px; height: 30px; }
+.entry-sheet .cat-item.on { background: var(--accent-weak); border-color: var(--hairline); color: var(--accent); }
+.entry-sheet .cat-item.on .ci { background: transparent; }
+.entry-sheet .chip { border-radius: 6px; min-height: 34px; font-size: 11px; padding: 5px 8px; border: 1px solid var(--hairline); background: transparent; }
+.entry-sheet .chip.on { background: var(--accent-weak); border-color: var(--accent); }
+.entry-sheet .chip .art-icon { width: 20px; height: 20px; }
+.entry-sheet .j-subs { gap: 5px; }
+.entry-sheet .j-subs .chip .art-icon { width: 16px; height: 16px; }
+.entry-sheet .payroll-help { font-size: 10px; margin-top: -4px; }
+.entry-submit { position: sticky; bottom: -16px; background: var(--card); border-top: 1px solid var(--hairline); padding: 10px 0 4px; margin-bottom: 0; z-index: 1; }
+.entry-submit .btn { border-radius: 7px; font-size: 14px; min-height: 43px; }
+.repay-tip .art-icon { width: 20px; height: 20px; margin-right: 5px; }
+
+/* One salary project, with explicit date ranges instead of duplicate-looking cards. */
+.salary-project>header h2 { display: flex; align-items: center; gap: 7px; }
+.salary-project>header h2 svg { width: 23px; height: 23px; }
+.salary-project>header>small { color: var(--text-3); font-size: 10px; }
+.salary-cycle-picker { display: block; font-size: 10px; color: var(--text-2); margin-top: 12px; }
+.salary-cycle-picker select { font-size: 12px; margin-top: 5px; border: 1px solid var(--hairline); }
+.salary-cycle-note { font-size: 10px; color: var(--text-3); margin: 6px 0 11px; }
+.salary-panel-heading { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--hairline); padding-top: 8px; font-size: 11px; color: var(--text-2); }
+[data-salary-panel][hidden] { display: none; }
+
+/* Spending plan and savings goals. */
+.money-page .page-title { margin: 0; }
+.money-month { display: flex; align-items: center; gap: 9px; margin: 4px 0 14px; }
+.money-month>button:not(.text-action) { min-width: 32px; min-height: 36px; font-size: 21px; color: var(--accent); }
+.money-month>input { width: 140px; min-width: 0; font-size: 13px; padding: 8px 5px; background: var(--paper-glass); }
+.money-month>.text-action { margin-left: auto; font-size: 11px; }
+.money-limit { display: flex; align-items: center; gap: 18px; padding: 17px 14px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 7px 18px 7px 7px; }
+.money-ring { width: 87px; height: 87px; border-radius: 50%; background: conic-gradient(from -90deg,var(--accent) var(--progress),var(--hairline) 0); padding: 4px; flex: none; transform: rotate(-4deg); }
+.money-ring>div { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; border-radius: 50%; background: var(--card); transform: rotate(4deg); }
+.money-ring small { font-size: 9px; color: var(--text-3); }
+.money-ring strong { font: 22px/1.5 Georgia,var(--book-serif); }
+.money-limit>div+div { min-width: 0; }
+.money-limit>div+div>small { font-size: 11px; color: var(--text-2); }
+.money-limit>div+div>strong { display: block; font: 22px/1.5 Georgia,var(--book-serif); }
+.money-limit p { font-size: 10px; color: var(--text-3); margin: 5px 0; }
+.money-limit .text-action { font-size: 11px; }
+.money-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); padding: 13px 10px; background: var(--paper-glass); margin-top: 8px; border: 1px solid var(--hairline); border-radius: 6px; }
+.money-metrics>span { font-size: 10px; color: var(--text-2); text-align: center; }
+.money-metrics>span+span { border-left: 1px solid var(--hairline); }
+.money-metrics b { display: block; font: 16px/1.9 Georgia,var(--ui-font); color: var(--text); }
+.money-help { font-size: 11px; line-height: 1.8; color: var(--text-2); margin: 9px 0 16px; }
+.monthly-saving { padding: 13px 14px; border: 1px solid var(--hairline); border-radius: 7px 7px 16px 7px; background: var(--paper-glass); margin: 16px 0; }
+.monthly-saving h2 { font: 600 14px/1.5 var(--book-serif); display: flex; align-items: center; gap: 7px; margin: 0; }
+.monthly-saving h2 svg { width: 24px; height: 24px; }
+.monthly-saving>div>strong { font: 26px/1.6 Georgia,var(--ui-font); }
+.monthly-saving>div>span { font-size: 12px; color: var(--text-3); }
+.monthly-saving p { font-size: 11px; color: var(--text-2); }
+.monthly-saving p small { display: block; color: var(--text-3); font-size: 10px; line-height: 1.8; margin-top: 5px; }
+.saving-account-choice { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+.saving-account-choice select { font-size: 12px; width: 58%; padding: 8px; }
+.saving-account-balance { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+.saving-account-balance>span { margin-right: auto; font-size: 10px !important; }
+.saving-account-balance b { font-weight: 500; color: var(--text); }
+.saving-account-balance .text-action { font-size: 11px; }
+.saving-goals>header { border-bottom: 1px solid var(--hairline); padding: 0 1px 9px; }
+.saving-goals h2 { font: 600 15px/1.5 var(--book-serif); margin: 0; }
+.saving-goal { background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 4px 13px 4px 4px; padding: 12px 13px; margin: 11px 0; }
+.saving-goal>header { display: flex; align-items: center; gap: 9px; }
+.saving-goal>header>div { flex: 1; min-width: 0; }
+.saving-goal h3 { font: 600 14px/1.5 var(--book-serif); margin: 0; }
+.saving-goal>header small { font-size: 10px; color: var(--text-3); }
+.saving-goal p { color: var(--text-2); font-size: 11px; }
+.goal-amount { margin: 10px 0 8px; font-size: 11px; color: var(--text-3); }
+.goal-amount>b { font: 22px/1.5 Georgia,var(--ui-font); color: var(--text); }
+.saving-goal footer { display: flex; gap: 8px; align-items: center; border-top: 1px dashed var(--hairline); padding-top: 9px; }
+.saving-goal footer .btn { font-size: 12px; min-height: 36px; padding: 6px 14px; border-radius: 6px; }
+.saving-goal footer .text-action { margin-left: auto; }
+.saving-empty { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 18px 12px; background: var(--paper-glass); border: 1px dashed var(--hairline); border-radius: 6px; }
+.saving-empty>span { flex: 1; }
+.saving-empty b { font: 600 14px/1.8 var(--book-serif); }
+.saving-empty small { display: block; color: var(--text-3); font-size: 10px; }
+.saving-empty i { font-style: normal; font-size: 20px; color: var(--accent); }
+.money-book-budget { display: flex; width: 100%; align-items: center; gap: 8px; font-size: 12px; margin-top: 14px; min-height: 47px; padding: 6px 0; border-top: 1px solid var(--hairline); flex-wrap: wrap; }
+.money-book-budget svg { width: 24px; height: 24px; }
+.money-book-budget>span { font-size: 10px; color: var(--text-3); margin-left: auto; }
+.money-form label { display: block; font-size: 12px; color: var(--text-2); }
+.money-form input, .money-form select { font-size: 14px; margin-top: 6px; }
+.money-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 13px; }
+.money-field-grid>label { min-width: 0; }
+.money-form .money-repeat { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.money-repeat input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.money-suggestion { display: flex; gap: 10px; border: 1px dashed var(--hairline); border-radius: 7px; padding: 12px; margin: 14px 0; background: var(--tint-surface); }
+.money-suggestion b { font: 600 14px/1.5 var(--book-serif); }
+.money-suggestion p { font-size: 11px; line-height: 1.8; color: var(--text-2); margin: 5px 0; }
+.money-form .btn-block+.btn-block { margin-top: 10px; }
+.saving-transfer-route { display: flex; align-items: center; gap: 9px; font-size: 13px; margin-bottom: 15px; }
+@media (max-width: 350px) {
+  .home-money-grid { gap: 10px; }
+  .home-money-grid>button+button { padding-left: 10px; }
+  .home-money-grid b { font-size: 15px; }
+  .money-limit { gap: 11px; padding: 13px 10px; }
+  .money-ring { width: 75px; height: 75px; }
+  .money-limit>div+div>strong { font-size: 19px; }
+  .entry-sheet .j-type button { gap: 3px; font-size: 11px; }
+}
+@media (min-width: 920px) {
+  #app::before { background-size: cover; background-position: center 48%; }
+  #tabbar { position: static; padding: 0; background: transparent; box-shadow: none; border: 0; }
+  #tabbar button { min-height: 40px; font-size: 12px; }
+  #tabbar .tab .art-icon { width: 24px; height: 24px; }
+  #tabbar .tab-plus { background: transparent; color: var(--accent); font-size: 12px; }
+  #pageBody { padding-bottom: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { #tabbar .tab .art-icon { transition: none; } }
