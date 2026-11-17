@@ -1,8 +1,8 @@
 {
-  "versionCode": 23900,
-  "versionName": "2.39",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.39/nianxiatian.apk",
-  "sha256": "3efffb3dfb1aec1c2cda1efdc18ae0965fa3162dd3dab036aae625d1cb6a7c1c",
-  "apkBlob": "b52f9124fc3ba587920fe6df64d5b9bc5e69e377",
-  "note": "v2.39：页面与底栏改为窄留白、轻圆角；修复日历数量挤占邻格，优化记账金额和底部保存区，短屏确认内容可滚动。保留六套主题特色，完善窄屏与键盘遮挡检查。"
+  "versionCode": 24000,
+  "versionName": "2.40",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.40/nianxiatian.apk",
+  "sha256": "7a7f07ef7d0135e871928d137b302d1d7db8797cee64e71d4cd18a6e10de1a49",
+  "apkBlob": "4d1207d8f59af5fedd96b387b9aa501648e78a78",
+  "note": "v2.40：功能区域融入主题背景，采用柔和半透明底色、细分隔线与各主题纹理；首页、资产、预算、日历、图表、设置及记账弹窗统一细化。保留窄留白与紧凑布局，优化深色可读性、导航定位和弹窗遮盖。"
 }
