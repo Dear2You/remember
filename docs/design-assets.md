@@ -1,6 +1,8 @@
 # 清新山水插画 · v2.29
 
-- 素材：[summer-mist.png](../app/images/summer-mist.png)，2172 × 724，PNG，不透明背景。
+v3.0 保留以下原稿到 `design/backgrounds/`；应用实际使用 `app/images/summer-mist.webp` 和 `summer-scroll.webp`，原分辨率不变。当前界面样式回到 v2.39，详见[主题维护](themes.md)。下文保留原始生成记录。
+
+- 素材：[summer-mist.png](../design/backgrounds/summer-mist.png)，2172 × 724，PNG，不透明背景。
 - 生成方式：内置 `image_gen` 工具（未使用 CLI 或外部 API 密钥），2026-11-16。
 - 用途：首页、资产、工时、账单、时光和我的短页眉。以 CSS 背景载入，渐淡接入雾白底色，装饰不接收点击、不参与读屏；深色模式降低亮度感。卡片与日期格内仍保留清晰的数值。
 - 原有暖纸色素材 `summer-lake.webp` 保留，新图单独存放。图片打包在 APK 内，不从远程加载。

@@ -22,7 +22,7 @@ html[data-visual-style] .lc-cell.is-today .lc-day-top b { background: var(--acce
 
 /* 碧海晴空: cool paper, sea-glass edges and an open coastal sky. */
 html[data-visual-style="coast"] {
-  --scene-image: url('../images/coastal-sky.png'); --scene-cover-position: center 31%;
+  --scene-image: url('../images/coastal-sky.webp'); --scene-cover-position: center 31%;
   --bg: #edf7fb; --card: #fbfeff; --paper-glass: #f8fdfff2; --nav-paper: #f6fcfff5;
   --text: #233f50; --text-2: #486474; --text-3: #556d7b; --hairline: #c2dce7;
   --accent: #25678d; --solid: #286e97; --accent-grad: var(--solid); --accent-weak: #d6ebf5;
@@ -55,7 +55,7 @@ html[data-visual-style="coast"] .category-heading { border: 1px solid var(--hair
 /* 未来回响: technical typography, engraved corners and instrument-like charts. */
 html[data-visual-style="future"] {
   color-scheme: dark; --book-serif: var(--ui-font); --title-font: var(--ui-font);
-  --scene-image: url('../images/future-horizon.png'); --scene-cover-position: center 88%;
+  --scene-image: url('../images/future-horizon.webp'); --scene-cover-position: center 88%;
   --bg: #0b192b; --card: #12283d; --paper-glass: #10263ded; --nav-paper: #0d1e31f5;
   --text: #e7f5ff; --text-2: #bed3e6; --text-3: #a1bacf; --hairline: #345570;
   --accent: #8cdbec; --on-accent: #102938; --solid: #226a85; --accent-grad: var(--solid); --accent-weak: #203f54;
@@ -103,7 +103,7 @@ html[data-visual-style="future"] .ledger-day.selected { box-shadow: inset 0 0 0 
 
 /* 松间晨雾: botanical paper, fine ruled charts and tree-ring details. */
 html[data-visual-style="forest"] {
-  --scene-image: url('../images/forest-mist.png'); --scene-cover-position: center 15%;
+  --scene-image: url('../images/forest-mist.webp'); --scene-cover-position: center 15%;
   --bg: #f1f6ed; --card: #fbfdf7; --paper-glass: #fbfdf7f2; --nav-paper: #f7faf2f5;
   --text: #354333; --text-2: #52634d; --text-3: #5c6c55; --hairline: #ccd9c1;
   --accent: #41653d; --solid: #4b7046; --accent-grad: var(--solid); --accent-weak: #e1ebd7;
@@ -135,7 +135,7 @@ html[data-visual-style="forest"] .category-dot { border-radius: 5px 0 5px 0; }
 
 /* 落日余温: apricot postcards, soft area plots and a fine double ring. */
 html[data-visual-style="sunset"] {
-  --scene-image: url('../images/sunset-glow.png'); --scene-cover-position: center 85%;
+  --scene-image: url('../images/sunset-glow.webp'); --scene-cover-position: center 85%;
   --bg: #fcf3ed; --card: #fffbf7; --paper-glass: #fffbf7f2; --nav-paper: #fff8f2f5;
   --text: #513d36; --text-2: #735b53; --text-3: #7a6259; --hairline: #e4cdbf;
   --accent: #94513b; --solid: #9d583f; --accent-grad: var(--solid); --accent-weak: #f4dfd1;

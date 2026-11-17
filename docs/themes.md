@@ -1,4 +1,4 @@
-# 主题与配色（v2.40）
+# 主题与配色（v3.0）
 
 在「我的 → 显示」使用「界面主题」和「主题配色」两个下拉框。平时只显示当前选项，点击才打开列表，不再排列主题预览图或色块。当前六套场景：水墨清夏、星空彼岸、碧海晴空、未来回响、松间晨雾、落日余温；每个场景独立保存原配／海蓝／青绿／雾紫／胭粉／暖杏。背景保持原画，界面表面和点缀随所选配色改变。
 
@@ -8,9 +8,9 @@ v2.39 按最新偏好改为窄留白：手机页面两侧8px、底栏两侧6px�
 
 ## 存储与维护
 
-- `surfaces.css` 最后加载，统一处理功能区域与背景的融合，窄留白仍由 `edge-layout.css` 维护，业务口径不变。主要面板用渐隐底色与细上下沿，内部控件降低填充强度，选中态仍明确。水墨与森林使用轻纸纹，星空边缘光晕、海岸水光、科技细网格、落日晚霞渐色沿用现有主题变量，配色切换会一起变化。
-- 深色模式单独提高表面遮盖、降低白天场景亮度。弹窗使用较高遮盖，底部保存区保持实底；仅固定底栏和弹窗使用背景模糊，不对长列表逐卡添加模糊。masthead 包含绝对定位底栏，给它添加 filter／backdrop-filter 会改变定位参照，不可这么做。
-- 新材质放在 `@supports (color: color-mix(...))` 内；旧 WebView 不支持时使用先前的背景。验证可读性应取浏览器实际合成后的背景样本，单独比较 `--text` 与不透明 `--card` 不能代表最终效果。
+- v3.0 按最新要求恢复 v2.39 的功能框、图表与整体样式，移除 v2.40 的 `surfaces.css`。当前所有样式文件与 v2.39 对比，仅有 PNG → WebP 的图片路径变化。页面两侧8px、底栏两侧6px与底部4px继续由 `edge-layout.css` 维护。
+- 七张大 PNG 原图移到 `design/backgrounds/`，文件内容保持原样；APK 只带 `app/images/` 中的原分辨率 WebP。六张竖图仍为1024×1536，水墨横图为2172×724；已有 `summer-lake.webp` 保持不变。图片始终离线载入，不需要在线下载主题。
+- 使用 `node tools/compress-backgrounds.js` 从原图重新导出，`--check` 校验原图与成品哈希。编码参数与依赖安装说明见[原稿维护说明](../design/backgrounds/README.md)，各图片记录见[压缩清单](../design/backgrounds/compression.json)。编码器只用于维护，不进入 APK，也不是日常构建依赖。不要从有损 WebP 连续转码。
 - `settings.visualStyle` 保存场景，`settings.themePalettes` 是以场景 ID 为键的配色字典。旧数据缺少字段、未知场景／配色会安全回退。完整备份保留偏好。
 - `settings.theme` 保留用户的明暗选择。星空和未来固定夜色，水墨、海岸、森林和落日可跟随系统／浅色／深色；切换夜景不会覆盖明暗偏好。
 - `appearance.js` 解析有效外观；`themes.css` 提供各场景及配色 token；`starry.css` 保留星空默认变量，并与其他非水墨场景共用面板规则。
@@ -38,10 +38,10 @@ v2.39 按最新偏好改为窄留白：手机页面两侧8px、底栏两侧6px�
 
 ## 新插画与最终提示词
 
-两张素材均使用内置 `image_gen` 工具、imagegen 技能生成，无输入参考图；未使用 CLI。最终素材随 APK 打包，离线使用，无远程图片请求。原水墨、星空素材保留；星空原提示词见 [starry-theme.md](starry-theme.md)。
+两张原始插画均使用内置 `image_gen` 工具、imagegen 技能生成，无输入参考图；原始生成未使用 CLI。当前 APK 打包由原稿导出的 WebP，离线使用，无远程图片请求。下方链接指向保留的 PNG 原稿；星空原提示词见 [starry-theme.md](starry-theme.md)。
 
-- [碧海晴空](../app/images/coastal-sky.png)：1024 × 1536 PNG，应用全页背景、首页封面和选择预览。
-- [未来回响](../app/images/future-horizon.png)：1024 × 1536 PNG，应用全页背景、首页封面和选择预览。
+- [碧海晴空](../design/backgrounds/coastal-sky.png)：1024 × 1536 PNG，应用全页背景、首页封面和选择预览。
+- [未来回响](../design/backgrounds/future-horizon.png)：1024 × 1536 PNG，应用全页背景、首页封面和选择预览。
 
 ### 碧海晴空
 
@@ -57,10 +57,10 @@ Use case: stylized-concept. Asset type: portrait background art for a refined fu
 
 ## v2.36 新插画
 
-以下素材均由内置 `image_gen` 工具生成，使用 imagegen 技能，无输入参考图，未使用 CLI。随 APK 本地打包；原素材保留。
+以下是由内置 `image_gen` 工具生成的原稿记录，使用 imagegen 技能，无输入参考图，原始生成未使用 CLI。PNG 原稿保留在 `design/backgrounds/`，当前 APK 打包由它们导出的 WebP。
 
-- [松间晨雾](../app/images/forest-mist.png)：1024 × 1536 PNG，用于全页背景和首页短封面。
-- [落日余温](../app/images/sunset-glow.png)：1024 × 1536 PNG，用于全页背景和首页短封面。
+- [松间晨雾](../design/backgrounds/forest-mist.png)：1024 × 1536 PNG，用于全页背景和首页短封面。
+- [落日余温](../design/backgrounds/sunset-glow.png)：1024 × 1536 PNG，用于全页背景和首页短封面。
 
 ### 松间晨雾最终提示词
 

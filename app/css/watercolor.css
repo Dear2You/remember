@@ -3,7 +3,7 @@
 html[data-theme="dark"] { --landscape-opacity: .09; --paper-glass: #232c27f2; --nav-paper: #232c27f5; }
 @media (prefers-color-scheme: dark) { html[data-theme="auto"] { --landscape-opacity: .09; --paper-glass: #232c27f2; --nav-paper: #232c27f5; } }
 #app { isolation: isolate; }
-#app::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: url('../images/summer-scroll.png') center / cover no-repeat; opacity: var(--landscape-opacity); }
+#app::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: url('../images/summer-scroll.webp') center / cover no-repeat; opacity: var(--landscape-opacity); }
 .masthead { background: var(--nav-paper); }
 .card, .cell-list, .home-book, .account-drawer { background-color: var(--paper-glass); }
 #pageBody { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }

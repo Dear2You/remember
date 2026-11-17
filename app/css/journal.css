@@ -25,7 +25,7 @@
 .handpage { max-width: 760px; }
 .home-book { position: relative; border: 1px solid var(--hairline); border-radius: 8px 14px 8px 8px; background: var(--card); box-shadow: 0 3px 0 -1px var(--bg), 0 4px 0 -1px var(--hairline); margin-bottom: 2px; overflow: hidden; }
 .home-cover { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px 3px; min-height: 64px; position: relative; isolation: isolate; }
-.home-cover::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--scene-opacity); filter: var(--scene-filter); background: linear-gradient(90deg,var(--card) 9%,transparent 60%),linear-gradient(0deg,var(--card),transparent 36%),url('../images/summer-mist.png') right 57% / cover; }
+.home-cover::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--scene-opacity); filter: var(--scene-filter); background: linear-gradient(90deg,var(--card) 9%,transparent 60%),linear-gradient(0deg,var(--card),transparent 36%),url('../images/summer-mist.webp') right 57% / cover; }
 .home-cover h1 { display: flex; align-items: center; gap: 10px; margin: 0; }
 .home-cover h1>b { font: 38px/.95 Georgia, serif; color: var(--text); }
 .home-cover h1>span { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); border-left: 1px solid var(--hairline); padding-left: 10px; }
@@ -109,7 +109,7 @@
 
 /* Life tools use their own illustrated object and restrained stationery details. */
 .decorated-page>.page-head { position: relative; isolation: isolate; min-height: 65px; padding: 0 0 12px; gap: 10px; margin-bottom: 6px; }
-.decorated-page>.page-head::before { content: ''; position: absolute; z-index: -1; inset: 0 0 3px 15%; pointer-events: none; background: linear-gradient(90deg,var(--bg),transparent 50%),linear-gradient(0deg,var(--bg),transparent 50%),url('../images/summer-mist.png') center 75% / cover; opacity: .14; }
+.decorated-page>.page-head::before { content: ''; position: absolute; z-index: -1; inset: 0 0 3px 15%; pointer-events: none; background: linear-gradient(90deg,var(--bg),transparent 50%),linear-gradient(0deg,var(--bg),transparent 50%),url('../images/summer-mist.webp') center 75% / cover; opacity: .14; }
 .decorated-page>.page-head .page-title { font: 600 21px/1.4 var(--book-serif); letter-spacing: .04em; }
 .decorated-page>.page-head .page-sub { font-size: 10px; }
 .page-emblem { order: 2; margin-left: auto; opacity: .85; flex: none; }

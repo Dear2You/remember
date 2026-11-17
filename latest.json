@@ -1,8 +1,8 @@
 {
-  "versionCode": 24000,
-  "versionName": "2.40",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v2.40/nianxiatian.apk",
-  "sha256": "7a7f07ef7d0135e871928d137b302d1d7db8797cee64e71d4cd18a6e10de1a49",
-  "apkBlob": "4d1207d8f59af5fedd96b387b9aa501648e78a78",
-  "note": "v2.40：功能区域融入主题背景，采用柔和半透明底色、细分隔线与各主题纹理；首页、资产、预算、日历、图表、设置及记账弹窗统一细化。保留窄留白与紧凑布局，优化深色可读性、导航定位和弹窗遮盖。"
+  "versionCode": 30000,
+  "versionName": "3.0",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.0/nianxiatian.apk",
+  "sha256": "2b74a491236b3eb206730f134568c7b5b1ddbb5a977a5d7b336f541173874c1e",
+  "apkBlob": "358d107772d7c16d0e6345c55ca752a42b9df94e",
+  "note": "v3.0：背景插画保留原分辨率并改为高质量 WebP，大幅缩小安装包；六套主题全部保留、离线可用。功能框、图表与其他界面样式恢复 v2.39 的窄留白设计。版本编号开始使用 3.x。"
 }

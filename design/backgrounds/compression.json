@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "encoder": {
+    "sharp": "0.35.5",
+    "libwebp": "1.6.0"
+  },
+  "options": {
+    "quality": 95,
+    "effort": 6,
+    "smartSubsample": true
+  },
+  "images": [
+    {
+      "name": "coastal-sky",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 2230754,
+        "sha256": "7141f9e9f778ca44cbd612b94bec4c353c48f9b949d3ee16ad1e3fc71c9d4905"
+      },
+      "webp": {
+        "bytes": 365472,
+        "sha256": "b02384e6cb739d2646134ae7a004b5c3cc0cf7a0a07f6f0868e9d216ecf596cc"
+      }
+    },
+    {
+      "name": "forest-mist",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 2588808,
+        "sha256": "e678ef1e484af687bf6264836fa7d87ff069326e29acf67e51a209c490b6ceb2"
+      },
+      "webp": {
+        "bytes": 423114,
+        "sha256": "397690068d495a6fe3a25ec48387bdd8845b5590f9aad36fffc93a8da0d40146"
+      }
+    },
+    {
+      "name": "future-horizon",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 1639520,
+        "sha256": "65de04ce2d699181c5df9395f86f8f6615a491d500736cb7f286dbef22448a70"
+      },
+      "webp": {
+        "bytes": 95960,
+        "sha256": "04eb52d1fbd4f7e8e1fd18ae7371f07bb9d3dec93ff560253bba3f2b729a21c4"
+      }
+    },
+    {
+      "name": "starry-shore",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 2438746,
+        "sha256": "155e92cbf3fde90907672420932e24718270dce51f713b845490a59b3953b7c1"
+      },
+      "webp": {
+        "bytes": 347842,
+        "sha256": "92e208cb64893c294910041eaeac504935ecc577fb81e409e29f9ee9a2097442"
+      }
+    },
+    {
+      "name": "summer-mist",
+      "width": 2172,
+      "height": 724,
+      "original": {
+        "bytes": 2099122,
+        "sha256": "bb5b3af11c1e0b5c2245d40fb17e588808712bc9d3ba50670a037d74999c226a"
+      },
+      "webp": {
+        "bytes": 274950,
+        "sha256": "bab6255b66acbe9e662e8e525eabcb08aca5449011b266789ab41fe20b15ab31"
+      }
+    },
+    {
+      "name": "summer-scroll",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 1928624,
+        "sha256": "23dc0c26959106b9dcc8af8257b1455e41618f3a8585aca95f763c641b908860"
+      },
+      "webp": {
+        "bytes": 160966,
+        "sha256": "8561d8ee26ed75682c082e588111c46952a779fef4bf9ca30309134219733b4c"
+      }
+    },
+    {
+      "name": "sunset-glow",
+      "width": 1024,
+      "height": 1536,
+      "original": {
+        "bytes": 2301070,
+        "sha256": "535cc09efc8dc62e6c0cf088473a5cd94c5cc60c7f797af62434eaefaab0a311"
+      },
+      "webp": {
+        "bytes": 366950,
+        "sha256": "2603def56902ad101f92af1a5ac7d31894e78954712c1ad5714d945985a734c6"
+      }
+    }
+  ]
+}

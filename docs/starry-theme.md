@@ -6,7 +6,9 @@
 
 ## 最终素材
 
-- 文件：[`app/images/starry-shore.png`](../app/images/starry-shore.png)，1024 × 1536 PNG，2,438,746 字节。
+v3.0 起，以下PNG作为原稿保存在 `design/backgrounds/`；APK实际使用原分辨率的 `app/images/starry-shore.webp`（347,842字节）。生成内容与构图沿用原画，只有文件编码改变；参数见[主题维护](themes.md)。
+
+- 文件：[`app/images/starry-shore.png`](../design/backgrounds/starry-shore.png)，1024 × 1536 PNG，2,438,746 字节。
 - 用途：全页背景、首页短封面、外观选择预览；CSS 裁切，不改原图。
 - 生成方式：内置 `image_gen` 工具，使用 imagegen 技能；未使用 CLI。无输入参考图，没有嵌入文字或商标。
 - CSS：`app/css/starry.css`。新增绘画与既有 SVG 小图标配合，底部导航图标继续使用统一描线图标。

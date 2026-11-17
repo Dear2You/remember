@@ -15,7 +15,7 @@
 
 html[data-visual-style="starry"] {
   color-scheme: dark;
-  --scene-image: url('../images/starry-shore.png'); --scene-cover-position: center 35%;
+  --scene-image: url('../images/starry-shore.webp'); --scene-cover-position: center 35%;
   --bg: #10182c; --card: #19253e; --paper-glass: #17243deb; --nav-paper: #111c33f5;
   --text: #f0ecf7; --text-2: #c3c9e0; --text-3: #a5afca; --hairline: #354665;
   --accent: #c5c8f5; --on-accent: #172237; --solid: #505f99; --accent-grad: #505f99; --accent-weak: #303e63;

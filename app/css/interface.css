@@ -309,7 +309,7 @@ html[data-theme="dark"] {
   filter: var(--scene-filter);
   background: linear-gradient(90deg, var(--scene-fade), transparent 42%),
     linear-gradient(0deg, var(--scene-fade), transparent 27%),
-    url('../images/summer-mist.png') right 58% / cover no-repeat;
+    url('../images/summer-mist.webp') right 58% / cover no-repeat;
   border-radius: 0 10px 0 0;
 }
 .overview-heading>div { display: block; }
