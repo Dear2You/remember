@@ -1,8 +1,8 @@
 {
-  "versionCode": 30000,
-  "versionName": "3.0",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.0/nianxiatian.apk",
-  "sha256": "2b74a491236b3eb206730f134568c7b5b1ddbb5a977a5d7b336f541173874c1e",
-  "apkBlob": "358d107772d7c16d0e6345c55ca752a42b9df94e",
-  "note": "v3.0：背景插画保留原分辨率并改为高质量 WebP，大幅缩小安装包；六套主题全部保留、离线可用。功能框、图表与其他界面样式恢复 v2.39 的窄留白设计。版本编号开始使用 3.x。"
+  "versionCode": 30100,
+  "versionName": "3.1",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.1/nianxiatian.apk",
+  "sha256": "f3d04dbf5c55fbb15289b8c05a6bb4027f78b1441e5af41cded751631e343d30",
+  "apkBlob": "d960bcbb1e4802c55da65f1a5f7d5590899cfe03",
+  "note": "v3.1：点首页日期插画直达今日，支出、收入和结余并排，待处理事项提到常用入口下方。工时汇总移到月历上方，资产页可同时看总资产与总负债。记一笔先选类型和填金额，再切换账本。修复编辑停用账户旧账时扣款账户可能改变的问题。"
 }

@@ -64,11 +64,12 @@ Views.assets = (() => {
     };
 
     root.innerHTML=`<div class="page assets-page">
-      <div class="page-head"><div class="page-title">资产</div><button class="head-btn j-eye" aria-label="${hide?'显示金额':'隐藏金额'}">${UI.icon(hide?'off':'eye')}</button></div>
+      <div class="page-head chapter-head">${UI.pageTitle('资产','wallet')}<button class="head-btn j-eye" aria-label="${hide?'显示金额':'隐藏金额'}">${UI.icon(hide?'off':'eye')}</button></div>
       <section class="card asset-overview"><header><span>净资产 <small>· 全部账户</small></span><button class="text-action j-mgr">管理账户 ›</button></header><strong class="asset-total num">${amt(totalA-totalL)}</strong>
-        <footer><span>总资产 ${amt(totalA)}</span>${debts.length?`<button class="j-toggle-debt">${showDebts?'收起负债':'查看负债'} ›</button>`:''}</footer>
+        <footer class="asset-composition"><div><small>总资产</small><b>${amt(totalA)}</b></div>
+          ${debts.length?`<button class="j-toggle-debt" aria-expanded="${showDebts}"><small>总负债 <i>${showDebts?'收起':'查看'} ›</i></small><b>${amt(totalL)}</b></button>`:`<div><small>总负债</small><b>${amt(totalL)}</b></div>`}</footer>
         ${showDebts?`<div class="asset-debts"><div class="section-title">负债合计 ${amt(totalL)}</div>${debts.map(debtRow).join('')}</div>`:''}</section>
-      <nav class="asset-shortcuts" aria-label="资产操作"><button class="j-transfer">${UI.art('transfer')}<span>转账 / 还款</span></button><button class="j-subscribe">${UI.art('subs')}<span>会员订阅</span></button><button class="j-trips">${UI.art('trip')}<span>出差报销</span></button></nav>
+      <nav class="asset-shortcuts action-strip" aria-label="资产操作"><button class="j-transfer">${UI.art('transfer')}<span>转账 / 还款</span></button><button class="j-subscribe">${UI.art('subs')}<span>会员订阅</span></button><button class="j-trips">${UI.art('trip')}<span>出差报销</span></button></nav>
       <button class="asset-money-link j-money">${UI.art('sprout')}<span><b>预算与存钱</b><small>${Store.preferredSavingAccount()?U.escapeHtml(Store.preferredSavingAccount().name)+' · 存钱账户':'安排每月花销，攒一份备用金'}</small></span><i>›</i></button>
       ${Store.tripTotals().pending?`<button class="asset-pending j-trip-pending"><span>待报销</span><b>${amt(Store.tripTotals().pending)} ›</b></button>`:''}
       <details class="account-drawer" ${accountsOpen?'open':''}><summary>${UI.art('wallet')}<span><b>资产账户 <small>${assets.length} 个</small></b><small>${assets.length?'展开查看余额与流水':'添加你的第一个账户'}</small></span><i class="fold-chevron" aria-hidden="true"></i></summary>

@@ -311,15 +311,14 @@ Views.worktime = (() => {
 
     root.innerHTML =
       '<div class="page worktime-page">' +
-      '  <div class="page-head">' +
-      '    <div class="page-title">记工时</div>' +
+      '  <div class="page-head chapter-head">' + UI.pageTitle('记工时','worktime') +
       '    <div class="work-actions">' +
       '    <button class="chip j-wage" aria-label="设置时薪">时薪设置</button>' +
       '    <button class="head-btn j-add" aria-label="记录工时"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>' +
       '    </div>' +
       '  </div>' +
 
-      (primary?'<div class="work-scope report-switch" role="group" aria-label="统计范围">'+[['month','自然月'],['period','工资周期']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
+      (primary?'<div class="work-scope report-switch page-tabs" role="group" aria-label="统计范围">'+[['month','自然月'],['period','工资周期']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
       '    <header class="work-monthbar"><div class="work-month">' +
       '      <button class="j-prev" aria-label="上个月">‹</button><h2>' + (scope==='period'&&primary?Number(ym.slice(5))+'月结算期':U.ymLabel(ym)) + '</h2>' +
@@ -328,13 +327,12 @@ Views.worktime = (() => {
       '        <button data-m="cal" aria-pressed="' + (mode === 'cal') + '">月历</button>' +
       '        <button data-m="list" aria-pressed="' + (mode === 'list') + '">列表</button></div></header>' +
       '<p class="work-range">'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</p>'+
-      calendar +
       '  <div class="stat-grid worktime-summary">' +
       '    <div><div class="lab">已记工时</div><div class="val num">' + U.fmtHours(ws.total) + '</div></div>' +
       '    <div><div class="lab">已计工资</div><div class="val num">¥' + UI.amount(ws.pay, true) + '</div></div>' +
       '    <div><div class="lab">区间日均工资</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
       '    <div><div class="lab">出勤天数</div><div class="val num">' + ws.days + ' 天</div></div>' +
-      '  </div>' +
+      '  </div>' + calendar +
 
       '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym,salaryPlans) + listHtml +
 

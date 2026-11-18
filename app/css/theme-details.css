@@ -20,6 +20,55 @@
 .bar-cap.out { stroke: var(--report-out-line); }
 .plot-point { paint-order: stroke fill; }
 
+/* A chapter mark, a fine rule, and the actions for the current page. */
+#pageBody .page > .chapter-head {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: 9px; min-height: 47px; padding-block: 3px 6px; margin-bottom: 5px;
+  background: linear-gradient(90deg,var(--card),var(--paper-glass) 35%,transparent);
+}
+#pageBody .page > .chapter-head::before { content: none; }
+.chapter-head::after { content: ''; order: 1; flex: 1; min-width: 2px; height: 1px; background: var(--hairline); }
+.chapter-head > :not(.chapter-heading) { order: 2; }
+.chapter-head .chapter-heading { display: flex; align-items: center; gap: 7px; flex: none; margin: 0; font-size: 20px; line-height: 1.25; letter-spacing: .04em; }
+.chapter-mark { display: grid; place-items: center; width: 30px; height: 32px; background: var(--tint-surface); border-bottom: 2px solid var(--accent); border-radius: 4px 7px 2px 2px; }
+.chapter-mark svg { width: 24px; height: 24px; }
+.chapter-head .page-sub { padding: 4px 7px; font-size: 11px; color: var(--text-2); background: var(--card); border-radius: 4px; }
+.chapter-head .head-btn { width: 36px; height: 36px; min-width: 36px; }
+.chapter-head .work-actions .chip, .chapter-head .report-actions select { min-height: 35px; }
+.page .page-tabs {
+  display: flex; width: 100%; gap: 0; padding: 0 3px; margin-block: 0 9px;
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 8px;
+}
+.page .page-tabs button {
+  position: relative; flex: 1; min-width: 0; min-height: 38px; padding: 5px 2px;
+  font: 500 12px/1.4 var(--ui-font); color: var(--text-2); background: transparent; border: 0; border-radius: 0; box-shadow: none;
+}
+.page .page-tabs button[aria-pressed="true"] { background: transparent; color: var(--accent); font-weight: 650; box-shadow: none; }
+.page-tabs button[aria-pressed="true"]::after { content: ''; position: absolute; bottom: 0; left: 24%; right: 24%; height: 2px; background: var(--accent); border-radius: 2px; }
+.action-strip { gap: 0; background: var(--card); border: 1px solid var(--hairline); border-radius: 9px; }
+.action-strip button { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 5px; min-height: 43px; padding: 5px 2px; }
+.action-strip button+button { position: relative; border: 0; }
+.action-strip button+button::before { content: ''; position: absolute; left: 0; width: 1px; height: 18px; background: var(--hairline); }
+.action-strip button svg { width: 24px; height: 24px; }
+.asset-overview .asset-composition { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; padding-top: 8px; gap: 12px; }
+.asset-composition > * { min-width: 0; text-align: left; }
+.asset-composition > :last-child { border-left: 1px solid var(--hairline); padding-left: 12px; }
+.asset-composition small { display: flex; gap: 6px; align-items: baseline; font-size: 11px; color: var(--text-2); }
+.asset-composition i { margin-left: auto; font-size: 10px; font-style: normal; color: var(--accent); }
+.asset-composition b { display: block; padding-top: 2px; font: 500 17px/1.35 Georgia,var(--ui-font); font-variant-numeric: lining-nums tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+.work-panel .worktime-summary { margin: 8px 0 10px; padding: 7px 4px; border: 0; border-radius: 6px; background: var(--input-bg); }
+.worktime-summary .val { font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: anywhere; }
+.scene-choice .scene-thumb { width: 61px; height: 37px; min-height: 0; flex: none; margin: 0; }
+.scene-choice .sr-lab { flex: 1; min-width: 0; }
+.scene-choice .appearance-description { display: block; padding: 0; margin: 2px 0 0; font-size: 10px; text-align: left; }
+.scene-choice.appearance-select select { width: min(38%,165px); }
+@media (max-width: 355px) {
+  .chapter-head .chapter-heading { font-size: 18px; gap: 5px; }
+  .chapter-mark { width: 25px; height: 29px; }
+  .chapter-mark svg { width: 21px; height: 21px; }
+  .scene-choice .scene-thumb { width: 43px; }
+}
+
 /* Watercolour: corner seals, quiet ink edges and flat brush-shaped bars. */
 html[data-visual-style="ink"] .art-object { stroke-width: 1.5; }
 html[data-visual-style="ink"] .art-wash { fill-opacity: .18; }

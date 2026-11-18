@@ -134,6 +134,9 @@ const UI = {
   icon(name) {
     return '<svg class="journal-icon" aria-hidden="true" viewBox="0 0 24 24">' + iconPaths[name] + '</svg>';
   },
+  pageTitle(label, symbol) {
+    return `<h1 class="page-title chapter-heading"><span class="chapter-mark" aria-hidden="true">${UI.art(symbol)}</span>${U.escapeHtml(label)}</h1>`;
+  },
   swipeTabs(page, tabs, active, renderPreview) {
     const buttons = Array.from(tabs);
     const index = buttons.indexOf(active);

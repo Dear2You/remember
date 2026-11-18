@@ -59,6 +59,13 @@ Views.expense = (() => {
     let saving = false, sentence = '', reviewing = !!draft && !draft._direct;
     let focusAmount = !editItem && !draft;
 
+    function accountChoices(active, field) {
+      if (!editItem || editItem.type !== state.type) return active;
+      const previous = Store.account(editItem[field]);
+      return previous?.archived ? [...active, previous] : active;
+    }
+    const accountLabel = account => U.escapeHtml(account.name) + (account.archived ? ' · 已停用' : '');
+
     UI.sheet({
       title: editItem ? '编辑账单' : '记一笔',
       content(body, close) {
@@ -76,9 +83,15 @@ Views.expense = (() => {
           const root = Store.category(state.categoryId);
           const rootCat = root ? Store.catRoot(state.categoryId) : null;
           const subs = rootCat ? Store.subCategories(rootCat.id) : [];
-          const accs = state.type === 'in' ? assetAccs : accsAll;
+          const accs = accountChoices(state.type === 'in' ? assetAccs : accsAll, 'accountId');
           if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
+          const selectedBook = Store.book(state.bookId);
+          const bookOptions = books.map(b =>
+            `<option value="${U.escapeHtml(b.id)}"${b.id === state.bookId ? ' selected' : ''}>${U.escapeHtml(b.name)}</option>`
+          ).join('');
+          const archivedOption = selectedBook?.archived
+            ? `<option value="${U.escapeHtml(selectedBook.id)}" selected disabled>${U.escapeHtml(selectedBook.name)}（已归档）</option>` : '';
 
           body.innerHTML =
             (reviewing ? '<section class="entry-review"><div class="review-kind">' + (advance ? '出差垫付 · '+U.escapeHtml(activeTrip.name) : catKind === 'in' ? '收入' : '支出') +
@@ -87,33 +100,34 @@ Views.expense = (() => {
               '<dt>日期</dt><dd>' + U.escapeHtml(U.fmtFull(state.date)) + '</dd><dt>账户</dt><dd>' + U.escapeHtml(Store.accountName(state.accountId)) +
               '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(advance ? activeTrip.bookId : state.bookId)?.name || '未选择') + '</dd></dl></section>' : '') +
             '<div class="entry-fields"' + (reviewing ? ' hidden' : '') + '>' +
-            (!editItem ? '<details class="sentence-entry"><summary>一句话记账</summary><form class="sentence-form">' +
+            '<div class="seg j-type" role="group" aria-label="账单类型">' +
+              [['out','wallet','支出'],['in','coin','收入'],['transfer','transfer','转账/还款']].map(([type,icon,label]) =>
+                `<button data-t="${type}" aria-pressed="${state.type===type}" class="${state.type===type?'on':''}">${UI.art(icon)}${label}</button>`
+              ).join('') + '</div>' +
+            (activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
+            `<label class="entry-amount ${state.type==='out'?'money-out':state.type==='in'?'money-in':''}">
+              <small>${isTransfer?'转账金额':advance?'垫付金额':state.type==='out'?'支出金额':'收入金额'}</small><span aria-hidden="true">¥</span>
+              <input aria-label="金额（元）" class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="${U.escapeHtml(state.amount)}" autocomplete="off">
+            </label><div class="entry-budget-check" aria-live="polite"></div>` +
+            '<div class="entry-context">' +
+            `<label class="entry-book"${advance?' hidden':''}><span>账本</span><select class="j-book">${archivedOption}${bookOptions}</select></label>` +
+            (!editItem ? '<details class="sentence-entry"><summary>'+UI.art('edit')+'一句话记账</summary><form class="sentence-form">' +
               '<label for="sentenceText">描述一笔收入或支出</label><div><input id="sentenceText" maxlength="120" autocomplete="off" placeholder="昨天微信午饭 28 元" value="' + U.escapeHtml(sentence) + '">' +
               '<button class="btn btn-primary" type="submit">填入账单</button></div><small role="status"></small></form></details>' : '') +
-            (activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
-            '<div class="field"'+(advance?' hidden':'')+'><label>账本</label><div class="acct-chips j-book">' +
-            books.map(b => '<button class="chip ' + (state.bookId === b.id ? 'on' : '') + '" data-id="' + b.id + '">' + UI.art('book') + ' ' + U.escapeHtml(b.name) + '</button>').join('') +
-            '</div></div>' +
-            '<div class="seg j-type" style="margin-bottom:14px">' +
-            '  <button data-t="out" class="' + (state.type === 'out' ? 'on' : '') + '">'+UI.art('wallet')+'支出</button>' +
-            '  <button data-t="in" class="' + (state.type === 'in' ? 'on' : '') + '">'+UI.art('coin')+'收入</button>' +
-            '  <button data-t="transfer" class="' + (isTransfer ? 'on' : '') + '">'+UI.art('transfer')+'转账/还款</button>' +
             '</div>' +
-
-            '<div class="entry-amount '+(state.type==='out'?'money-out':state.type==='in'?'money-in':'')+'"><span>¥</span><input aria-label="金额（元）" class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="' + U.escapeHtml(state.amount) + '" autocomplete="off"><small>'+(isTransfer?'转账金额':advance?'垫付金额':state.type==='out'?'支出金额':'收入金额')+'</small></div><div class="entry-budget-check" aria-live="polite"></div>' +
 
             (isTransfer
               ? '<div class="field" style="margin-top:12px"><label>转出账户（资产）</label><div class="acct-chips j-from">' +
-                assetAccs.map(a => '<button class="chip ' + (state.fromId === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
+                accountChoices(assetAccs, 'fromId').map(a => '<button class="chip ' + (state.fromId === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + '</button>').join('') +
                 '</div></div>' +
                 '<div class="field"><label>转入账户（选负债账户 = 还款）</label><div class="acct-chips j-to">' +
-                accsAll.map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
+                accountChoices(accsAll, 'toId').map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' + feeFields(state) +
                 (isRepayMode
                   ? '<div class="repay-tip">'+UI.art('card')+'还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
-                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
+                accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
                 '</div></div>' +
                 (state.type==='out'&&Store.account(state.accountId)?.type==='liability'?'<p class="credit-entry-hint">'+UI.art('card')+'这笔现在就计入消费和预算，同时增加待还；之后还款请用“转账/还款”。</p>':'')+
                 '<div class="field"><label>一级分类</label><div class="cat-grid j-cats">' +
@@ -130,9 +144,8 @@ Views.expense = (() => {
             (editItem?.wageProject?'<p class="payroll-help">已关联 '+U.escapeHtml(editItem.wageProject)+' · '+U.escapeHtml(editItem.wageMonth)+' 工资，修改金额会同步更新结算。</p>':'')+
             '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="60" value="' + U.escapeHtml(state.note) + '"></div>' +
             '<div class="field field-row">' +
-            '  <button class="chip j-today ' + (state.date === U.todayStr() ? 'on' : '') + '">今天</button>' +
-            '  <button class="chip j-yest">昨天</button>' +
-            '  <input type="date" class="j-date" style="flex:1" value="' + state.date + '">' +
+            '  <button class="chip j-today">今天</button><button class="chip j-yest">昨天</button>' +
+            '  <input type="date" aria-label="账单日期" class="j-date" style="flex:1" value="' + state.date + '">' +
             '</div>' +
             '</div><div class="field-row entry-submit">' +
             (reviewing ? '<button class="btn btn-ghost j-amend" style="flex:1">修改</button>' : '') +
@@ -162,11 +175,8 @@ Views.expense = (() => {
           if (amend) amend.onclick = () => { reviewing = false; render(); };
           const toggleTrip = body.querySelector('.j-trip-expense');
           if (toggleTrip) toggleTrip.onchange = () => { tripExpense = toggleTrip.checked; render(); };
-          body.querySelector('.j-book').onclick = e => {
-            const b = e.target.closest('button[data-id]');
-            if (!b) return;
-            state.bookId = b.dataset.id;
-            body.querySelectorAll('.j-book button').forEach(x => x.classList.toggle('on', x === b));
+          body.querySelector('.j-book').onchange = e => {
+            state.bookId = e.target.value;
             paintBudget();
           };
           body.querySelector('.j-type').onclick = e => {
@@ -219,14 +229,22 @@ Views.expense = (() => {
             const y = new Date(); y.setDate(y.getDate() - 1);
             state.date = U.dateStr(y); body.querySelector('.j-date').value = state.date; syncChips();
           };
-          function syncChips() { body.querySelector('.j-today').classList.toggle('on', state.date === U.todayStr()); paintBudget(); }
+          function syncChips() {
+            const today = U.todayStr();
+            for (const [selector,date] of [['.j-today',today],['.j-yest',U.addDays(today,-1)]]) {
+              const button = body.querySelector(selector);
+              button.classList.toggle('on', state.date === date);
+              button.setAttribute('aria-pressed', String(state.date === date));
+            }
+            paintBudget();
+          }
           function paintBudget() {
             paintTransfer(body,state);
             const rules=Store.budgetImpact({...state,type:advance?'advance':state.type,feeMinor:parseFee(state.fee),amountMinor:Store.parseAmount(state.amount)},editItem?.id);
             const target=body.querySelector('.entry-budget-check');
             target.innerHTML=rules.map(r=>'<span class="'+(r.remaining<0?'money-out':'')+'">'+U.escapeHtml(r.label)+' · '+(r.remaining<0?'记下后超出 ¥':'记下后剩余 ¥')+UI.amount(Math.abs(r.remaining))+'</span>').join('');
           }
-          paintBudget();
+          syncChips();
 
           body.querySelector('.j-save').onclick = async () => {
             if (saving) return;

@@ -38,10 +38,27 @@
 /* Keep the complete save button in view, including before the sheet is scrolled. */
 .entry-sheet { padding-bottom: 0; }
 .entry-sheet .entry-submit { bottom: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
-.entry-sheet .entry-amount { display: grid; grid-template-columns: auto minmax(0,1fr); column-gap: 8px; row-gap: 0; }
-.entry-sheet .entry-amount>.amount-input { width: 100%; font-size: clamp(24px,8vw,32px); }
+.entry-sheet .entry-amount { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: baseline; column-gap: 8px; row-gap: 1px; padding: 8px 12px; }
+.entry-sheet .entry-amount>.amount-input { width: 100%; min-height: 35px; font-size: clamp(26px,8vw,33px); line-height: 1.15; font-variant-numeric: lining-nums tabular-nums; }
 .entry-sheet .entry-amount>.amount-input:focus { box-shadow: none; }
-.entry-sheet .entry-amount>small { grid-column: 2; justify-self: end; }
+.entry-sheet .entry-amount>small { grid-column: 1 / -1; color: var(--text-2); font-size: 11px; }
+.entry-sheet .j-type { margin-bottom: 9px; padding: 2px; background: var(--input-bg); border: 0; border-radius: 8px; }
+.entry-sheet .j-type button { min-height: 37px; }
+.entry-sheet .j-type [data-t="in"].on { color: var(--income); background: var(--card); }
+.entry-context { display: flex; align-items: start; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.entry-book, .entry-context .sentence-entry {
+  flex: 1 1 118px; min-width: 0; margin: 0; background: var(--card); border: 1px solid var(--hairline); border-radius: 7px;
+}
+.entry-book { display: flex; align-items: center; gap: 4px; padding-inline: 8px 4px; }
+.entry-book[hidden] { display: none; }
+.entry-book>span { flex: none; color: var(--text-2); font-size: 11px; }
+.entry-book .j-book { min-width: 0; flex: 1; min-height: 36px; padding: 4px 1px; background-color: transparent; color: var(--accent); border: 0; }
+.entry-context .sentence-entry summary { display: flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 8px; }
+.entry-context .sentence-entry summary::-webkit-details-marker { display: none; }
+.entry-context .sentence-entry summary svg { width: 20px; height: 20px; }
+.entry-context .sentence-entry summary::after { content: ''; width: 6px; height: 6px; margin-inline: auto 3px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.entry-context .sentence-entry[open] { flex-basis: 100%; }
+.entry-context .sentence-entry[open] summary::after { transform: rotate(225deg); }
 .entry-sheet .acct-chips .chip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .entry-sheet .cat-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
 .entry-sheet .cat-item { min-width: 0; overflow-wrap: anywhere; }

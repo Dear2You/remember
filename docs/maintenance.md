@@ -8,7 +8,7 @@
 
 ## 已发布基线与入口
 
-本说明更新于2026-11-17，当前应用为 **v3.0 / 30000**，发布代码以 `v3.0` 标签为准。用户要求版本从3.x开始，界面功能框与图表恢复v2.39，图片使用原分辨率的高质量压缩版本。之后的文档提交可能比这个标签新；接手时总是再核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，不把这个快照当作永久最新版本。
+本说明更新于2026-11-18，当前应用为 **v3.1 / 30100**，发布代码以 `v3.1` 标签为准。首页采用日期插画封面，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
 
 - 公开仓库：[Dear2You/remember](https://github.com/Dear2You/remember)。应用内更新依赖公开读取清单和安装包。
 - 包名：`com.nianxiatian.app`。Android最低API24、目标API35，原生Java外壳加载随包附带的HTML/CSS/JavaScript。
@@ -27,13 +27,14 @@
 | 星空主题及插画 | `app/css/starry.css`、`app/images/starry-shore.webp`、[素材与提示词](starry-theme.md) |
 | 多主题、独立配色、图标与图表 | `app/js/appearance.js`、`app/js/art.js`、`app/css/themes.css`、`app/css/theme-details.css`、`app/js/charts.js`、`app/js/finance-report.js`；六套主题通过设置页下拉选择，各自记住配色。环形图绘制与点选共用几何信息，见[主题维护与素材](themes.md) |
 | 手机窄留白、日历与弹窗遮挡 | `app/css/edge-layout.css`；页面两侧8px、底栏两侧6px与底部4px，核对日历格内文字、弹窗保存区、键盘与导航安全区 |
+| 首页、页标题与记账表单 | 首页顺序见 `app/js/views/home.js`，插画裁切和响应式分栏见 `app/css/almanac.css`；共用标题见 `UI.pageTitle` 和 `app/css/theme-details.css`。更改记账表单时核对所选账本、已归档旧账、出差垫付、键盘和一句话记账核对卡。 |
 | 背景压缩与原图维护 | `design/backgrounds/` 存原始PNG，`app/images/` 存运行用WebP，`tools/compress-backgrounds.js` 从原图导出并记录哈希。原图与编码器不进入APK；不要再次压缩已有WebP，详见[原稿维护说明](../design/backgrounds/README.md) |
 | 更新下载、提醒及云备份 | Android目录中的相应Java类，以及前端 `app/js/` 中对应模块；入口和限制看功能手册 |
 | 验证依据 | `tests/`、`docs/qa-*.md`；临时截图和测试产物在忽略的 `build/` 下，不应作为换机后唯一依据 |
 
 ## 每年更新法定节假日与调休
 
-当前v3.0内置2026、2027年；没有独立联网更新假日表的功能。新年度安排尚未收录时，工资自动续期停止在缺少数据的区间并提示，不按普通周末猜排班。
+当前内置2026、2027年。新年度安排随应用版本更新，工资自动续期遇到缺少数据的区间会暂停并提示。
 
 1. 查阅该年度国务院办公厅正式通知或可核验的政府转载，核对通知年份、发布日期、放假起止日和补班日。不要把网络预测或仅有农历节日的日期表当作调休安排。
 2. 更新 `app/js/payroll.js` 顶部 `WorkCalendar.schedules`。`off` 是含首尾的月日区间，`on` 是补班日；补班优先于普通周末。当前 `off` 下标对应元旦、春节、清明、劳动、端午、中秋、国庆，若新通知合并假期，还要核对 `dayInfo` 名称映射。
@@ -77,6 +78,8 @@ b08fc9b85314e227d8d97779db460830a7acfeac58e2e3c88fcde9c64ea5827f
 7. 确认Release为已发布且 `immutable=true`，公开下载URL与 `latest.json` 的 `apkUrl` 相同。实际下载主地址与清单的备用Git blob，比对完整文件或SHA-256。然后推main，确认公开main清单已更新、main及标签指向预期提交。检查工作区状态。
 
 此流程不依赖本机 `build/preview-*` 内的临时发布脚本。应用更改才需要新APK；仅维护文档的提交保持现有版本和清单，不制造空更新。
+
+记账表单的浏览器回归用例在 `tests/browser/entry-form.cjs`。安装 Playwright 及 Chromium 后，用 `node --test tests/browser/entry-form.cjs` 运行。可设置 `BROWSER_CHANNEL=msedge` 使用本机 Edge，`APP_HTML` 可指向成品 APK 解包后的 `assets/www/index.html`。用例在独立浏览器环境创建样例账本和账单，核对改备注后原账本、账户、日期和金额。
 
 ## 已知边界
 

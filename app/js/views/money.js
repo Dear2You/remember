@@ -7,9 +7,15 @@ Views.money = (() => {
   function open(from='home') {month=U.ymNow();back=from;App.go('money');}
   function homeCard() {
     const s=Store.moneySummary(),credit=Store.creditSummary();
-    return `<section class="home-money"><header><h2>${UI.art('sprout')}本月计划 · 全部账本</h2><button class="text-action" data-dest="money">预算与存钱 ›</button></header>
-      <div class="home-money-grid"><button data-dest="money"><small>${s.limit?(s.remaining<0?'本月已超预算':'本月还能花'):'本月消费上限'}</small><b class="${s.remaining<0&&s.limit?'money-out':''}">${s.limit?money(Math.abs(s.remaining)):'设一个小目标'}</b>${bar(s.ratio,s.remaining<0)}<span>${s.limit?'每天可花 '+money(s.daily):'给日常花销留一个边界'}</span></button>
-      <button data-dest="savings"><small>本月存钱进度</small><b>${s.savingTarget||Store.savingAccountIds().size?money(s.saved):'开始攒一笔钱'}</b>${bar(s.savingTarget?s.saved/s.savingTarget:0)}<span>${s.savingTarget?'计划存下 '+money(s.savingTarget):Store.preferredSavingAccount()?esc(Store.preferredSavingAccount().name)+' · 存钱账户':'备用金、旅行或毕业计划'}</span></button></div><button class="home-credit" data-dest="money">${UI.art('card')}<span>本月信用消费 <b>${money(credit.spent)}</b></span><span>当前待还 <b>${money(credit.debt)}</b> ›</span></button></section>`;
+    const hasSavings = s.savingTarget || Store.savingAccountIds().size;
+    const savingAccount = Store.preferredSavingAccount();
+    return `<section class="home-money"><header><h2>${UI.art('sprout')}本月计划 <small>全部账本</small></h2><button class="text-action" data-dest="money">预算与存钱 ›</button></header>
+      <div class="home-money-grid">
+        <button data-dest="${s.limit?'money':'monthly-plan'}"><small>${s.limit?(s.remaining<0?'本月已超预算':'本月还能花'):'消费上限'}</small>
+          ${s.limit?`<b class="${s.remaining<0?'money-out':''}">${money(Math.abs(s.remaining))}</b>${bar(s.ratio,s.remaining<0)}<span>每天可花 ${money(s.daily)}</span>`:'<b class="plan-link">设置预算 ›</b>'}</button>
+        <button data-dest="${hasSavings?'money':'monthly-plan'}"><small>本月存钱</small>
+          ${hasSavings?`<b>${money(s.saved)}</b>${s.savingTarget?bar(s.saved/s.savingTarget)+'<span>计划存下 '+money(s.savingTarget)+'</span>':savingAccount?'<span>'+esc(savingAccount.name)+' · 存钱账户</span>':''}`:'<b class="plan-link">设置月存钱额 ›</b>'}</button>
+      </div><button class="home-credit" data-dest="money">${UI.art('card')}<span>本月信用消费 <b>${money(credit.spent)}</b></span><span>当前待还 <b>${money(credit.debt)}</b> ›</span></button></section>`;
   }
   function planSheet(ym=month) {
     const old=Store.moneyPlan(ym);

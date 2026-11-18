@@ -7,12 +7,10 @@ Views.life = (() => {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
       '<div class="page life-page ' + (selected==='cal'?'calendar-mode':'') + '">' +
-      '  <div class="page-head"><div class="page-title">时光</div><span class="page-sub j-sub"></span></div>' +
-      '  <div class="seg j-subnav" style="margin-bottom:14px">' +
-      '    <button data-s="cal" class="' + (selected === 'cal' ? 'on' : '') + '">日历</button>' +
-      '    <button data-s="today" class="' + (selected === 'today' ? 'on' : '') + '">今日</button>' +
-      '    <button data-s="tasks" class="' + (selected === 'tasks' ? 'on' : '') + '">事项</button>' +
-      '    <button data-s="more" class="' + (selected === 'more' ? 'on' : '') + '">更多</button>' +
+      '  <div class="page-head chapter-head">' + UI.pageTitle('时光','calendar') + '<span class="page-sub j-sub"></span></div>' +
+      '  <div class="seg page-tabs j-subnav" role="group" aria-label="时光视图">' +
+      [['cal','日历'],['today','今日'],['tasks','事项'],['more','更多']].map(([id,label]) =>
+        `<button data-s="${id}" class="${selected===id?'on':''}" aria-pressed="${selected===id}">${label}</button>`).join('') +
       '  </div>' +
       '  <div class="swipe-panel j-subbody"></div>' +
       '</div>';

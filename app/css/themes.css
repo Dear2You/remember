@@ -142,7 +142,7 @@ html[data-visual-style="sunset"] {
   --input-bg: #f8ede4; --tint-surface: #f6e6d8; --cover-wash: #e3a5741b; --card-glaze: #faebdf;
   --blue-wash: #e9edf2; --rose-wash: #f9e4e7; --gold-wash: #f5e8cb;
   --tile-blue: var(--blue-wash); --tile-sand: var(--gold-wash); --tile-rose: var(--rose-wash);
-  --info: #5c738b; --warn: #8c632d; --scene-fade: #fff8f2; --tab-bg: #fff8f2;
+  --info: #4d657c; --warn: #8c632d; --scene-fade: #fff8f2; --tab-bg: #fff8f2;
   --landscape-opacity: .76; --scene-opacity: .8; --surface-shadow: 0 4px 18px #7e47321a;
   --chart-1: #d2a071; --chart-2: #cc9ab1; --chart-3: #cbb781; --chart-4: #a69cbe; --chart-5: #9ab6a6; --chart-6: #aaa19b;
 }

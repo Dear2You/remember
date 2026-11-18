@@ -1,42 +1,82 @@
 /* A quieter home ledger and an open, full-width almanac. */
 .home-refined.handpage .home-book { border: 1px solid var(--hairline); border-radius: 15px; box-shadow: 0 4px 16px #284c3810; }
-.home-refined.handpage .home-cover { min-height: 68px; padding: 10px 14px 6px; }
-.home-refined.handpage .home-cover::before { opacity: .8; background-position: right 52%; }
-.home-date { display: flex; gap: 11px; align-items: center; text-align: left; min-height: 48px; }
-.home-date-leaf { display: flex; align-items: baseline; gap: 3px; padding-right: 12px; border-right: 1px solid var(--hairline); }
-.home-date-leaf b { font: 35px/1 Georgia,serif; color: var(--accent); }
-.home-date-leaf small { font: 11px var(--book-serif); color: var(--text-2); }
-.home-date>span:last-child strong { display: block; font: 600 13px/1.6 var(--book-serif); }
-.home-date>span:last-child small { display: block; font-size: 10px; color: var(--text-2); max-width: 180px; }
-.home-refined .home-cover .visibility-toggle { align-self: center; background: var(--paper-glass); border-color: transparent; min-width: 32px; min-height: 32px; }
-.home-refined.handpage .overview-finance { padding: 0 14px 10px; background: none; }
-.home-refined.handpage .overview-finance header { border: 0; min-height: 28px; }
-.home-refined.handpage .overview-finance header>span { color: var(--text); font-size: 12px; }
-.home-refined.handpage .overview-amounts { padding: 7px 0 9px; gap: 14px; }
-.home-refined.handpage .overview-amounts>span+span { padding-left: 14px; border-left: 1px solid var(--hairline); }
-.home-refined.handpage .overview-amounts strong { font: 500 clamp(21px,6vw,25px)/1.4 Georgia,var(--ui-font); }
-.home-refined.handpage .overview-amounts small { font-size: 10px; margin-bottom: 1px; }
-.home-refined.handpage .overview-finance footer { border-top: 1px solid var(--hairline); padding-top: 7px; }
-.home-refined.handpage .overview-shortcuts { padding: 12px 0 14px; }
-.home-refined.handpage .overview-shortcuts button>span { width: 38px; height: 36px; border-radius: 11px; box-shadow: inset 0 0 0 1px #63837414; }
+/* The printed date and the picture share a button, so the entire cover opens today. */
+.folio-cover {
+  display: grid; grid-template-columns: minmax(145px, .94fr) minmax(0, 1.2fr);
+  width: 100%; text-align: left; background: var(--card); border-bottom: 1px solid var(--hairline);
+}
+.folio-date { align-self: center; padding: 10px 12px 11px 15px; }
+.folio-month { display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .08em; color: var(--text-2); }
+.folio-month::before { content: ''; width: 16px; height: 2px; background: var(--accent); }
+.folio-day { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
+.folio-day>b { font: 49px/.98 Georgia, var(--book-serif); font-variant-numeric: lining-nums tabular-nums; color: var(--accent); letter-spacing: -.055em; }
+.folio-day strong, .folio-day small { display: block; }
+.folio-day strong { font: 600 14px/1.6 var(--book-serif); color: var(--text); }
+.folio-day small { font: 11px/1.45 var(--ui-font); color: var(--text-2); }
+.folio-print {
+  position: relative; margin: 7px 7px 7px 0; min-height: 69px; border: 1px solid var(--hairline); border-radius: 2px;
+  background: var(--scene-image, url('../images/summer-mist.webp')) var(--folio-crop, right center) / cover no-repeat;
+}
+.folio-print::after { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(255,255,255,.45); pointer-events: none; }
+html[data-visual-style="starry"] { --folio-crop: center 4%; }
+html[data-visual-style="coast"] { --folio-crop: center 31%; }
+html[data-visual-style="future"] { --folio-crop: center 96%; }
+html[data-visual-style="forest"] { --folio-crop: center 9%; }
+html[data-visual-style="sunset"] { --folio-crop: center 88%; }
+html[data-tone="dark"] .folio-print { filter: brightness(.82); }
+html[data-visual-style="future"] .folio-day>b { font-family: var(--ui-font); font-weight: 350; }
+.folio-ledger { padding: 2px 14px 12px; background: var(--card); }
+.folio-ledger header { display: flex; align-items: center; gap: 7px; }
+.folio-ledger h2 { flex: none; font: 600 14px/1.4 var(--book-serif); }
+.folio-book-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 11px; color: var(--text-2); }
+.folio-ledger .visibility-toggle, .folio-ledger .text-action { min-width: 36px; min-height: 38px; flex: none; }
+.folio-ledger .visibility-toggle { display: grid; place-items: center; padding: 0; color: var(--text-2); }
+.folio-ledger .visibility-toggle svg { width: 17px; height: 17px; }
+.folio-metrics { display: flex; flex-wrap: wrap; gap: 5px 12px; width: 100%; text-align: left; }
+.folio-metrics>span { flex: 1 1 max-content; min-width: 0; max-width: 100%; }
+.folio-metrics small { display: block; font-size: 11px; color: var(--text-2); }
+.folio-metrics b { display: block; font: 500 clamp(18px,5.2vw,23px)/1.35 Georgia,var(--ui-font); font-variant-numeric: lining-nums tabular-nums; overflow-wrap: anywhere; }
+.folio-tools { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); background: var(--card); border-top: 1px solid var(--hairline); }
+.folio-tools button { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 43px; font-size: 12px; color: var(--text); }
+.folio-tools button+button { position: relative; }
+.folio-tools button+button::before { content: ''; position: absolute; left: 0; height: 18px; width: 1px; background: var(--hairline); }
+.folio-tools svg { width: 23px; height: 23px; flex: none; }
+.home-sections { display: grid; grid-template-columns: minmax(0,1fr); gap: 9px; margin-top: 9px; }
+.home-refined .home-sections>section { margin: 0; min-width: 0; }
+.home-sections h2 { display: flex; align-items: center; gap: 5px; }
+.home-sections h2 svg { width: 21px; height: 21px; flex: none; }
+.home-sections h2 small { font: 10px/1.4 var(--ui-font); color: var(--text-2); }
+.home-refined .home-money-grid .plan-link { font: 600 14px/1.8 var(--ui-font); color: var(--accent); }
+@media (max-width: 355px) {
+  .folio-tools button { gap: 3px; font-size: 11px; }
+  .folio-tools svg { width: 20px; height: 20px; }
+  .folio-date { padding-inline: 10px 5px; }
+}
+@media (min-width: 680px) {
+  .home-sections { grid-template-columns: repeat(2, minmax(0,1fr)); align-items: start; }
+  .home-refined .home-book { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+  .folio-cover { border-bottom: 0; border-right: 1px solid var(--hairline); }
+  .folio-ledger { display: flex; flex-direction: column; justify-content: center; }
+  .folio-tools { grid-column: 1 / -1; }
+}
 .home-refined .home-money, .home-refined.handpage .work-slip, .home-refined .home-notebook { border: 1px solid var(--hairline); border-radius: 12px; padding-inline: 12px; background: var(--paper-glass); box-shadow: 0 2px 7px #274a3607; }
-.home-refined .home-money { margin-bottom: 10px; padding-top: 10px; }
+.home-refined .home-money { padding-top: 8px; }
 .home-refined .home-money::before, .home-refined.handpage .work-slip::before { content: none; }
 .home-refined .home-money h2, .home-refined.handpage .work-slip h2 { color: var(--accent); font-size: 13px; }
 .home-refined .home-money-grid { gap: 12px; padding-top: 2px; }
 .home-refined .home-money-grid b { font-size: 19px; }
 .home-refined .home-money-grid>button+button { padding-left: 12px; }
 .home-refined .saving-track { height: 4px; background: var(--input-bg); }
-.home-refined .home-credit { background: var(--rose-wash); margin: 10px -5px -3px; padding: 7px; border: 0; border-radius: 7px; gap: 6px; }
-.home-refined.handpage .work-slip { padding-top: 8px; margin-bottom: 10px; }
+.home-refined .home-credit { justify-content: flex-start; background: var(--rose-wash); margin: 9px 0 -2px; padding: 6px 8px; border: 0; border-radius: 6px; gap: 6px; }
+.home-credit>span:last-child { margin-left: auto; }
+.home-refined.handpage .work-slip { padding-top: 8px; margin-bottom: 0; }
 .home-refined .work-slip header { margin-bottom: 4px; }
 .home-refined.handpage .overview-work-values { padding-bottom: 9px; }
 .home-refined.handpage .overview-work-values strong { font: 18px/1.6 Georgia,var(--ui-font); }
 .home-refined .overview-work-values .overview-attendance { background: var(--blue-wash); color: var(--info); border-radius: 7px; }
-.home-refined .home-notebook { padding-block: 9px 0; }
-.home-refined .home-notebook .overview-section h2 { color: var(--text); font-size: 13px; }
+.home-refined .home-notebook { padding-block: 5px 3px; }
+.home-refined .home-notebook h2 { color: var(--text); font-size: 13px; }
 .home-refined .overview-agenda, .home-refined .overview-transactions { padding-inline: 0; }
-.home-refined .home-notebook .overview-section+ .overview-section { padding-top: 8px; border-top: 1px solid var(--hairline); }
 .home-refined .overview-tx-icon { background: var(--tint-surface); border-radius: 9px; }
 .home-refined .overview-tools { margin-top: 10px; border-radius: 10px; }
 

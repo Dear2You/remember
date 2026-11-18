@@ -379,10 +379,10 @@ Views.settings = (() => {
     const book = Store.currentBook();
     root.innerHTML =
       '<div class="page settings-page">' +
-      '  <div class="page-head"><div><div class="page-title">我的</div></div></div>' +
+      '  <div class="page-head chapter-head">' + UI.pageTitle('我的','person') + '</div>' +
 
       '  <div class="settings-shortcuts">' +
-      '    <div class="settings-tools">' +
+      '    <div class="settings-tools action-strip">' +
       [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
         '<button class="j-mod" data-r="' + route + '">' + UI.art(symbol) + label + '</button>').join('') +
       '    </div>' +
@@ -399,8 +399,7 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card appearance-card"><div class="section-title">显示</div>' +
-      '<label class="set-row appearance-select"><span class="sr-lab">界面主题</span><select class="j-visual-style" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
-      '<p class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</p>'+
+      '<label class="set-row appearance-select scene-choice"><span class="folio-print scene-thumb" aria-hidden="true"></span><span class="sr-lab">界面主题<small class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</small></span><select class="j-visual-style" aria-label="界面主题" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
       '<label class="set-row appearance-select"><span class="sr-lab">主题配色</span><select class="j-palette">'+Appearance.palettes.map(({id,name})=>'<option value="'+id+'" '+(appearance.palette===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
       '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。')+'</p>'+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +

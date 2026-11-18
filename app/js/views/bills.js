@@ -109,7 +109,7 @@ Views.bills = (() => {
   /* ---------- 通用头部（一级切换 + 周期选择 + 导航） ---------- */
   function headerHtml(p, selected) {
     const names = [['detail','流水明细'],['report','收支分析'],['calendar','账单日历']];
-    return `<div class="report-tabs j-top">${names.map(([key,title]) =>
+    return `<div class="report-tabs page-tabs j-top" role="group" aria-label="账单视图">${names.map(([key,title]) =>
       `<button data-t="${key}" aria-pressed="${selected===key}">${title}</button>`).join('')}</div>
       <div class="swipe-panel">
       <div class="report-period"><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
@@ -145,7 +145,7 @@ Views.bills = (() => {
       F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, F.kw
     ].filter(Boolean).map(U.escapeHtml);
     const filterBar = hasFilter ? `<div class="report-filter"><span>${filterLabels.join(' · ')} · ${filtered.length}/${stat.list.length} 笔</span><button class="j-clearall">清除筛选</button></div>` : '';
-    const pageHead = `<div class="page bill-report"><div class="page-head"><h1 class="page-title">账单</h1>
+    const pageHead = `<div class="page bill-report"><div class="page-head chapter-head">${UI.pageTitle('账单','book')}
       <div class="report-actions"><select class="j-book-select" aria-label="选择账本">
       <option value="">全部账本</option>${books.map(b=>`<option value="${U.escapeHtml(b.id)}" ${bookId===b.id?'selected':''}>${U.escapeHtml(b.name)}</option>`).join('')}
       <option data-manage="1">管理账本…</option></select>
