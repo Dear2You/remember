@@ -8,7 +8,7 @@
 
 ## 已发布基线与入口
 
-本说明更新于2026-11-18，当前应用为 **v3.1 / 30100**，发布代码以 `v3.1` 标签为准。首页采用日期插画封面，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
+本说明更新于2026-11-18，当前应用为 **v3.2 / 30200**，发布代码以 `v3.2` 标签为准。首页以一幅主题插画贯穿日期、收支和各栏，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
 
 - 公开仓库：[Dear2You/remember](https://github.com/Dear2You/remember)。应用内更新依赖公开读取清单和安装包。
 - 包名：`com.nianxiatian.app`。Android最低API24、目标API35，原生Java外壳加载随包附带的HTML/CSS/JavaScript。
@@ -64,6 +64,8 @@ b08fc9b85314e227d8d97779db460830a7acfeac58e2e3c88fcde9c64ea5827f
 
 构建依赖Node、Git Bash、JDK及Android SDK。现有脚本使用仓库下 `build/toolchain/` 的JDK和Android SDK，平台为35、build-tools为34.0.0。工具链不在Git中，新电脑需按脚本实际查找路径从官方来源重新配置。具体子路径从脚本读取，不依赖旧电脑的绝对路径。
 
+在 Windows 上若构建出现 `FIND: Parameter format not correct`，在发起构建的 Git Bash 中执行 `export PATH=/usr/bin:$PATH`，确认 `command -v find` 返回 `/usr/bin/find` 后重试。
+
 1. 查看 `git status`，保留用户未提交改动。先完成修改和相应测试。更新应用版本时同步 `app/index.html` 的版本名／版本码以及 `app/ai-guide.md` 首条版本记录和现行操作说明，执行 `node tools/build-ai-guide.js`。
 2. 发布前执行 `node --test --test-reporter=dot tests/*.test.js`。界面要检查窄屏、弹窗、输入与金额隐藏，并用样例数据做目视核对；在相应 `docs/qa-版本.md` 写清结果和未验证部分。
 3. 确认原密钥在位。构建会递归清理 `build/work`：先确认绝对路径确为当前仓库下的这个目录，且不是目录链接，再执行构建。
@@ -79,7 +81,7 @@ b08fc9b85314e227d8d97779db460830a7acfeac58e2e3c88fcde9c64ea5827f
 
 此流程不依赖本机 `build/preview-*` 内的临时发布脚本。应用更改才需要新APK；仅维护文档的提交保持现有版本和清单，不制造空更新。
 
-记账表单的浏览器回归用例在 `tests/browser/entry-form.cjs`。安装 Playwright 及 Chromium 后，用 `node --test tests/browser/entry-form.cjs` 运行。可设置 `BROWSER_CHANNEL=msedge` 使用本机 Edge，`APP_HTML` 可指向成品 APK 解包后的 `assets/www/index.html`。用例在独立浏览器环境创建样例账本和账单，核对改备注后原账本、账户、日期和金额。
+浏览器回归用例在 `tests/browser/`。安装 Playwright 及 Chromium 后运行 `node --test tests/browser/*.cjs`。可设置 `BROWSER_CHANNEL=msedge` 使用本机 Edge，`APP_HTML` 可指向成品 APK 解包后的 `assets/www/index.html`。记账用例核对编辑旧账后的账本、账户、日期和金额。首页用例从设置切换六套主题，检查横竖屏铺图，点日期查日历及点收支查月报。
 
 ## 已知边界
 

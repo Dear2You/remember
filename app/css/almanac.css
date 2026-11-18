@@ -1,42 +1,61 @@
-/* A quieter home ledger and an open, full-width almanac. */
-.home-refined.handpage .home-book { border: 1px solid var(--hairline); border-radius: 15px; box-shadow: 0 4px 16px #284c3810; }
-/* The printed date and the picture share a button, so the entire cover opens today. */
-.folio-cover {
-  display: grid; grid-template-columns: minmax(145px, .94fr) minmax(0, 1.2fr);
-  width: 100%; text-align: left; background: var(--card); border-bottom: 1px solid var(--hairline);
+/* The app already paints the current scene. On the home page the date, ledger and
+   notes share that one image, including the narrow gutters between them. */
+#app.home-scene {
+  --home-position: var(--home-portrait, center);
+  --home-paper: var(--paper-glass);
 }
-.folio-date { align-self: center; padding: 10px 12px 11px 15px; }
-.folio-month { display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .08em; color: var(--text-2); }
+#app.home-scene::before { opacity: var(--home-ink, 1); filter: none; background-position: var(--home-position); }
+html[data-tone="dark"]:not([data-visual-style="starry"]):not([data-visual-style="future"]) #app.home-scene { --home-ink: .35; }
+html[data-visual-style="starry"] { --home-portrait: 82% center; }
+html[data-visual-style="ink"] { --home-portrait: 70% center; }
+@supports (color: color-mix(in srgb, white 80%, transparent)) {
+  #app.home-scene { --home-paper: color-mix(in srgb, var(--card) 89%, transparent); }
+  #app.home-scene .masthead { background: color-mix(in srgb, var(--card) 90%, transparent); }
+}
+#app.home-scene .home-sections>section, #app.home-scene .home-tools { background-color: var(--home-paper); }
+.home-spread { isolation: isolate; position: relative; }
+.home-spread::before {
+  content: ''; position: absolute; z-index: -1; inset: 0; border-radius: 0 0 10px 10px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent 19%, var(--home-paper) 58%, var(--card));
+}
+.folio-cover { display: flex; align-items: center; width: 100%; min-height: 93px; text-align: left; }
+.folio-date { position: relative; isolation: isolate; padding: 7px 12px 8px 14px; }
+.folio-date::before {
+  content: ''; position: absolute; z-index: -1; inset: -12px -52px -10px -24px; pointer-events: none;
+  background: radial-gradient(ellipse farthest-side at 38% 50%, var(--card) 43%, transparent); opacity: .8;
+}
+.folio-month { display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .08em; color: var(--text); }
 .folio-month::before { content: ''; width: 16px; height: 2px; background: var(--accent); }
 .folio-day { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
 .folio-day>b { font: 49px/.98 Georgia, var(--book-serif); font-variant-numeric: lining-nums tabular-nums; color: var(--accent); letter-spacing: -.055em; }
 .folio-day strong, .folio-day small { display: block; }
 .folio-day strong { font: 600 14px/1.6 var(--book-serif); color: var(--text); }
-.folio-day small { font: 11px/1.45 var(--ui-font); color: var(--text-2); }
-.folio-print {
-  position: relative; margin: 7px 7px 7px 0; min-height: 69px; border: 1px solid var(--hairline); border-radius: 2px;
+.folio-day small { font: 11px/1.45 var(--ui-font); color: var(--text); }
+.scene-thumb {
+  position: relative; border: 1px solid var(--hairline); border-radius: 2px;
   background: var(--scene-image, url('../images/summer-mist.webp')) var(--folio-crop, right center) / cover no-repeat;
 }
-.folio-print::after { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(255,255,255,.45); pointer-events: none; }
+.scene-thumb::after { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(255,255,255,.45); pointer-events: none; }
 html[data-visual-style="starry"] { --folio-crop: center 4%; }
 html[data-visual-style="coast"] { --folio-crop: center 31%; }
 html[data-visual-style="future"] { --folio-crop: center 96%; }
 html[data-visual-style="forest"] { --folio-crop: center 9%; }
 html[data-visual-style="sunset"] { --folio-crop: center 88%; }
-html[data-tone="dark"] .folio-print { filter: brightness(.82); }
+html[data-tone="dark"] .scene-thumb { filter: brightness(.82); }
 html[data-visual-style="future"] .folio-day>b { font-family: var(--ui-font); font-weight: 350; }
-.folio-ledger { padding: 2px 14px 12px; background: var(--card); }
+.folio-ledger { padding: 2px 14px 12px; }
 .folio-ledger header { display: flex; align-items: center; gap: 7px; }
 .folio-ledger h2 { flex: none; font: 600 14px/1.4 var(--book-serif); }
 .folio-book-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 11px; color: var(--text-2); }
 .folio-ledger .visibility-toggle, .folio-ledger .text-action { min-width: 36px; min-height: 38px; flex: none; }
+.folio-ledger .text-action { color: var(--text); }
 .folio-ledger .visibility-toggle { display: grid; place-items: center; padding: 0; color: var(--text-2); }
 .folio-ledger .visibility-toggle svg { width: 17px; height: 17px; }
 .folio-metrics { display: flex; flex-wrap: wrap; gap: 5px 12px; width: 100%; text-align: left; }
 .folio-metrics>span { flex: 1 1 max-content; min-width: 0; max-width: 100%; }
 .folio-metrics small { display: block; font-size: 11px; color: var(--text-2); }
 .folio-metrics b { display: block; font: 500 clamp(18px,5.2vw,23px)/1.35 Georgia,var(--ui-font); font-variant-numeric: lining-nums tabular-nums; overflow-wrap: anywhere; }
-.folio-tools { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); background: var(--card); border-top: 1px solid var(--hairline); }
+.folio-tools { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-block: 1px solid var(--hairline); border-radius: 0 0 10px 10px; }
 .folio-tools button { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 43px; font-size: 12px; color: var(--text); }
 .folio-tools button+button { position: relative; }
 .folio-tools button+button::before { content: ''; position: absolute; left: 0; height: 18px; width: 1px; background: var(--hairline); }
@@ -54,10 +73,17 @@ html[data-visual-style="future"] .folio-day>b { font-family: var(--ui-font); fon
 }
 @media (min-width: 680px) {
   .home-sections { grid-template-columns: repeat(2, minmax(0,1fr)); align-items: start; }
-  .home-refined .home-book { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
-  .folio-cover { border-bottom: 0; border-right: 1px solid var(--hairline); }
+  .home-spread { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+  .home-spread::before {
+    background: radial-gradient(ellipse 66% 155% at 83% 44%, var(--home-paper) 46%, transparent 100%),
+      linear-gradient(to top, var(--card), transparent 68%);
+  }
   .folio-ledger { display: flex; flex-direction: column; justify-content: center; }
   .folio-tools { grid-column: 1 / -1; }
+}
+@media (min-aspect-ratio: 1/1) {
+  #app.home-scene { --home-position: var(--folio-crop, center); }
+  html[data-visual-style="ink"] #app.home-scene::before { background-image: url('../images/summer-mist.webp'); background-position: 72% 52%; }
 }
 .home-refined .home-money, .home-refined.handpage .work-slip, .home-refined .home-notebook { border: 1px solid var(--hairline); border-radius: 12px; padding-inline: 12px; background: var(--paper-glass); box-shadow: 0 2px 7px #274a3607; }
 .home-refined .home-money { padding-top: 8px; }

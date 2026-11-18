@@ -29,11 +29,11 @@ Views.home = (() => {
       ['结余', amount(stat.net), '']
     ];
     root.innerHTML=`<div class="page overview-page handpage home-refined">
-      <section class="home-book">
+      <section class="home-spread">
         <button class="folio-cover" data-dest="calendar-today" aria-label="今天 ${esc(U.fmtFull(today))}，打开日历">
           <span class="folio-date"><span class="folio-month">${today.slice(0,4)} 年 ${month} 月</span>
             <span class="folio-day"><b>${today.slice(8)}</b><span><strong>星期${'日一二三四五六'[U.parseDate(today).getDay()]}</strong><small>${esc(calendar.lunarFull.replace(/^.*年 /,''))}${festival?' · '+esc(festival):''}</small></span></span>
-          </span><span class="folio-print" aria-hidden="true"></span>
+          </span>
         </button>
         <section class="folio-ledger"><header>
           <h2>${month}月收支</h2><span class="folio-book-name">${esc(book?.name || '全部账本')}</span>

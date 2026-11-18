@@ -28,7 +28,7 @@ html[data-visual-style="starry"] {
   --scene-opacity: .9; --scene-filter: none; --scene-fade: #17243d;
   --landscape-opacity: .86; --surface-shadow: 0 5px 20px #03071332; --detail-shadow: 0 3px 12px #03071325;
 }
-html[data-visual-style]:not([data-visual-style="ink"]) #app::before { background-image: var(--scene-image); background-position: center; filter: none; }
+html[data-visual-style]:not([data-visual-style="ink"]) #app::before { background-image: var(--scene-image); background-position: var(--home-position, center); filter: none; }
 html[data-visual-style]:not([data-visual-style="ink"]) .masthead { background: var(--nav-paper); border-color: var(--hairline); }
 html[data-visual-style]:not([data-visual-style="ink"]) .wordmark { color: var(--accent); }
 html[data-visual-style]:not([data-visual-style="ink"]) .wordmark>svg { color: var(--solid); }

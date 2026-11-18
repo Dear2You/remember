@@ -399,7 +399,7 @@ Views.settings = (() => {
       '  </div>' +
 
       '  <div class="card appearance-card"><div class="section-title">显示</div>' +
-      '<label class="set-row appearance-select scene-choice"><span class="folio-print scene-thumb" aria-hidden="true"></span><span class="sr-lab">界面主题<small class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</small></span><select class="j-visual-style" aria-label="界面主题" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
+      '<label class="set-row appearance-select scene-choice"><span class="scene-thumb" aria-hidden="true"></span><span class="sr-lab">界面主题<small class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</small></span><select class="j-visual-style" aria-label="界面主题" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
       '<label class="set-row appearance-select"><span class="sr-lab">主题配色</span><select class="j-palette">'+Appearance.palettes.map(({id,name})=>'<option value="'+id+'" '+(appearance.palette===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
       '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。')+'</p>'+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +

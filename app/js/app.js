@@ -75,6 +75,7 @@ const App = {
     const redirect = { stats: 'bills', expense: 'bills' }[route];
     if (redirect) { location.hash = '#/' + redirect; return; }
     this.route = this.routes[route] ? route : 'home';
+    document.getElementById('app').classList.toggle('home-scene', this.route === 'home');
     this.renewSalaryPeriods();
     // 子页高亮映射：时光子页→时光，订阅→资产，旧报表/明细→账单
     const tabRoute = ({ countdown: 'life', focus: 'life', memo: 'life', habit: 'life', subs: 'assets', money: 'assets', stats: 'bills', expense: 'bills' })[this.route] || this.route;
