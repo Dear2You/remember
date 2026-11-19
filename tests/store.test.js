@@ -77,6 +77,40 @@ test('多币种分别保存汇率，逐项折分，缺失、非法报价和恢�
   assert.equal(store.subscriptionsTotalCNY(),999+7219);
 });
 
+test('月末订阅跳过一期保留锚点与余额，过期的确认、停用账户及写入失败不能推进', () => {
+  const {store,storage}=fixture();
+  const old=store.defaults();
+  old.subscriptions=[{id:'legacy',name:'样例会员',currency:'CNY',amount:12,nextDue:'2028-01-31'}];
+  storage.setItem(store.KEY,JSON.stringify(old));
+  store.init();
+  const id='legacy',current=()=>store.data.subscriptions[0].nextDue;
+  const fields={accountId:'acc-bank',amountMinor:1200,date:'2028-01-31'};
+  const tx=store.addTransaction({...fields,type:'out'});
+  store.skipSubscriptionPayment(id,'2028-01-31');
+  assert.equal(current(),'2028-02-29');
+  assert.equal(store.accountBalance('acc-bank'),-1200);
+  assert.equal(store.data.transactions.length,1);
+  assert.throws(()=>store.skipSubscriptionPayment(id,'2028-01-31'),/已变化/);
+  assert.throws(()=>store.recordSubscriptionPayment(id,fields,'2028-01-31'),/已变化/);
+  assert.throws(()=>store.linkSubscriptionPayment(id,tx.id,'2028-01-31'),/已变化/);
+  store.updateSubscription(id,{paused:true});
+  assert.throws(()=>store.skipSubscriptionPayment(id,current()),/暂停/);
+  store.updateSubscription(id,{paused:false});
+  store.mutate(d=>{d.accounts.find(a=>a.id==='acc-bank').archived=true;});
+  assert.throws(()=>store.recordSubscriptionPayment(id,fields,current()),/停用/);
+  assert.throws(()=>store.recordSubscriptionPayment(id,{...fields,date:''},current()),/实际扣款日/);
+  assert.equal(store.importData(store.exportData()).ok,true);
+  const write=storage.setItem;
+  storage.setItem=()=>{throw new Error('quota');};
+  assert.throws(()=>store.skipSubscriptionPayment(id,'2028-02-29'),/未保存/);
+  assert.equal(current(),'2028-02-29');
+  storage.setItem=write;
+  store.skipSubscriptionPayment(id,'2028-02-29');
+  assert.equal(current(),'2028-03-31');
+  assert.equal(store.data.transactions.length,1);
+  assert.equal(store.data.transactions[0].subscriptionId,undefined);
+});
+
 test('编辑还款时扣除原还款影响，超额编辑不会修改余额', () => {
   const { store } = fixture();
   store.addTransaction({ type: 'out', accountId: 'acc-credit', amountMinor: 10000 });
@@ -117,6 +151,32 @@ test('同一行程的现金和信用卡垫付可合并回款，预算、收入�
   assert.equal(store.tripTotals(trip.id).pending,50000);
   assert.equal(store.accountBalance('acc-bank'),18000);
   assert.equal(store.netWorth(),0);
+});
+
+test('回填与修改报销到账的日期上限，与逐日账目校验逐分一致', () => {
+  const {store} = fixture();
+  const trip = store.startTrip('回填测试','book-life');
+  const record = (type,date,amountMinor) => store.addTransaction({
+    type,date,amountMinor,tripId:trip.id,bookId:trip.bookId,accountId:type==='advance'?'acc-wx':'acc-bank'
+  });
+  record('advance','2026-01-31',30000);
+  const received = record('reimbursement','2026-02-04',15000);
+  record('advance','2026-02-04',5000);
+  record('reimbursement','2026-02-10',10000);
+  record('advance','2026-03-02',18000);
+  const other = store.startTrip('另一趟出差','book-life');
+  store.addTransaction({tripId:other.id,bookId:other.bookId,type:'advance',accountId:'acc-wx',date:'2026-01-01',amountMinor:90000});
+  for (const [date,max,editingMax] of [
+    ['2026-01-30',0,0],['2026-01-31',10000,25000],['2026-02-04',10000,25000],
+    ['2026-02-09',10000,25000],['2026-02-10',10000,25000],['2026-03-02',28000,43000],['2026-04-30',28000,43000]
+  ]) {
+    for (const [original,limit] of [[null,max],[received,editingMax]]) {
+      const proposal = {tripId:trip.id,type:'reimbursement',date,amountMinor:limit};
+      assert.equal(store.tripReceiptLimit(trip.id,date,original?.id),limit);
+      assert.doesNotThrow(()=>store.checkTripChange(original,proposal));
+      assert.throws(()=>store.checkTripChange(original,{...proposal,amountMinor:limit+1}),/到账/);
+    }
+  }
 });
 
 test('改到账账户只移动该笔到账，收款偏好独立保存，失败或取消不改变余额', () => {

@@ -47,7 +47,7 @@ Views.subs = (() => {
         body.querySelector('.j-ok').onclick = () => {
           const name = body.querySelector('.j-name').value.trim();
           const minor = Store.parseAmount(amount.value);
-          if (!name || !minor) { UI.toast(!name ? '请输入名称' : '请填写有效的每月金额','err'); return; }
+          if (!name || !minor) { UI.toast(!name ? '请输入名称' : '请填写每次实际扣款的原价','err'); return; }
           const nextDue=body.querySelector('.j-due').value,phoneRemind=body.querySelector('.j-notify').checked;
           if(phoneRemind&&!nextDue){UI.toast('请选择扣款日期','err');return;}
           const fields = {name,amount:minor / 100,currency:currency.value,note:body.querySelector('.j-note').value.trim(),
@@ -67,30 +67,59 @@ Views.subs = (() => {
   }
 
   function paySheet(sub) {
+    const due=sub.nextDue,today=U.todayStr();
     const converted=Store.subscriptionCnyMinor(sub.amount,sub.currency);
-    UI.sheet({title:'登记订阅扣款 · '+sub.name,content(body,close){
-      body.innerHTML=`<form><p class="payroll-help">本期 ${esc(sub.nextDue)} · ${UI.amount(Math.round(sub.amount*100))} ${esc(sub.currency)}。核对银行实际人民币扣款，保存后推进下次日期。</p>
-        <label class="field">这笔已经记过了吗？<select class="j-existing"><option value="">还没记，新增支出</option>${Store.data.transactions.filter(t=>t.type==='out'&&!t.subscriptionId).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<option value="${t.id}">${esc(t.date)} · ${moneyForExisting(t)} · ${esc(t.note || Store.category(t.categoryId)?.name || '支出')}</option>`).join('')}</select></label>
-        <p class="payroll-help">选择已有账单时，保留它原来的金额、账户和日期。</p>
-        <label class="field">实际扣款（人民币元）<input class="j-paid" inputmode="decimal" value="${converted==null?'':Store.fmtMinor(converted)}"></label>
-        <label class="field">实际扣款账户<select class="j-account"><option value="">请选择</option>${Store.accounts(true).map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>
-        <label class="field">账本<select class="j-book">${Store.books().map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select></label>
-        <label class="field">支出分类<select class="j-category">${Store.categories('out').map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>
-        <label class="field">实际扣款日<input class="j-date" type="date" value="${U.todayStr()}"></label><button class="btn btn-primary btn-block">确认扣款并记账</button></form>`;
+    const books=Store.books(),accounts=Store.accounts(true),categories=Store.categories('out').filter(c=>!Store.catRoot(c.id)?.archived);
+    const previous=Store.data.transactions.filter(t=>t.subscriptionId===sub.id && t.subscriptionDue<due)
+      .sort((a,b)=>b.subscriptionDue.localeCompare(a.subscriptionDue))[0];
+    const book=[Store.settings.currentBookId,previous?.bookId,Store.settings.lastBookId].find(id=>books.some(b=>b.id===id)) || books[0]?.id || '';
+    const candidates=Store.data.transactions.filter(t=>t.type==='out'&&!t.subscriptionId&&!t.transferFeeFor).sort((a,b)=>b.date.localeCompare(a.date));
+    const itemOptions=items=>items.map(item=>`<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
+    UI.sheet({title:'处理本期扣款 · '+sub.name,content(body,close){
+      body.innerHTML=`<form class="sub-payment-form"><p class="payroll-help">本期 ${esc(due)} · ${UI.amount(Math.round(sub.amount*100))} ${esc(sub.currency)}</p>
+        <label class="field">这笔已经记过了吗？<select class="j-existing"><option value="">还没记，新增支出</option>${candidates.map(t=>`<option value="${esc(t.id)}">${esc(t.date)} · ¥${UI.amount(t.amountMinor)} · ${esc(Store.accountName(t.accountId))} · ${esc(t.note || Store.category(t.categoryId)?.name || '支出')}</option>`).join('')}</select></label>
+        <p class="payroll-help j-link-hint" hidden>将本期与所选账单关联，沿用原金额、日期和账户。</p>
+        <div class="j-new-fields"><label class="field">实际扣款（人民币元）<input class="j-paid" inputmode="decimal" value="${converted==null?'':Store.fmtMinor(converted)}"></label>
+        <label class="field">实际扣款账户<select class="j-account"><option value="">请选择</option>${itemOptions(accounts)}</select></label>
+        <label class="field">账本<select class="j-book">${itemOptions(books)}</select></label>
+        <label class="field">支出分类<select class="j-category"><option value="">未分类</option>${itemOptions(categories)}</select></label>
+        <label class="field">实际扣款日<input class="j-date" type="date" value="${due<today?due:today}"></label></div>
+        <button type="submit" class="btn btn-primary btn-block">确认扣款并记账</button>
+        <button type="button" class="text-action j-skip">本期未扣，跳过一期</button></form>`;
+      body.querySelector('.j-book').value=book;
+      body.querySelector('.j-account').value=accounts.find(a=>a.id===previous?.accountId)?.id || '';
+      body.querySelector('.j-category').value=categories.find(c=>c.id===previous?.categoryId)?.id || '';
+      const existingSelect=body.querySelector('.j-existing'),skip=body.querySelector('.j-skip');
+      existingSelect.onchange=()=>{
+        const linking=!!existingSelect.value;
+        body.querySelector('.j-new-fields').hidden=linking;
+        body.querySelector('.j-link-hint').hidden=!linking;
+        body.querySelector('[type="submit"]').textContent=linking?'确认关联已有账单':'确认扣款并记账';
+        skip.hidden=linking;
+      };
       let saving=false;
+      skip.onclick=async ()=>{
+        if(saving)return;
+        saving=true;
+        try {
+          if(!await UI.confirm({title:'跳过本期扣款？',msg:`本期 ${due} 免扣，下次扣款日为 ${Store.nextSubscriptionDate(sub,due)}。这次跳过不会产生账单。`,okText:'跳过一期'}))return;
+          Store.skipSubscriptionPayment(sub.id,due);
+          close();UI.toast('已跳过本期扣款');
+        }catch(err){UI.toast(err.message,'err');}finally{saving=false;}
+      };
       body.querySelector('form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;try{
-        const existing=body.querySelector('.j-existing').value;
-        if(existing){Store.linkSubscriptionPayment(sub.id,existing);close();UI.toast('已关联原账单并更新扣款日');return;}
+        const existing=existingSelect.value;
+        if(existing){Store.linkSubscriptionPayment(sub.id,existing,due);close();UI.toast('已关联原账单并更新扣款日');return;}
         if(!body.querySelector('.j-account').value)throw new Error('请选择实际扣款账户');
-        const fields={amountMinor:Store.parseAmount(body.querySelector('.j-paid').value),accountId:body.querySelector('.j-account').value,bookId:body.querySelector('.j-book').value,categoryId:body.querySelector('.j-category').value,date:body.querySelector('.j-date').value,note:sub.name+' · '+sub.nextDue+' 订阅'};
+        const fields={amountMinor:Store.parseAmount(body.querySelector('.j-paid').value),accountId:body.querySelector('.j-account').value,bookId:body.querySelector('.j-book').value,categoryId:body.querySelector('.j-category').value,date:body.querySelector('.j-date').value,note:sub.name+' · '+due+' 订阅'};
+        if(!fields.date)throw new Error('请选择实际扣款日');
         const warnings=Store.budgetImpact({...fields,type:'out'}).filter(r=>r.needsConfirm);
         if(warnings.length&&!await UI.confirm({title:'本次扣款超出预算',msg:warnings.map(r=>r.label+'将超出 ¥'+UI.amount(r.over)).join('；')+'。已发生的扣款仍可如实登记。',okText:'仍然登记'}))return;
-        Store.recordSubscriptionPayment(sub.id,fields);
+        Store.recordSubscriptionPayment(sub.id,fields,due);
         close();UI.toast('已记支出并更新下次扣款日');
       }catch(err){UI.toast(err.message,'err');}finally{saving=false;}};
     }});
   }
-  function moneyForExisting(t){return '¥'+UI.amount(t.amountMinor);}
 
   function mount(root) {
     const previous = root.querySelector('.j-rate-currency');
@@ -106,7 +135,7 @@ Views.subs = (() => {
         <span class="c-sub">${s.note ? esc(s.note)+' · ' : ''}${original} / ${{1:'月',3:'季',12:'年'}[s.cycleMonths || 1]}${s.paused?' · 已暂停':''}</span>
         ${s.nextDue?`<span class="c-sub">下次扣款 ${esc(s.nextDue)}</span>`:''}</span>
         <span class="c-val num">${cny === null ? '待补汇率' : '¥'+UI.amount(cny,true)}</span></button>
-        ${s.nextDue&&!s.paused?`<button class="text-action j-paid" data-id="${s.id}">已扣款，登记支出 ›</button>`:''}</div>`;
+        ${s.nextDue&&!s.paused?`<button class="text-action j-paid" data-id="${esc(s.id)}">处理本期扣款 ›</button>`:''}</div>`;
     }).join('');
     const rateWasOpen = !!root.querySelector('.fx-panel[open]');
     root.innerHTML = `<div class="page decorated-page subs-page"><button class="back-btn j-back">‹ 返回</button>

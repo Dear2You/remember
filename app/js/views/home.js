@@ -2,6 +2,18 @@
 
 Views.home = (() => {
   let toolsOpen=false, agendaExpanded=false;
+  function weekStrip(today, transactions, hidden) {
+    const days = FinanceReport.buckets({start:U.addDays(today,-6),days:7},transactions);
+    const peak = Math.max(1,...days.map(d=>d.out));
+    const total = days.reduce((sum,d)=>sum+d.out,0);
+    return `<section class="folio-week" aria-label="近七天支出"><div class="folio-week-caption"><span>近七天支出</span><strong>${hidden?'••••':'¥'+Store.fmtMinorThousand(total)}</strong></div>
+      <div class="folio-week-days">${days.map(d=>{
+        const current = d.key===today;
+        const label = U.fmtFull(d.key)+(hidden?'':'，支出 '+Store.fmtMinor(d.out)+' 元')+'，查看当天账单';
+        const height = !hidden && d.out ? Math.max(3,Math.round(22*d.out/peak)) : 0;
+        return `<button type="button" data-ledger-day="${d.key}" ${current?'aria-current="date"':''} aria-label="${label}"><span class="folio-week-mark" aria-hidden="true"><i style="height:${height}px"></i></span><small>${current?'今':U.weekdayCN(U.parseDate(d.key).getDay())}</small></button>`;
+      }).join('')}</div></section>`;
+  }
   function agendaRow(item) {
     const title=U.escapeHtml(item.title), id=U.escapeHtml(item.id || '');
     const row='<button class="overview-row" data-dest="'+item.route+'" data-item="'+id+'">'+
@@ -16,7 +28,8 @@ Views.home = (() => {
     const work=Store.monthWorkSummary(U.ymNow()),salary=plan?Store.salarySummary(plan):null;
     const wages=plan?Store.wageSummary(plan.project,plan.month):null,payday=Store.nextPayday();
     const period=plan?Store.salaryRange(plan):null,shortDate=d=>Number(d.slice(5,7))+'.'+Number(d.slice(8));
-    const recent=Store.txOfBook(bookId).filter(t=>t.date<=today).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,3);
+    const transactions=Store.txOfBook(bookId);
+    const recent=transactions.filter(t=>t.date<=today).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,3);
     const tasks=Store.tasksBy('today').sort((a,b)=>(a.dueTime || '24:00').localeCompare(b.dueTime || '24:00'));
     const due=Store.data.subscriptions.filter(s=>!s.paused&&s.nextDue&&s.nextDue<=U.addDays(today,7)).sort((a,b)=>a.nextDue.localeCompare(b.nextDue));
     const tripPending=Store.tripTotals().pending;
@@ -49,8 +62,9 @@ Views.home = (() => {
           <button class="visibility-toggle" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button>
           <button class="text-action" data-dest="month">账单 ›</button>
         </header>
-        <button class="folio-metrics" data-dest="month">${metrics.map(([label,value,color])=>`<span><small>${label}</small><b class="${color}">${value}</b></span>`).join('')}</button></section>
-        <nav class="folio-tools" aria-label="常用操作">${quick.map(([route,icon,label])=>`<button data-dest="${route}">${UI.art(icon)}<span>${label}</span></button>`).join('')}</nav>
+        <button class="folio-metrics" data-dest="month">${metrics.map(([label,value,color])=>`<span><small>${label}</small><b class="${color}">${value}</b></span>`).join('')}</button>
+        ${weekStrip(today,transactions,hidden)}</section>
+        <nav class="folio-tools" aria-label="常用操作">${quick.map(([route,icon,label])=>`<button data-dest="${route}"><span class="folio-tool-art" aria-hidden="true">${UI.art(icon)}</span><span>${label}</span></button>`).join('')}</nav>
       </section>
       <div class="home-sections">
       <section class="home-notebook overview-section home-agenda"><header><h2>${UI.art('check')}待处理</h2><button class="text-action" data-dest="today">日程与待办 ›</button></header><div class="overview-agenda">
@@ -64,6 +78,10 @@ Views.home = (() => {
         ${recent.map(t=>{const x=Views.expense.tSummary(t);return `<button class="overview-transaction" data-transaction="${esc(t.id)}"><span class="overview-tx-icon">${UI.entryIcon(t)}</span><span class="overview-tx-label"><b>${esc(t.note || x.title)}</b><small>${esc(shortDate(t.date)+' · '+Store.accountName(t.accountId || t.fromId)+(t.type==='transfer'?' → '+Store.accountName(t.toId):''))}</small></span><span class="overview-tx-amount">${Views.expense.tAmountHtml(t)}</span></button>`;}).join('')||'<button class="overview-empty" data-dest="add-entry">还没有账单，记下第一笔 <span>＋</span></button>'}</div></section></div>
       <details class="overview-tools home-tools" ${toolsOpen?'open':''}><summary>更多工具<span>订阅、打卡、专注等</span></summary><div>${more.map(([route,icon,label])=>`<button data-dest="${route}">${UI.art(icon)}${label}</button>`).join('')}</div></details></div>`;
     root.querySelector('.overview-tools').ontoggle=e=>{toolsOpen=e.target.open;};
+    root.querySelectorAll('[data-ledger-day]').forEach(button=>button.onclick=()=>{
+      const day=button.dataset.ledgerDay;
+      Views.bills.openDaySheet(day,Store.txOfBook(Store.settings.currentBookId).filter(t=>t.date===day));
+    });
     root.querySelectorAll('[data-dest]').forEach(button=>button.onclick=()=>{
       const dest=button.dataset.dest;
       if(dest==='month')Views.bills.openMonth();

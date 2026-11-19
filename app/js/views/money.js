@@ -4,6 +4,12 @@ Views.money = (() => {
   const esc=U.escapeHtml, money=n=>Store.settings.hideAmount?'••••':'¥'+Store.fmtMinorThousand(n);
   let month=U.ymNow(), back='home';
   const bar=(value,over=false)=>`<div class="saving-track ${over?'over':''}" aria-hidden="true"><i style="width:${Store.settings.hideAmount?0:Math.max(0,Math.min(1,value))*100}%"></i></div>`;
+  function goalPace(plan) {
+    if (!plan) return '';
+    if (plan.past) return '目标日期已过，可编辑日期继续攒。';
+    if (!plan.count) return '目标日在下次发薪前，可按现有余额安排。';
+    return '按每月 '+plan.day+' 日发薪，到目标日还可分 '+plan.count+' 次存，每次约 '+money(plan.perPayday)+'。'+(plan.startsToday?'含今天。':'');
+  }
   function open(from='home') {month=U.ymNow();back=from;App.go('money');}
   function homeCard() {
     const s=Store.moneySummary(),credit=Store.creditSummary();
@@ -114,35 +120,55 @@ Views.money = (() => {
     }});
   }
   function focusCard() {
-    return `<section class="spending-focus"><header><h2>${UI.art('shopping')}留意这几笔</h2><button class="text-action j-plan">专项额度 ›</button></header><div class="focus-grid">${Store.focusSummary(month).map(s=>`<button data-focus-rows="${s.key}" class="focus-${s.key}"><span>${s.label} <i>›</i></span><strong>${money(s.spent)}</strong>${bar(s.limit?s.spent/s.limit:0,s.remaining<0)}<small>${s.limit?(s.remaining<0?'超出 '+money(-s.remaining):'还可花 '+money(s.remaining)):'未设专项额度'}</small></button>`).join('')}</div><p>按分类统计，餐饮备注中的“外卖 / 奶茶 / 咖啡”也会归入；买菜做饭单独记。点金额核对流水。</p></section>`;
+    const symbols={shopping:'shopping',delivery:'food',drinks:'focus'};
+    return `<section class="spending-focus"><header><h2>留意这几笔</h2><button class="text-action j-plan">专项额度 ›</button></header>
+      <div class="focus-ledger">${Store.focusSummary(month).map(s=>`<button data-focus-rows="${s.key}" class="focus-${s.key}">
+        <span class="focus-symbol" aria-hidden="true">${UI.art(symbols[s.key])}</span><span class="focus-category"><b>${s.label}</b>
+        ${s.limit?bar(s.spent/s.limit,s.remaining<0):''}<small>${s.limit?(s.remaining<0?'已超 '+money(-s.remaining):'可用 '+money(s.remaining)):'未设专项额度'}</small></span>
+        <strong>${money(s.spent)}</strong><i aria-hidden="true">›</i></button>`).join('')}</div></section>`;
   }
-  function creditCard() {
-    const c=Store.creditSummary(month);
-    return `<section class="credit-watch"><header><h2>${UI.art('card')}白条与信用消费</h2><button class="text-action j-credit-setup">＋ 添加</button></header><div class="credit-overview"><span>当前全部待还<b>${money(c.debt)}</b></span><span>本月信用消费<b>${money(c.spent)}</b></span></div><p>买下时就算花出去了。还款只减少欠款，不再重复算支出；利息与手续费另记支出。待还是当前记账余额，不是平台本期账单。</p>${c.accounts.map(s=>`<article class="credit-account"><div><b>${esc(s.account.name)}${s.account.archived?' · 已停用':''}</b><span>待还 ${money(s.balance)}</span></div><small>本月消费 ${money(s.spent)} · 已还 ${money(s.paid)}${s.advance?' · 另有垫付 '+money(s.advance):''}</small><footer>${!s.account.archived?`<button data-credit-buy="${esc(s.account.id)}">记消费</button><button data-credit-pay="${esc(s.account.id)}">记还款</button>`:''}<button data-credit-rows="${esc(s.account.id)}">本月流水 ›</button></footer></article>`).join('')}<button class="text-action j-credit-manage">核对账户 / 历史欠款 ›</button></section>`;
+  function creditCard(c) {
+    return `<section id="budget-credit" tabindex="-1" aria-labelledby="budget-credit-title" class="credit-watch"><header><h2 id="budget-credit-title">${UI.art('card')}白条与信用消费</h2><button class="text-action j-credit-setup">＋ 添加</button></header>
+      <div class="credit-overview"><span>当前全部待还<b>${money(c.debt)}</b></span><span>所选月信用消费<b>${money(c.spent)}</b></span></div>
+      ${c.accounts.map(s=>`<article class="credit-account"><div><b>${esc(s.account.name)}${s.account.archived?' · 已停用':''}</b><span>待还 ${money(s.balance)}</span></div>
+      <small>月内消费 ${money(s.spent)} · 已还 ${money(s.paid)}${s.advance?' · 另有垫付 '+money(s.advance):''}</small><footer>
+      ${!s.account.archived?`<button data-credit-buy="${esc(s.account.id)}">记消费</button><button data-credit-pay="${esc(s.account.id)}">记还款</button>`:''}<button data-credit-rows="${esc(s.account.id)}">本月流水 ›</button></footer></article>`).join('')}
+      <footer class="budget-credit-foot"><small>还款减少欠款。待还按当前账户余额计算。</small><button class="text-action j-credit-manage">核对账户 ›</button></footer></section>`;
   }
   function mount(root) {
-    const s=Store.moneySummary(month),hidden=Store.settings.hideAmount,preferred=Store.preferredSavingAccount();
-    root.innerHTML=`<div class="page decorated-page money-page"><button class="back-btn j-back">‹ 返回</button><header class="page-head"><span class="page-emblem">${UI.art('sprout')}</span><div><h1 class="page-title">预算与存钱</h1><p class="page-sub">花得有数，慢慢积攒</p></div></header>
-      <div class="money-month"><button class="j-prev" aria-label="上个月">‹</button><input type="month" class="j-month" aria-label="预算月份" value="${month}"><button class="j-next" aria-label="下个月">›</button><button class="text-action j-plan">调整计划 ›</button></div>
-      <section class="money-limit"><div class="money-ring" style="--progress:${hidden?0:s.ratio*100}%"><div><small>${s.limit?'额度已用':'月消费上限'}</small><strong>${s.limit?(hidden?'••••':Math.round(s.ratio*100)+'%'):'待设置'}</strong></div></div>
-        <div><small>${s.limit?(s.remaining<0?'已超出预算':'本月还能花'):'给消费留一个边界'}</small><strong class="${s.limit&&s.remaining<0?'money-out':''}">${s.limit?money(Math.abs(s.remaining)):'从一份计划开始'}</strong><p>${s.limit?'上限 '+money(s.limit)+' · 已用 '+money(s.spent):'设置月上限，记账时自动核对额度'}</p><button class="text-action j-plan">${s.limit?'修改上限':'设置月计划'} ›</button></div></section>
-      <div class="money-metrics"><span>每天可花<b>${s.limit&&s.leftDays?money(s.daily):'—'}</b></span><span>本月结余<b>${money(s.net)}</b></span><span>剩余天数<b>${s.leftDays} 天</b></span></div>
-      <p class="money-help">全部账本 · 自然月${s.leftDays?' · 每天额度含今天':''}。转账与出差报销不计消费。${s.plan?.inherited?'沿用 '+s.plan.month+' 的计划。':''}${s.limit&&s.spent>=s.limit*.8?' 已用到八成以上，接下来的非必要消费可以缓一缓。':''}</p>
-      ${focusCard()}${creditCard()}
-      <section class="monthly-saving"><header><h2>${UI.art('coin')}这个月存下多少</h2><button class="text-action j-plan">设置 ›</button></header><div><strong>${money(s.saved)}</strong><span> / ${s.savingTarget?money(s.savingTarget):'未设月目标'}</span></div>${bar(s.savingTarget?s.saved/s.savingTarget:0)}<p>${s.savingTarget?(s.saved>=s.savingTarget?'本月存钱目标已达到':'距离目标还差 '+money(s.savingRemaining)):'设一个月存钱金额，从第一笔开始'}<small>指定存钱账户和目标账户本月余额的净增加，取出和消费会扣回；期初余额不计入。</small></p>
+    const s=Store.moneySummary(month), hidden=Store.settings.hideAmount, preferred=Store.preferredSavingAccount();
+    const credit=Store.creditSummary(month), current=month===U.ymNow(), over=s.limit && s.remaining<0;
+    const usage=s.limit?Math.round(s.spent*100/s.limit):0;
+    root.innerHTML=`<div class="page decorated-page money-page"><button class="back-btn j-back">‹ 返回</button><header class="page-head chapter-head">${UI.pageTitle('预算与存钱','sprout')}<span class="page-sub">全部账本</span></header>
+      <section class="budget-sheet" aria-label="月度消费预算"><div class="money-month"><button class="j-prev" aria-label="上个月">‹</button><label class="budget-month-pick"><span aria-hidden="true">${U.ymLabel(month)}</span><input type="month" class="j-month" aria-label="预算月份" value="${month}"></label><button class="j-next" aria-label="下个月">›</button><button class="text-action j-plan">${s.plan?'调整计划':'设置计划'} ›</button></div>
+      <div class="budget-balance"><div class="budget-number"><span>${s.limit?(over?'已超出预算':current?'本月还能花':s.leftDays?'可用预算':'月末剩余额度'):'本月已花'}</span><strong class="${over?'money-out':''}">${money(s.limit?Math.abs(s.remaining):s.spent)}</strong>
+        <small>${s.limit?'消费上限 '+money(s.limit):'尚未设置消费上限'}</small></div>
+      <div class="money-ring ${over?'over':''}" style="--progress:${hidden?0:s.ratio*100}%" role="img" aria-label="${hidden?'预算用量已隐藏':s.limit?'额度已用 '+usage+'%':'未设置月消费上限'}"><div aria-hidden="true"><strong>${hidden?'••••':!s.limit?'—':usage>999?'已超额':usage+'%'}</strong><small>额度已用</small></div></div></div>
+      <div class="budget-facts"><span>${s.limit?'本月已花':'本月收入'}<b>${money(s.limit?s.spent:s.income)}</b></span><span>每天可花<b>${s.limit && s.leftDays?money(s.daily):'—'}</b></span><span>本月结余<b>${money(s.net)}</b></span></div>
+      <details class="budget-note"><summary><span class="budget-period-note">${current?'含今天还剩 '+s.leftDays+' 天':s.leftDays?'全月 '+s.leftDays+' 天':'该月已结束'}${s.plan?.inherited?' · 沿用 '+esc(s.plan.month)+' 计划':''}</span><span>统计口径</span></summary>
+        <p>按自然月合计全部账本的个人支出，含白条消费和转账手续费。转账本金、还款本金、出差垫付和报销到账单独统计。购物、外卖和饮品的专项额度包含在月上限内。</p></details></section>
+      <nav class="budget-shortcuts" aria-label="本页账户和存钱"><button data-budget-jump="budget-credit" aria-controls="budget-credit">${UI.art('card')}<span><small>当前信用待还</small><b>${money(credit.debt)}</b></span><i aria-hidden="true">›</i></button>
+      <button data-budget-jump="budget-saving" aria-controls="budget-saving">${UI.art('sprout')}<span><small>本月存下</small><b>${money(s.saved)}</b></span><i aria-hidden="true">›</i></button></nav>
+      ${focusCard()}${creditCard(credit)}
+      <section class="monthly-saving" id="budget-saving" tabindex="-1" aria-labelledby="budget-saving-title"><header><h2 id="budget-saving-title">${UI.art('coin')}这个月存下多少</h2><button class="text-action j-plan">设置 ›</button></header><div><strong>${money(s.saved)}</strong><span> / ${s.savingTarget?money(s.savingTarget):'未设月目标'}</span></div>${bar(s.savingTarget?s.saved/s.savingTarget:0)}<p>${s.savingTarget?(s.saved>=s.savingTarget?'本月存钱目标已达到':'距离目标还差 '+money(s.savingRemaining)):'设一个月存钱金额，从第一笔开始'}<small>指定存钱账户和目标账户本月余额的净增加，取出和消费会扣回；期初余额不计入。</small></p>
         <label class="saving-account-choice">主要存钱账户<select class="j-saving-account"><option value="">不单独指定</option>${Store.accounts().filter(a=>a.type!=='liability').map(a=>`<option value="${esc(a.id)}" ${a.id===preferred?.id?'selected':''}>${esc(a.name)}${a.archived?'（已停用）':''}</option>`).join('')}</select></label>
         ${preferred?`<div class="saving-account-balance"><span>账户余额 <b>${money(Store.accountBalance(preferred.id))}</b></span><button class="text-action j-account-save">存入一笔 ›</button><button class="text-action j-account-rows">流水 ›</button></div>`:''}</section>
       <section class="saving-goals"><header><h2>我的存钱目标</h2><button class="text-action j-add-goal">＋ 新目标</button></header>
-        ${Store.data.savingGoals.map(g=>{const p=Store.savingGoalSummary(g);return `<article class="saving-goal"><header>${UI.art('sprout')}<div><h3>${esc(g.name)}</h3><small>${esc(Store.accountName(g.accountId))}${g.deadline?' · 目标日 '+esc(g.deadline):''}</small></div><button class="text-action" data-edit-goal="${esc(g.id)}">编辑</button></header><div class="goal-amount"><b>${money(p.balance)}</b><span> / ${money(g.targetMinor)}</span></div>${bar(p.ratio)}<p>${p.complete?'已经攒够了，真好。':'还差 '+money(p.remaining)}</p><footer><button class="btn btn-primary" data-save-goal="${esc(g.id)}">存入一笔</button><button class="btn btn-ghost" data-withdraw-goal="${esc(g.id)}">取出</button><button class="text-action" data-goal-rows="${esc(g.id)}">流水 ›</button></footer></article>`;}).join('') || `<button class="saving-empty j-add-goal">${UI.art('sprout')}<span><b>先攒一份备用金</b><small>例如毕业备用金、旅行基金</small></span><i>＋</i></button>`}</section>
+        ${Store.data.savingGoals.map(g=>{const p=Store.savingGoalSummary(g);return `<article class="saving-goal"><header>${UI.art('sprout')}<div><h3>${esc(g.name)}</h3><small>${esc(Store.accountName(g.accountId))}${g.deadline?' · 目标日 '+esc(g.deadline):''}</small></div><button class="text-action" data-edit-goal="${esc(g.id)}">编辑</button></header><div class="goal-amount"><b>${money(p.balance)}</b><span> / ${money(g.targetMinor)}</span></div>${bar(p.ratio)}<p>${p.complete?'目标已达成':'还差 '+money(p.remaining)}${p.pace?'<small class="goal-pace">'+goalPace(p.pace)+'</small>':''}</p><footer><button class="btn btn-primary" data-save-goal="${esc(g.id)}">存入一笔</button><button class="btn btn-ghost" data-withdraw-goal="${esc(g.id)}">取出</button><button class="text-action" data-goal-rows="${esc(g.id)}">流水 ›</button></footer></article>`;}).join('') || `<button class="saving-empty j-add-goal">${UI.art('sprout')}<span><b>先攒一份备用金</b><small>例如毕业备用金、旅行基金</small></span><i>＋</i></button>`}</section>
       <button class="money-book-budget j-book-budget">${UI.art('book')}账本与分类预算<span>分别安排餐饮、交通等 ›</span></button></div>`;
     root.querySelector('.j-back').onclick=()=>App.go(back);
+    root.querySelectorAll('[data-budget-jump]').forEach(button=>button.onclick=()=>{
+      const section=root.querySelector('#'+button.dataset.budgetJump);
+      section.focus({preventScroll:true});
+      section.scrollIntoView({block:'start'});
+    });
     root.querySelector('.j-prev').onclick=()=>{month=U.ymShift(month,-1);App.refresh(true);};root.querySelector('.j-next').onclick=()=>{month=U.ymShift(month,1);App.refresh(true);};
     root.querySelector('.j-month').onchange=e=>{if(/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value)){month=e.target.value;App.refresh(true);}};
     root.querySelectorAll('.j-plan').forEach(b=>b.onclick=()=>planSheet());root.querySelectorAll('.j-add-goal').forEach(b=>b.onclick=()=>goalSheet());
     root.querySelector('.j-credit-setup').onclick=creditSetup;root.querySelector('.j-credit-manage').onclick=()=>Views.settings.openAccountsSheet();
     root.querySelectorAll('[data-focus-rows]').forEach(b=>b.onclick=()=>{const s=Store.focusSummary(month).find(x=>x.key===b.dataset.focusRows);rowsSheet(s.label+' · '+month,s.list,'已用 '+money(s.spent)+(s.limit?'，额度 '+money(s.limit):'，未设专项额度'));});
     root.querySelectorAll('[data-credit-rows]').forEach(b=>b.onclick=()=>{const s=Store.creditSummary(month).accounts.find(x=>x.account.id===b.dataset.creditRows);rowsSheet(s.account.name+' · '+month,s.list,'显示所选月消费、垫付和还款。当前全部待还 '+money(s.balance));});
-    root.querySelectorAll('[data-credit-buy]').forEach(b=>b.onclick=()=>Views.expense.openEntrySheet(null,'out',null,{_direct:true,accountId:b.dataset.creditBuy,categoryId:Store.rootCategories('out').find(c=>c.name==='购物')?.id || ''}));
+    root.querySelectorAll('[data-credit-buy]').forEach(b=>b.onclick=()=>Views.expense.openEntrySheet(null,'out',null,{_direct:true,_personal:true,accountId:b.dataset.creditBuy,categoryId:Store.rootCategories('out').find(c=>c.name==='购物')?.id || ''}));
     root.querySelectorAll('[data-credit-pay]').forEach(b=>b.onclick=()=>{
       const id=b.dataset.creditPay,amount=Store.accountBalance(id);if(amount<=0){UI.toast('这个账户没有待还欠款');return;}
       const from=Store.accounts(true).find(a=>a.type!=='liability'&&!Store.savingAccountIds().has(a.id));

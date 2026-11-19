@@ -67,12 +67,32 @@ Views.lifetasks = (() => {
     });
   }
 
-  function taskRow(t, today) {
-    const done = Store.taskDoneOn(t, today);
+  function postpone(id) {
+    const task = Store.data.tasks.find(t => t.id === id);
+    if (!task || !Store.isTaskOverdue(task)) return;
+    const originalDate = task.dueDate;
+    const tomorrow = U.addDays(U.todayStr(), 1);
+    try {
+      Store.updateTask(id, {dueDate: tomorrow});
+      const afterMove = JSON.stringify(task);
+      UI.toast('已移到明天' + (task.dueTime ? ' ' + task.dueTime : ''), null, {label: '撤销', run() {
+        const current = Store.data.tasks.find(t => t.id === id);
+        if (JSON.stringify(current) !== afterMove) {
+          UI.toast('事项已有新变动，已保留最新安排');
+          return;
+        }
+        Store.updateTask(id, {dueDate: originalDate});
+        UI.toast('已恢复原截止日期');
+      }});
+    } catch (err) { UI.toast(err.message, 'err'); }
+  }
+
+  function taskRow(t, date) {
+    const done = Store.taskDoneOn(t, date);
     const q = Store.quadrantOf(t);
     const qBadge = q === 1 ? '<span class="badge red">重要·紧急</span>' : q === 2 ? '<span class="badge green">重要</span>' : q === 3 ? '<span class="badge gray">紧急</span>' : '';
     const overdue = Store.isTaskOverdue(t);
-    const dueInfo = t.repeat !== 'none'
+    const dueInfo = t.repeat && t.repeat !== 'none'
       ? '🔁' + ({ daily: '每天', weekly: '每周', monthly: '每月' })[t.repeat]
       : (t.dueDate ? (overdue ? '<span style="color:var(--danger)">逾期 ' + U.fmtDay(t.dueDate) + '</span>' : U.fmtDay(t.dueDate)) + (t.dueTime ? ' ' + t.dueTime : '') : '无日期');
     return '<div class="cell j-row" data-id="' + t.id + '">' +
@@ -81,6 +101,7 @@ Views.lifetasks = (() => {
       '    <div class="c-title" style="' + (done ? 'text-decoration:line-through;opacity:.55' : '') + '">' + U.escapeHtml(t.title) + '</div>' +
       '    <div class="c-sub">' + dueInfo + (t.phoneRemind ? ' · 通知' + (t.repeat && t.repeat !== 'none' ? ' ' + U.escapeHtml(t.dueTime) : '') : '') + (qBadge ? ' · ' + qBadge : '') + (t.note ? ' · ' + U.escapeHtml(t.note) : '') + '</div>' +
       '  </div>' +
+      (overdue && filter2 === 'overdue' ? '<button class="chip j-postpone" data-id="' + U.escapeHtml(t.id) + '">移到明天</button>' : '') +
       '</div>';
   }
 
@@ -141,6 +162,7 @@ Views.lifetasks = (() => {
     root.querySelectorAll('.j-f2').forEach(b => b.onclick = () => { filter2 = b.dataset.v; ctx.refresh(); });
     root.querySelectorAll('.seg button[data-v]').forEach(b => b.onclick = () => { view = b.dataset.v; ctx.refresh(); });
     root.querySelector('.j-add').onclick = () => openTaskSheet();
+    root.querySelectorAll('.j-postpone').forEach(b => b.onclick = () => postpone(b.dataset.id));
     root.querySelectorAll('.j-check').forEach(b => b.onclick = e => {
       e.stopPropagation();
       const t = Store.data.tasks.find(x => x.id === b.dataset.id);

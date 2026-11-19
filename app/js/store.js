@@ -144,6 +144,7 @@ const Store = {
     if (!Array.isArray(data.subscriptions)) data.subscriptions = [];
     for (const sub of data.subscriptions) {
       if (!sub.currency) sub.currency = 'CNY'; // 旧版未标币种的订阅按人民币展示
+      if (!sub.anchorDay && /^\d{4}-\d{2}-\d{2}$/.test(sub.nextDue)) sub.anchorDay = Number(sub.nextDue.slice(8));
     }
     if (!Array.isArray(data.aiSessions)) data.aiSessions = [];
     // 老版本单聊天记录 → 迁移为一个会话
@@ -431,16 +432,21 @@ const Store = {
     const t=this.tripTotals(trip.id);
     return t.advanced&&t.pending===0?'已结清':t.received?'部分到账':trip.submittedAt?'已提交':'待提交';
   },
-  // 按日校验，防止修改、删除或回填日期后，到账金额超过当时的垫付。
-  tripCovered(rows) {
-    const daily = new Map();
+  // 当天可回填的到账还要给以后已经登过的回款留足余额。
+  tripMinPending(rows, fromDate = '') {
+    const daily = new Map([[fromDate,0]]);
     for (const t of rows) daily.set(t.date,(daily.get(t.date) || 0) + (t.type === 'advance' ? t.amountMinor : -t.amountMinor));
-    let pending = 0;
+    let pending = 0, minimum = Infinity;
     for (const date of [...daily.keys()].sort()) {
       pending += daily.get(date);
-      if (pending < 0) return false;
+      if (date >= fromDate) minimum = Math.min(minimum,pending);
     }
-    return true;
+    return minimum;
+  },
+  tripCovered(rows) { return this.tripMinPending(rows) >= 0; },
+  tripReceiptLimit(tripId, date, editingId) {
+    const rows = this.data.transactions.filter(t => t.tripId === tripId && t.id !== editingId);
+    return this.tripMinPending(rows,date);
   },
   checkTripChange(previous, next) {
     for (const id of new Set([previous?.tripId,next?.tripId])) {
@@ -1120,16 +1126,29 @@ const Store = {
     const month=U.ymShift(from.slice(0,7),sub.cycleMonths || 1),{y,m}=U.ymParts(month);
     return month+'-'+U.pad(Math.min(sub.anchorDay || Number(from.slice(8)),U.daysInMonth(y,m)));
   },
-  recordSubscriptionPayment(id,fields) {
+  pendingSubscription(id,expectedDue) {
     const sub=this.data.subscriptions.find(s=>s.id===id);
     if(!sub||!sub.nextDue)throw new Error('请先设置本次扣款日期');
     if(sub.paused)throw new Error('订阅已暂停，请先恢复');
-    const tx=this.addTransaction({...fields,type:'out',subscriptionId:id,subscriptionDue:sub.nextDue});
-    return tx;
+    if(expectedDue!==undefined && expectedDue!==sub.nextDue)throw new Error('本期扣款日已变化，请重新打开核对');
+    return sub;
   },
-  linkSubscriptionPayment(id,transactionId) {
-    const sub=this.data.subscriptions.find(s=>s.id===id),tx=this.data.transactions.find(t=>t.id===transactionId);
-    if(!sub||!sub.nextDue||sub.paused||!tx||tx.type!=='out'||tx.subscriptionId)throw new Error('请选择未关联的普通支出');
+  skipSubscriptionPayment(id,expectedDue) {
+    if(!expectedDue)throw new Error('请先核对本期扣款日');
+    const sub=this.pendingSubscription(id,expectedDue);
+    this.updateSubscription(id,{nextDue:this.nextSubscriptionDate(sub),anchorDay:sub.anchorDay || Number(expectedDue.slice(8))});
+  },
+  recordSubscriptionPayment(id,fields,expectedDue) {
+    const sub=this.pendingSubscription(id,expectedDue);
+    if(fields.date!==undefined && !fields.date)throw new Error('请选择实际扣款日');
+    if(this.account(fields.accountId)?.archived)throw new Error('实际扣款账户已停用，请重新选择');
+    if(this.book(fields.bookId)?.archived)throw new Error('账本已归档，请重新选择');
+    if(fields.categoryId && !this.categories('out').some(c=>c.id===fields.categoryId && !this.catRoot(c.id)?.archived))throw new Error('支出分类已停用，请重新选择');
+    return this.addTransaction({...fields,type:'out',subscriptionId:id,subscriptionDue:sub.nextDue});
+  },
+  linkSubscriptionPayment(id,transactionId,expectedDue) {
+    const sub=this.pendingSubscription(id,expectedDue),tx=this.data.transactions.find(t=>t.id===transactionId);
+    if(!tx||tx.type!=='out'||tx.subscriptionId||tx.transferFeeFor)throw new Error('请选择未关联的普通支出');
     this.updateTransaction(tx.id,{subscriptionId:id,subscriptionDue:sub.nextDue});
   },
   parseSubscriptionRate(value) {

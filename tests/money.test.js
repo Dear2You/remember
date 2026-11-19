@@ -3,9 +3,27 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 function fixture(){
   const values=new Map(),storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)};
   const ctx=vm.createContext({window:{},console,localStorage:storage});
-  for(const file of ['utils','store','money'])vm.runInContext(fs.readFileSync('app/js/'+file+'.js','utf8'),ctx);
+  for(const file of ['utils','store','payroll','money'])vm.runInContext(fs.readFileSync('app/js/'+file+'.js','utf8'),ctx);
   const s=ctx.window.Store;ctx.window.UI.toast=()=>{};s.init();return {s,storage};
 }
+
+test('到期存钱参考按设定的发薪日均分剩余金额，覆盖短月、当日及已过目标日',()=>{
+  const {s}=fixture();
+  s.mutate(d=>{d.settings.salaryPayDay=31;});
+  const g=s.saveSavingGoal({name:'样例备用金',targetMinor:10001,deadline:'2028-03-30'});
+  const at=(today,deadline=g.deadline)=>s.savingGoalSummary({...g,deadline},today).pace;
+  const pace=at('2027-12-31');
+  assert.equal(pace.startsToday,true);
+  assert.equal(pace.count,3); // 12/31、1/31、2/29
+  assert.equal(pace.perPayday,3334);
+  assert.equal(at('2028-02-28','2028-02-28').count,0);
+  assert.equal(at('2028-02-01','2028-02-29').count,1);
+  assert.equal(at('2028-03-31').past,true);
+  assert.equal(at('2028-03-31',''),undefined);
+  s.addTransaction({type:'transfer',date:'2027-12-01',fromId:'acc-wx',toId:g.accountId,amountMinor:10001});
+  assert.equal(at('2028-01-01'),undefined);
+  assert.equal(s.data.transactions.length,1);
+});
 
 test('专项额度包含白条消费，外卖与饮品各归一组，跨账本沿用且编辑正确',()=>{
   const {s}=fixture();s.saveMoneyPlan({month:'2026-11',limitMinor:200000,saveMinor:300000,repeat:true,focusLimits:{shopping:50000,delivery:20000,drinks:10000},dailyCategories:true});

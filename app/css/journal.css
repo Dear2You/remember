@@ -151,6 +151,8 @@
 .subs-page .sub-total small { font-size: 11px; }
 .sub-code { background: var(--input-bg); border: 1px solid var(--hairline); border-radius: 50%; font: 10px/1.6 Georgia,serif; width: 35px; min-width: 35px; height: 35px; padding: 9px 0; }
 .subscription-row+.subscription-row { border-top: 1px solid var(--hairline); }
+.sub-payment-form .j-skip { margin: 6px auto 0; min-height: 40px; }
+.sub-payment-form [hidden] { display: none; }
 .fx-panel { margin-top: 15px; border-top: 1px solid var(--hairline); }
 .fx-panel>summary { display: flex; align-items: center; gap: 8px; min-height: 48px; list-style: none; cursor: pointer; color: var(--text-2); font-size: 12px; }
 .fx-panel>summary::-webkit-details-marker { display: none; }

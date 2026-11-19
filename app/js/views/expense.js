@@ -12,8 +12,8 @@ Views.expense = (() => {
   function feeTerms(state){return Store.transferAmounts(Store.parseAmount(state.amount),parseFee(state.fee),state.feeMode || 'extra');}
   function paintTransfer(body,state){
     const target=body.querySelector('.transfer-breakdown');if(!target)return;
-    try{const t=feeTerms(state);target.innerHTML='<span>实际扣款<b>¥'+UI.amount(t.debited)+'</b></span><i>→</i><span>实际到账 / 抵扣欠款<b>¥'+UI.amount(t.amountMinor)+'</b></span>';}
-    catch(e){target.textContent=state.amount?e.message:'填写金额后，核对实际扣款与到账';}
+    try{const t=feeTerms(state);target.innerHTML='<span>实际扣款<b>¥'+UI.amount(t.debited)+'</b></span><i>→</i><span>实际到账 / 抵扣欠款<b>¥'+UI.amount(t.amountMinor)+'</b></span>';return t;}
+    catch(e){target.textContent=state.amount?e.message:'填写金额后，核对实际扣款与到账';return null;}
   }
   function bindFee(body,state,change){
     const fee=body.querySelector('.j-fee');if(!fee)return;
@@ -46,7 +46,7 @@ Views.expense = (() => {
     if (editItem?.tripId) { Views.trips.edit(editItem); return; }
     const activeTrip = Store.trip(Store.settings.activeTripId);
     const repeating = !!draft?._repeat;
-    let tripExpense = !editItem && !repeating && !!activeTrip;
+    let tripExpense = !editItem && !repeating && draft?._personal !== true && !!activeTrip;
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
@@ -107,6 +107,7 @@ Views.expense = (() => {
           const accs = accountChoices(state.type === 'in' ? assetAccs : accsAll, 'accountId');
           if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = repeating ? '' : (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
+          const debt = isRepayMode ? Math.max(0, Store.accountBalance(state.toId, editItem?.id)) : 0;
           const selectedBook = Store.book(state.bookId);
           const bookOptions = books.map(b =>
             `<option value="${U.escapeHtml(b.id)}"${b.id === state.bookId ? ' selected' : ''}>${U.escapeHtml(b.name)}</option>`
@@ -154,7 +155,9 @@ Views.expense = (() => {
                 accountChoices(accsAll, 'toId').map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' + feeFields(state) +
                 (isRepayMode
-                  ? '<div class="repay-tip">'+UI.art('card')+'还款：欠款 ¥' + UI.amount(Math.max(Store.accountBalance(state.toId), 0)) + '，还款后负债与资产同减，不计支出</div>'
+                  ? '<div class="repay-tip">'+UI.art('card')+'本笔计入前的账面欠款 ¥'+UI.amount(debt)+
+                    (debt&&!Store.settings.hideAmount?' <button type="button" class="text-action j-fill-debt">按全部欠款填入</button>':'')+
+                    '<div class="j-debt-after" aria-live="polite"></div></div>'
                   : '')
               : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
                 accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
@@ -252,6 +255,14 @@ Views.expense = (() => {
           };
           const amt = body.querySelector('.j-amount');
           amt.oninput = e => { state.amount = e.target.value; paintBudget(); };
+          const fillDebt = body.querySelector('.j-fill-debt');
+          if (fillDebt) fillDebt.onclick = () => {
+            const fee = parseFee(state.fee);
+            if (fee === null) { UI.toast('请先核对手续费','err'); return; }
+            state.amount = Store.fmtMinor(debt + (state.feeMode === 'deduct' ? fee : 0));
+            amt.value = state.amount;
+            paintBudget();
+          };
           bindFee(body,state,paintBudget);
           if (focusAmount) {
             focusAmount=false;
@@ -275,7 +286,14 @@ Views.expense = (() => {
             paintBudget();
           }
           function paintBudget() {
-            paintTransfer(body,state);
+            const transfer = paintTransfer(body,state);
+            const after = body.querySelector('.j-debt-after');
+            if (after) {
+              const remaining = debt - (transfer?.amountMinor || 0);
+              after.textContent = !transfer ? '可按平台本期账单填写实际还款额。'
+                : remaining < 0 ? '抵扣金额超过账面欠款 ¥'+UI.amount(-remaining)
+                : '记下后还欠 ¥'+UI.amount(remaining);
+            }
             const rules=Store.budgetImpact({...state,type:advance?'advance':state.type,feeMinor:parseFee(state.fee),amountMinor:Store.parseAmount(state.amount)},editItem?.id);
             const target=body.querySelector('.entry-budget-check');
             target.innerHTML=rules.map(r=>'<span class="'+(r.remaining<0?'money-out':'')+'">'+U.escapeHtml(r.label)+' · '+(r.remaining<0?'记下后超出 ¥':'记下后剩余 ¥')+UI.amount(Math.abs(r.remaining))+'</span>').join('');

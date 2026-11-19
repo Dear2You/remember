@@ -24,6 +24,16 @@ Views.trips = (() => {
     return true;
   }
 
+  function advanceCategoryOptions(currentId) {
+    return Store.categories('out',true).map(c => {
+      const parent = c.parentId && Store.category(c.parentId);
+      const inactive = c.archived || parent?.archived;
+      if (inactive && c.id !== currentId) return '';
+      const label = (parent ? parent.name + ' › ' : '') + c.name + (inactive ? '（已停用）' : '');
+      return `<option value="${esc(c.id)}" ${c.id===currentId?'selected':''}>${esc(label)}</option>`;
+    }).join('');
+  }
+
   function entry(trip, type, item, done) {
     const receipt = type === 'reimbursement';
     const total = Store.tripTotals(trip.id);
@@ -31,18 +41,35 @@ Views.trips = (() => {
     const saved = item?.accountId || (receipt ? Store.settings.lastReceiptAccountId : Store.settings.lastAccountId);
     const selected = accounts.some(a => a.id === saved) ? saved : (!receipt || accounts.length === 1 ? accounts[0]?.id : '');
     UI.sheet({title:item ? '修改'+(receipt?'报销到账':'垫付') : receipt ? '登记报销到账' : '记垫付',content(body,close) {
-      body.innerHTML = `<form class="trip-form"><p>${esc(trip.name)} · 待报销 ${money(total.pending)}</p>
-        <div class="field"><label for="tripAmount">${receipt?'实际到账':'垫付金额'}（元）</label><input id="tripAmount" inputmode="decimal" placeholder="0.00"
-        value="${item ? Store.fmtMinor(item.amountMinor) : receipt ? Store.fmtMinor(total.pending) : ''}"></div>
+      body.innerHTML = `<form class="trip-form trip-entry-form">
+        <section class="trip-entry-amount trip-paper">
+          <div class="trip-entry-context"><span>${UI.art('trip')}${esc(trip.name)}</span><small>待报销 ${money(total.pending)}</small></div>
+          <label for="tripAmount">${receipt?'实际到账':'垫付金额'}（元）</label>
+          <div class="trip-amount-input"><span aria-hidden="true">¥</span><input id="tripAmount" inputmode="decimal" placeholder="0.00"
+          value="${item ? Store.fmtMinor(item.amountMinor) : ''}"></div>
+        </section>
+        <div class="trip-date-row"><label for="tripDate">${receipt?'到账日期':'垫付日期'}</label><input id="tripDate" type="date" value="${esc(item?.date || today())}">${receipt?'<small class="j-receipt-limit" aria-live="polite"></small>':''}</div>
         <fieldset class="field trip-account-choice"><legend>${receipt?'收款':'付款'}账户</legend><div class="acct-chips">
-        ${accounts.map(a => `<label><input type="radio" name="tripAccount" value="${esc(a.id)}" ${a.id===selected?'checked':''}><span>${esc(a.name)}</span></label>`).join('')}
+        ${accounts.map(a => `<label><input type="radio" name="tripAccount" value="${esc(a.id)}" ${a.id===selected?'checked':''}><span>${UI.accountIcon(a)}${esc(a.name)}${a.archived?'（已停用）':''}</span></label>`).join('')}
         </div>${accounts.length?'':'<small>请先到「我的 → 账户管理」添加可用账户。</small>'}</fieldset>
-        ${!receipt?`<label class="field">费用分类<select id="tripCategory"><option value="">未分类</option>${Store.categories('out').map(c=>`<option value="${c.id}" ${c.id===item?.categoryId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+        ${!receipt?`<label class="field">费用分类<select id="tripCategory"><option value="">未分类</option>${advanceCategoryOptions(item?.categoryId)}</select></label>
         <label class="field">支付渠道（选填）<select id="tripChannel">${['','微信','支付宝','银行卡','现金','其他'].map(c=>`<option value="${c}" ${c===(item?.paymentChannel || '')?'selected':''}>${c || '未指定'}</option>`).join('')}</select></label><p class="payroll-help">支付宝或微信扣银行卡时，上方选实际扣款银行卡。</p>`:''}
-        <div class="field"><label for="tripDate">日期</label><input id="tripDate" type="date" value="${esc(item?.date || today())}"></div>
         <div class="field"><label for="tripNote">备注</label><input id="tripNote" maxlength="60" value="${esc(item?.note || '')}" placeholder="${receipt?'如第一批报销款':'如高铁票或住宿费'}"></div>
         ${item && !receipt ? '<label class="trip-personal"><input class="j-personal" type="checkbox">改记为个人支出</label>' : ''}
         <div class="field-row">${item?'<button type="button" class="btn btn-danger j-remove">删除</button>':''}<button class="btn btn-primary">保存</button></div></form>`;
+      const amount = body.querySelector('#tripAmount'), date = body.querySelector('#tripDate');
+      if (receipt) {
+        let suggestAmount = !item;
+        const updateLimit = () => {
+          const limit = date.value ? Store.tripReceiptLimit(trip.id,date.value,item?.id) : 0;
+          body.querySelector('.j-receipt-limit').textContent = date.value
+            ? '这一天最多可登记 ' + money(limit) + (item ? '（含本笔）' : '') : '请选择实际到账日期';
+          if (suggestAmount) amount.value = limit ? Store.fmtMinor(limit) : '';
+        };
+        amount.oninput = () => { suggestAmount = false; };
+        date.onchange = updateLimit;
+        updateLimit();
+      }
       body.querySelector('form').onsubmit = e => {
         e.preventDefault();
         if (body.dataset.saved) return;
@@ -50,10 +77,14 @@ Views.trips = (() => {
           const accountId = body.querySelector('[name="tripAccount"]:checked')?.value;
           if (!accountId) throw new Error(receipt ? '请点选本次收款账户' : '请点选付款账户');
           const patch = {type,tripId:trip.id,bookId:trip.bookId,accountId,
-            amountMinor:Store.parseAmount(body.querySelector('#tripAmount').value),date:body.querySelector('#tripDate').value,
+            amountMinor:Store.parseAmount(amount.value),date:date.value,
             note:body.querySelector('#tripNote').value.trim()};
           if(!receipt){patch.categoryId=body.querySelector('#tripCategory').value;patch.paymentChannel=body.querySelector('#tripChannel').value;}
           if (!patch.date || !patch.amountMinor) throw new Error('请填写有效日期和金额');
+          if (receipt) {
+            const limit = Store.tripReceiptLimit(trip.id,patch.date,item?.id);
+            if (patch.amountMinor > limit) throw new Error('这一天最多可登记 '+money(limit)+'，请核对到账日期和金额');
+          }
           if (body.querySelector('.j-personal')?.checked) { patch.type = 'out'; patch.tripId = ''; }
           if (item) Store.updateTransaction(item.id,patch);
           else Store.addTransaction(patch);
@@ -75,16 +106,25 @@ Views.trips = (() => {
     UI.sheet({title:trip.name,content(body) {
       const total = Store.tripTotals(trip.id), active = trip.id === Store.settings.activeTripId;
       const rows = Store.data.transactions.filter(t => t.tripId===trip.id).sort((a,b) => b.date.localeCompare(a.date) || b.createdAt-a.createdAt);
-      body.innerHTML = `<section class="entry-review"><div class="review-kind">${Store.tripStatus(trip)} · 待报销</div><strong class="num">${money(total.pending)}</strong>
-        <dl><dt>累计垫付</dt><dd>${money(total.advanced)}</dd><dt>已到账</dt><dd>${money(total.received)}</dd></dl></section>
+      body.innerHTML = `<section class="trip-balance trip-paper">
+        <header><span>${UI.art('trip')}待报销</span><small>${Store.tripStatus(trip)}</small></header>
+        <strong class="trip-pending-value">${money(total.pending)}</strong>
+        <dl><div><dt>累计垫付</dt><dd>${money(total.advanced)}</dd></div><div><dt>已到账</dt><dd>${money(total.received)}</dd></div></dl>
+        </section>
         <div class="field-row trip-actions"><button class="btn btn-ghost j-advance">记垫付</button><button class="btn btn-primary j-receive" ${total.pending?'':'disabled'}>登记到账</button></div>
-        <button class="trip-mode j-toggle">${active?'结束出差模式':'设为当前出差'}</button>
-        ${rows.map(t => `<div class="trip-record"><button class="cell sub-item j-trip-row" data-id="${esc(t.id)}"><span class="c-main"><span class="c-title">${t.type==='advance'?'垫付':'报销到账'}${t.note?' · '+esc(t.note):''}</span>
-        <span class="c-sub">${esc(t.date)} · ${esc(Store.accountName(t.accountId))}</span></span><b class="num">${money(t.amountMinor)}</b></button>
-        <button class="trip-delete" data-id="${esc(t.id)}" aria-label="删除${t.type==='advance'?'垫付':'报销到账'}，${esc(t.date)}，${money(t.amountMinor)}">删除</button></div>`).join('')}
+        <section class="trip-ledger"><header><h3>行程明细</h3><button class="trip-mode j-toggle">${active?'结束出差模式':'设为当前出差'}</button></header>
+        ${rows.map(t => {
+          const outgoing = t.type === 'advance', kind = outgoing ? '垫付' : '报销到账';
+          return `<div class="trip-record ${outgoing?'trip-paid':'trip-received'}">
+            <button class="j-trip-row" data-id="${esc(t.id)}">
+              <span class="trip-flow-arrow" aria-hidden="true">${UI.icon('arrow')}</span>
+              <span class="trip-record-main"><b>${esc(t.note || kind)}</b><small><time datetime="${esc(t.date)}">${esc(t.date)}</time>${t.note?' · '+kind:''} · ${esc(Store.accountName(t.accountId))}</small></span>
+              <span class="trip-record-value">${outgoing?'−':'+'}${money(t.amountMinor)}</span>
+            </button><button class="trip-delete" data-id="${esc(t.id)}" aria-label="删除${kind}，${esc(t.date)}，${money(t.amountMinor)}">删除</button></div>`;
+        }).join('') || '<p class="sub-empty">尚未登记垫付。</p>'}</section>
         <div class="field-row"><button class="btn btn-ghost j-submit">${trip.submittedAt?'撤回提交标记':'标记已提交报销'}</button><button class="btn btn-ghost j-export-trip">导出本次明细</button></div>
         <section class="trip-receipts"><header><h3>票据照片</h3><label class="chip">添加照片<input type="file" accept="image/jpeg,image/png,image/webp" class="j-ticket" hidden></label></header>
-        <p class="payroll-help">照片压缩后随完整备份保存。可添加机票、住宿等票据，导出的 CSV 包含文字明细。</p>
+        <p class="payroll-help">票据照片随完整备份保存，CSV 导出文字明细。</p>
         <div class="trip-ticket-grid">${(trip.receipts || []).map((r,i)=>`<div><button data-ticket="${i}"><img src="${esc(r.data)}" alt="${esc(r.name)}"></button><button class="text-action money-out" data-remove-ticket="${i}">删除照片</button></div>`).join('')}</div></section>
         <button class="trip-mode j-all">全部行程</button>`;
       const refresh = () => detail(trip);
@@ -148,9 +188,9 @@ Views.trips = (() => {
   }
   function list() {
     UI.sheet({title:'出差报销',content(body) {
-      body.innerHTML = '<button class="btn btn-primary btn-block j-new-trip">＋ 新建行程</button>' +
-        (Store.data.trips.length ? Store.data.trips.map(t => `<button class="cell sub-item trip-list-item" data-id="${esc(t.id)}"><span class="c-main"><span class="c-title">${esc(t.name)}</span>
-          <span class="c-sub">${t.id===Store.settings.activeTripId?'出差中 · ':''}${Store.tripStatus(t)} · ${esc(Store.book(t.bookId)?.name || '')}</span></span><span>待报销 ${money(Store.tripTotals(t.id).pending)} ›</span></button>`).join('')
+      body.innerHTML = '<div class="trip-list-bar">'+(Store.data.trips.length?'<span>待报销合计<strong>'+money(Store.tripTotals().pending)+'</strong></span>':'')+'<button class="btn btn-primary j-new-trip">＋ 新建行程</button></div>' +
+        (Store.data.trips.length ? Store.data.trips.map(t => `<button class="trip-list-item trip-list-row" data-id="${esc(t.id)}">${UI.art('trip')}<span class="trip-record-main"><b>${esc(t.name)}</b>
+          <small>${t.id===Store.settings.activeTripId?'出差中 · ':''}${Store.tripStatus(t)} · ${esc(Store.book(t.bookId)?.name || '')}</small></span><span class="trip-list-pending"><small>待报销</small><b>${money(Store.tripTotals(t.id).pending)}</b></span></button>`).join('')
           : '<p class="sub-empty">按行程归集垫付款，公司打款后可一次或分次登记到账。</p>');
       body.querySelector('.j-new-trip').onclick = create;
       body.querySelectorAll('.trip-list-item').forEach(b => b.onclick = () => detail(Store.trip(b.dataset.id)));

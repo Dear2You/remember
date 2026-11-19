@@ -1,0 +1,94 @@
+/* Monthly statement. The account balance is current, while the report follows the chosen month. */
+.money-page .budget-sheet {
+  position: relative;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  overflow: hidden;
+  background: linear-gradient(114deg,var(--paper-glass) 18%,var(--card-glaze,var(--input-bg)));
+}
+.budget-sheet .money-month {
+  margin: 0; padding: 3px 10px; gap: 2px;
+  border-bottom: 1px solid var(--hairline);
+}
+.budget-sheet .money-month > button { min-height: 35px; }
+.budget-month-pick { position: relative; display: grid; place-items: center; min-height: 36px; cursor: pointer; }
+.budget-month-pick span { font: 600 14px/1.4 var(--book-serif); color: var(--text); }
+.budget-month-pick input { position: absolute; inset: 0; width: 100%; min-width: 0; height: 100%; opacity: 0; cursor: pointer; }
+.budget-month-pick input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; cursor: pointer; }
+.budget-month-pick:focus-within, .money-page [tabindex="-1"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.budget-balance {
+  display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+  column-gap: 12px; padding: 15px 16px 13px;
+}
+.budget-number { min-width: 0; }
+.budget-number > span { display: block; font-size: 12px; font-weight: 600; }
+.budget-number > strong {
+  display: block; margin: 3px 0; font: 500 clamp(25px,8vw,33px)/1.15 Georgia,var(--book-serif);
+  font-variant-numeric: tabular-nums; color: var(--accent); overflow-wrap: anywhere;
+}
+.budget-number > strong.money-out { color: var(--calendar-expense); }
+.budget-number small, .budget-period-note { color: var(--text-2); font-size: 11px; }
+.budget-sheet .money-ring {
+  width: 69px; height: 69px; transform: none; padding: 5px;
+  background: conic-gradient(from -90deg,var(--accent) var(--progress),var(--hairline) 0);
+  outline: 1px dashed var(--hairline); outline-offset: 3px;
+}
+.budget-sheet .money-ring.over { background: conic-gradient(from -90deg,var(--calendar-expense) var(--progress),var(--hairline) 0); }
+.budget-sheet .money-ring > div { transform: none; gap: 1px; }
+.budget-sheet .money-ring strong { font: 600 17px/1.2 Georgia,var(--book-serif); color: var(--text); }
+.budget-sheet .money-ring small { color: var(--text-2); font-size: 9px; }
+.budget-facts {
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+  margin: 0 13px; padding: 10px 0 7px; border-top: 1px solid var(--hairline);
+}
+.budget-facts > span { padding: 0 7px; font-size: 11px; color: var(--text-2); }
+.budget-facts > span:first-child { padding-inline-start: 2px; }
+.budget-facts > span + span { border-inline-start: 1px solid var(--hairline); }
+.budget-facts b, .budget-shortcuts b {
+  display: block; color: var(--text); font: 600 16px/1.5 Georgia,var(--book-serif);
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.budget-note { padding: 0 15px 4px; }
+.budget-note > summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 30px; color: var(--text-2); font-size: 11px; cursor: pointer; }
+.budget-note > summary::-webkit-details-marker { display: none; }
+.budget-note > summary > span:last-child { flex: none; }
+.budget-note > summary > span:last-child::after { content: '⌄'; margin-left: 4px; }
+.budget-note[open] > summary > span:last-child::after { content: '⌃'; }
+.budget-note > p { margin: 2px 0 8px; color: var(--text-2); font-size: 11px; line-height: 1.7; }
+.budget-shortcuts {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 9px; margin: 7px 0 11px;
+}
+.budget-shortcuts button { display: flex; align-items: center; text-align: left; gap: 7px; padding: 8px 10px; min-width: 0; }
+.budget-shortcuts button + button { border-inline-start: 1px solid var(--hairline); }
+.budget-shortcuts span { min-width: 0; flex: 1; }
+.budget-shortcuts svg { width: 24px; height: 24px; flex: none; color: var(--accent); }
+.budget-shortcuts small, .focus-category small { color: var(--text-2); font-size: 10px; }
+.budget-shortcuts i, .focus-ledger i { color: var(--text-2); font-style: normal; }
+.money-page :is(.spending-focus,.credit-watch,.monthly-saving) {
+  margin: 10px 0; border: 1px solid var(--hairline); border-radius: 10px; background: var(--paper-glass);
+}
+.money-page :is(.credit-watch,.monthly-saving) { scroll-margin-top: 6px; }
+.money-page .spending-focus { padding: 0 12px; }
+.money-page .spending-focus header { margin: 0; padding: 3px 0; }
+.focus-ledger > button {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) minmax(0,auto) auto;
+  width: 100%; min-height: 46px; gap: 8px; align-items: center; text-align: start;
+  padding: 6px 0; border-top: 1px solid var(--hairline); color: var(--text);
+}
+.focus-symbol { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; background: var(--rose-wash); }
+.focus-symbol svg { width: 22px; height: 22px; }
+.focus-delivery .focus-symbol { background: var(--gold-wash); }
+.focus-drinks .focus-symbol { background: var(--blue-wash); }
+.focus-category { display: grid; grid-template-columns: minmax(0,1fr); }
+.focus-category b { font-weight: 600; font-size: 12px; }
+.focus-category .saving-track { height: 2px; max-width: 98px; margin: 3px 0; }
+.focus-category small, .focus-ledger strong { overflow-wrap: anywhere; }
+.focus-ledger strong { font: 600 16px/1.4 Georgia,var(--book-serif); text-align: end; }
+.money-page .credit-overview { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 8px 10px; }
+.money-page .credit-overview b { font-size: 18px; line-height: 1.4; }
+.credit-account > div { flex-wrap: wrap; overflow-wrap: anywhere; }
+.credit-account footer { flex-wrap: wrap; }
+.budget-credit-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; border-top: 1px dashed var(--hairline); padding-top: 4px; }
+.budget-credit-foot small { flex: 1; min-width: 0; color: var(--text-2); font-size: 10px; line-height: 1.5; }
+.budget-credit-foot .text-action { flex: none; }

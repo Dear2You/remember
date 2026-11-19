@@ -1,0 +1,78 @@
+/* Travel expenses use the scene artwork as a continuous paper wash. */
+.trip-paper {
+  position: relative; isolation: isolate; overflow: hidden;
+  margin: 3px 0 8px; padding: 12px 15px; border: 1px solid var(--hairline);
+  border-radius: var(--radius); background: var(--tint-surface);
+}
+.trip-paper::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--scene-image,url('../images/summer-mist.webp')) var(--scene-cover-position,center 54%) / cover no-repeat;
+  opacity: .25;
+}
+.trip-paper::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg,var(--tint-surface),transparent 115%);
+}
+html[data-tone="dark"] .trip-paper::before { opacity: .4; }
+html[data-visual-style="starry"] .trip-paper::before { background-position: 65% 57%; }
+.trip-balance header, .trip-entry-context, .trip-ledger header, .trip-list-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap;
+}
+.trip-balance header>span, .trip-entry-context>span { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
+.trip-paper .art-trip { width: 20px; height: 20px; flex: none; }
+.trip-balance header small { display: inline-flex; align-items: center; gap: 5px; color: var(--text); font-size: 11px; }
+.trip-balance header small::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.trip-balance strong, .trip-balance dd, .trip-record-value, .trip-list-pending b, .trip-list-bar strong { font-family: Georgia,var(--book-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.trip-pending-value { display: block; margin: 3px 0 9px; color: var(--text); font-size: 30px; font-weight: 500; line-height: 1.16; }
+.trip-balance dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 0; padding: 7px 0 0; border-top: 1px solid var(--hairline); }
+.trip-balance dt, .trip-list-pending small { font-size: 11px; color: var(--text-2); }
+.trip-balance dd { margin: 1px 0 0; font-size: 16px; line-height: 1.2; color: var(--text); }
+.trip-actions { margin: 0 0 5px; }
+.trip-actions .btn { min-width: 0; }
+.trip-actions .j-advance { border: 1px solid var(--hairline); color: var(--accent); }
+.trip-actions .j-receive:disabled { color: var(--text-3); background: var(--input-bg); }
+.trip-ledger { margin-bottom: 10px; }
+.trip-ledger header { min-height: 37px; border-bottom: 1px solid var(--hairline); }
+.trip-ledger h3 { margin: 0; font: 600 15px var(--book-serif); }
+.trip-ledger .trip-mode { font-size: 12px; }
+.trip-record .j-trip-row {
+  display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center;
+  gap: 3px 8px; padding: 7px 0; min-height: 48px; text-align: left; color: var(--text);
+}
+.trip-record-main, .trip-list-pending { display: grid; gap: 2px; min-width: 0; }
+.trip-record-main b { font-size: 13px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; }
+.trip-record-main small { font-size: 11px; line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
+.trip-record-main time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.trip-flow-arrow { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; }
+.trip-flow-arrow svg { width: 15px; height: 15px; }
+.trip-paid .trip-flow-arrow { background: var(--rose-wash); color: var(--calendar-expense); transform: rotate(-45deg); }
+.trip-received .trip-flow-arrow { background: var(--tint-surface); color: var(--income); transform: rotate(135deg); }
+.trip-record-value { max-width: 9ch; font-size: 16px; text-align: right; }
+.trip-paid .trip-record-value { color: var(--calendar-expense); }
+.trip-received .trip-record-value { color: var(--income); }
+.trip-record .trip-delete { color: var(--text-2); font-size: 11px; }
+.trip-ledger + .field-row .btn { flex: 1; min-width: 0; }
+.trip-ledger ~ .trip-receipts { margin-top: 13px; }
+.trip-entry-context { margin-bottom: 9px; }
+.trip-entry-context small { font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
+.trip-entry-amount>label, .trip-date-row>label { color: var(--text-2); font-size: 12px; }
+.trip-amount-input { display: flex; align-items: baseline; gap: 5px; color: var(--text); }
+.trip-amount-input>span { font-family: Georgia,serif; font-size: 21px; }
+.trip-amount-input input { min-width: 0; flex: 1; padding: 1px 2px; border-radius: 3px; background: transparent; color: var(--text); font: 500 29px/1.3 Georgia,var(--book-serif); }
+.trip-date-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(140px,auto); align-items: center; gap: 4px 8px; padding: 4px 0 11px; border-bottom: 1px solid var(--hairline); margin-bottom: 12px; }
+.trip-date-row input { width: 100%; min-width: 0; }
+.trip-date-row small { grid-column: 1 / -1; text-align: right; color: var(--text-2); font-size: 11px; overflow-wrap: anywhere; }
+.trip-entry-form .trip-account-choice { margin-bottom: 13px; }
+.trip-entry-form .acct-chips { gap: 5px; }
+.trip-entry-form .trip-account-choice label { max-width: 100%; }
+.trip-entry-form .trip-account-choice input+span { display: flex; align-items: center; gap: 4px; padding: 6px 8px; font-size: 12px; }
+.trip-entry-form .trip-account-choice .art-icon { flex: none; width: 17px; height: 17px; }
+.trip-entry-form .trip-account-choice .account-custom-icon { display: inline; border: 0; padding: 0; }
+.trip-list-bar { padding: 2px 0 10px; border-bottom: 1px solid var(--hairline); }
+.trip-list-bar>span { display: grid; gap: 1px; color: var(--text-2); font-size: 11px; }
+.trip-list-bar strong { color: var(--text); font-weight: 500; font-size: 23px; }
+.trip-list-row { display: grid; grid-template-columns: 25px minmax(0,1fr) minmax(0,auto); align-items: center; gap: 9px; width: 100%; margin: 0; padding: 10px 2px; border-bottom: 1px solid var(--hairline); text-align: left; }
+.trip-list-row>.art-trip { width: 23px; height: 23px; }
+.trip-list-pending { max-width: 10ch; text-align: right; }
+.trip-list-pending b { font-size: 16px; color: var(--text); }
+html[data-visual-style="future"] .trip-paper { border-radius: 5px 14px 5px 5px; }

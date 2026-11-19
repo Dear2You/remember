@@ -46,8 +46,8 @@ Views.life = (() => {
     root.innerHTML =
       // 待办
       '<div class="card j-go-tasks" style="cursor:pointer">' +
-      '  <div class="section-title">今日待办 <span class="link">全部 ›</span></div>' +
-      (dg.tasksOverdue ? '<div style="font-size:12.5px;color:var(--danger);margin-bottom:6px">⚠️ ' + dg.tasksOverdue + ' 项已逾期</div>' : '') +
+      '  <div class="section-title">今日待办 <button class="link">查看今日 ›</button></div>' +
+      (dg.tasksOverdue ? '<button class="text-action j-overdue" style="color:var(--danger)">' + dg.tasksOverdue + ' 项已逾期 ›</button>' : '') +
       (dg.tasksOpen
         ? Store.tasksBy('today').slice(0, 3).map(t => {
           const done = Store.taskDoneOn(t, today);
@@ -57,7 +57,7 @@ Views.life = (() => {
             (t.important ? '<span style="font-size:12px">⭐</span>' : '') + (t.urgent ? '<span style="font-size:12px">🔥</span>' : '') +
             '</div>';
         }).join('') + (dg.tasksOpen > 3 ? '<div style="font-size:12px;color:var(--text-3)">还有 ' + (dg.tasksOpen - 3) + ' 项…</div>' : '')
-        : '<div style="font-size:13px;color:var(--text-3);padding:4px 0">今天没有待办</div>') +
+        : '<div style="font-size:13px;color:var(--text-3);padding:4px 0">' + (dg.tasksOverdue ? '今天没有其他待办' : '今天没有待办') + '</div>') +
       '  <button class="btn btn-ghost j-add-task" style="width:100%;margin-top:8px;padding:8px 0">＋ 添加今日待办</button>' +
       '</div>' +
 
@@ -118,8 +118,8 @@ Views.life = (() => {
       '  </div></div>';
 
     root.querySelector('.j-go-tasks').onclick = e => {
-      if (e.target.closest('.j-check') || e.target.closest('.j-add-task')) return;
-      Views.life.go('tasks');
+      if (e.target.closest('.j-check, .j-add-task')) return;
+      Views.lifetasks.openList(e.target.closest('.j-overdue') ? 'overdue' : 'today');
     };
     root.querySelectorAll('.j-check').forEach(b => b.onclick = e => {
       e.stopPropagation();

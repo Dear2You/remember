@@ -125,9 +125,17 @@
       });
       return g;
     },
-    savingGoalSummary(g) {
+    savingGoalSummary(g, today = U.todayStr()) {
       const balance = this.accountBalance(g.accountId);
-      return {balance,remaining:Math.max(0,g.targetMinor-balance),ratio:Math.max(0,Math.min(1,balance/g.targetMinor)),complete:balance>=g.targetMinor};
+      const remaining = Math.max(0,g.targetMinor-balance);
+      const summary = {balance,remaining,ratio:Math.max(0,Math.min(1,balance/g.targetMinor)),complete:remaining===0};
+      if (!remaining || !g.deadline) return summary;
+      if (g.deadline < today) return {...summary, pace:{past:true}};
+      const first = this.nextPayday(today), lastMonth = g.deadline.slice(0,7);
+      const start = U.ymParts(first.date.slice(0,7)), end = U.ymParts(lastMonth);
+      const lastPayday = this.nextPayday(lastMonth+'-01').date;
+      const count = Math.max(0,(end.y-start.y)*12+end.m-start.m+(lastPayday<=g.deadline?1:0));
+      return {...summary, pace:{count,day:first.day,startsToday:first.date===today,perPayday:count?Math.ceil(remaining/count):0}};
     },
     removeSavingGoal(id) { this.mutate(d => {d.savingGoals=d.savingGoals.filter(g => g.id!==id);}); },
     validateMoneyBackup(d) {
