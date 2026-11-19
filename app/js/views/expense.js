@@ -22,11 +22,31 @@ Views.expense = (() => {
   }
 
   /* ---------- 记一笔 / 编辑弹层 ---------- */
+  function canRepeat(item) {
+    return item && (item.type === 'out' || item.type === 'in') && !item.tripId &&
+      !item.subscriptionId && !item.transferFeeFor && !item.wageProject && !item.wageMonth && !item.wageNeedsReview;
+  }
+  function repeatEntry(item) {
+    const book = Store.book(item.bookId);
+    const account = Store.account(item.accountId);
+    const category = Store.category(item.categoryId);
+    const root = Store.catRoot(item.categoryId);
+    const fields = {
+      _repeat: true, amount: Store.fmtMinor(item.amountMinor), note: item.note || '',
+      paymentChannel: item.type === 'out' ? item.paymentChannel || '' : '',
+      bookId: book && !book.archived ? book.id : '',
+      accountId: account && !account.archived && (item.type === 'out' || account.type !== 'liability') ? account.id : '',
+      categoryId: root?.kind === item.type && !root.archived && !category.archived ? category.id : ''
+    };
+    fields._direct = !fields.bookId || !fields.accountId || !fields.categoryId;
+    openEntrySheet(null, item.type, U.todayStr(), fields);
+  }
   function openEntrySheet(editItem, presetKind, presetDate, draft, onSaved) {
     if(editItem?.transferFeeFor){editItem=Store.data.transactions.find(t=>t.id===editItem.transferFeeFor);if(!editItem){UI.toast('找不到关联转账','err');return;}}
     if (editItem?.tripId) { Views.trips.edit(editItem); return; }
     const activeTrip = Store.trip(Store.settings.activeTripId);
-    let tripExpense = !editItem && !!activeTrip;
+    const repeating = !!draft?._repeat;
+    let tripExpense = !editItem && !repeating && !!activeTrip;
     const books = Store.books();
     const accsAll = Store.accounts(true);
     const assetAccs = accsAll.filter(a => a.type !== 'liability');
@@ -67,10 +87,11 @@ Views.expense = (() => {
     const accountLabel = account => U.escapeHtml(account.name) + (account.archived ? ' · 已停用' : '');
 
     UI.sheet({
-      title: editItem ? '编辑账单' : '记一笔',
+      title: editItem ? '编辑账单' : repeating ? '再记一笔' : '记一笔',
       content(body, close) {
         body.classList.add('entry-sheet');body.closest('.sheet-panel').classList.add('ledger-entry-panel');
         body.closest('.sheet-panel').querySelector('.sheet-title').insertAdjacentHTML('afterbegin',UI.art('edit'));
+        let initialFields;
         function render() {
           const isTransfer = state.type === 'transfer';
           const advance = tripExpense && state.type === 'out';
@@ -78,13 +99,13 @@ Views.expense = (() => {
           const roots = Store.rootCategories(catKind);
           if (!state.categoryId || Store.catRoot(state.categoryId)?.kind !== catKind) {
             const first = roots[0];
-            state.categoryId = first ? (Store.subCategories(first.id)[0] || first).id : '';
+            state.categoryId = !repeating && first ? (Store.subCategories(first.id)[0] || first).id : '';
           }
           const root = Store.category(state.categoryId);
           const rootCat = root ? Store.catRoot(state.categoryId) : null;
           const subs = rootCat ? Store.subCategories(rootCat.id) : [];
           const accs = accountChoices(state.type === 'in' ? assetAccs : accsAll, 'accountId');
-          if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = (accs[0] || {}).id || '';
+          if (!isTransfer && !accs.some(a => a.id === state.accountId)) state.accountId = repeating ? '' : (accs[0] || {}).id || '';
           const isRepayMode = isTransfer && Store.account(state.toId) && Store.account(state.toId).type === 'liability';
           const selectedBook = Store.book(state.bookId);
           const bookOptions = books.map(b =>
@@ -92,29 +113,38 @@ Views.expense = (() => {
           ).join('');
           const archivedOption = selectedBook?.archived
             ? `<option value="${U.escapeHtml(selectedBook.id)}" selected disabled>${U.escapeHtml(selectedBook.name)}（已归档）</option>` : '';
+          const missing = [];
+          if (repeating) {
+            if (!advance && !state.bookId) missing.push('账本');
+            if (!isTransfer && !state.accountId) missing.push('账户');
+            if (!isTransfer && !state.categoryId) missing.push('分类');
+          }
 
           body.innerHTML =
             (reviewing ? '<section class="entry-review"><div class="review-kind">' + (advance ? '出差垫付 · '+U.escapeHtml(activeTrip.name) : catKind === 'in' ? '收入' : '支出') +
               ' · ' + U.escapeHtml((root || {}).name || '未分类') + '</div><strong class="num ' + (catKind === 'in' ? 'money-in' : 'money-out') + '">' +
               (catKind === 'in' ? '+' : '−') + '¥' + U.escapeHtml(state.amount) + '</strong><dl>' +
               '<dt>日期</dt><dd>' + U.escapeHtml(U.fmtFull(state.date)) + '</dd><dt>账户</dt><dd>' + U.escapeHtml(Store.accountName(state.accountId)) +
-              '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(advance ? activeTrip.bookId : state.bookId)?.name || '未选择') + '</dd></dl></section>' : '') +
+              '</dd><dt>账本</dt><dd>' + U.escapeHtml(Store.book(advance ? activeTrip.bookId : state.bookId)?.name || '未选择') + '</dd>' +
+              (state.paymentChannel && state.type === 'out' ? '<dt>支付渠道</dt><dd>'+U.escapeHtml(state.paymentChannel)+'</dd>' : '') +
+              (state.note ? '<dt>备注</dt><dd>'+U.escapeHtml(state.note)+'</dd>' : '') + '</dl></section>' : '') +
             '<div class="entry-fields"' + (reviewing ? ' hidden' : '') + '>' +
             '<div class="seg j-type" role="group" aria-label="账单类型">' +
               [['out','wallet','支出'],['in','coin','收入'],['transfer','transfer','转账/还款']].map(([type,icon,label]) =>
                 `<button data-t="${type}" aria-pressed="${state.type===type}" class="${state.type===type?'on':''}">${UI.art(icon)}${label}</button>`
               ).join('') + '</div>' +
-            (activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
+            (!editItem && activeTrip && state.type==='out' ? '<div class="trip-entry"><span>'+U.escapeHtml(activeTrip.name)+'</span><label><input class="j-trip-expense" type="checkbox" '+(advance?'checked':'')+'>记为出差垫付</label></div>' : '') +
             `<label class="entry-amount ${state.type==='out'?'money-out':state.type==='in'?'money-in':''}">
               <small>${isTransfer?'转账金额':advance?'垫付金额':state.type==='out'?'支出金额':'收入金额'}</small><span aria-hidden="true">¥</span>
               <input aria-label="金额（元）" class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="${U.escapeHtml(state.amount)}" autocomplete="off">
             </label><div class="entry-budget-check" aria-live="polite"></div>` +
             '<div class="entry-context">' +
-            `<label class="entry-book"${advance?' hidden':''}><span>账本</span><select class="j-book">${archivedOption}${bookOptions}</select></label>` +
+            `<label class="entry-book"${advance?' hidden':''}><span>账本</span><select class="j-book">${!state.bookId?'<option value="" disabled selected>请选择账本</option>':''}${archivedOption}${bookOptions}</select></label>` +
+            (canRepeat(editItem) ? '<button class="btn btn-ghost j-repeat" type="button">再记一笔</button>' : '') +
             (!editItem ? '<details class="sentence-entry"><summary>'+UI.art('edit')+'一句话记账</summary><form class="sentence-form">' +
               '<label for="sentenceText">描述一笔收入或支出</label><div><input id="sentenceText" maxlength="120" autocomplete="off" placeholder="昨天微信午饭 28 元" value="' + U.escapeHtml(sentence) + '">' +
               '<button class="btn btn-primary" type="submit">填入账单</button></div><small role="status"></small></form></details>' : '') +
-            '</div>' +
+            '</div>' + (missing.length ? '<p class="payroll-help" role="status">请为新账单选择'+missing.join('、')+'。</p>' : '') +
 
             (isTransfer
               ? '<div class="field" style="margin-top:12px"><label>转出账户（资产）</label><div class="acct-chips j-from">' +
@@ -171,13 +201,19 @@ Views.expense = (() => {
               body.scrollTop=0;
             };
           }
+          const repeat = body.querySelector('.j-repeat');
+          if (repeat) repeat.onclick = async () => {
+            const dirty = Object.keys(initialFields).some(key => initialFields[key] !== state[key]);
+            if (dirty && !await UI.confirm({title:'按已保存的账单再记一笔？',msg:'当前修改还没有保存。继续将用原账单的内容新建一笔。',okText:'按原账新建',cancelText:'继续编辑'})) return;
+            repeatEntry(editItem);
+          };
           const amend = body.querySelector('.j-amend');
           if (amend) amend.onclick = () => { reviewing = false; render(); };
           const toggleTrip = body.querySelector('.j-trip-expense');
           if (toggleTrip) toggleTrip.onchange = () => { tripExpense = toggleTrip.checked; render(); };
           body.querySelector('.j-book').onchange = e => {
             state.bookId = e.target.value;
-            paintBudget();
+            if (repeating) render(); else paintBudget();
           };
           body.querySelector('.j-type').onclick = e => {
             const b = e.target.closest('button[data-t]');
@@ -223,7 +259,7 @@ Views.expense = (() => {
           }
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; paintBudget(); };
           const channel=body.querySelector('.j-channel');if(channel)channel.onchange=e=>{state.paymentChannel=e.target.value;};
-          body.querySelector('.j-date').onchange = e => { state.date = e.target.value || U.todayStr(); syncChips(); };
+          body.querySelector('.j-date').onchange = e => { state.date = e.target.value; syncChips(); };
           body.querySelector('.j-today').onclick = () => { state.date = U.todayStr(); body.querySelector('.j-date').value = state.date; syncChips(); };
           body.querySelector('.j-yest').onclick = () => {
             const y = new Date(); y.setDate(y.getDate() - 1);
@@ -250,9 +286,11 @@ Views.expense = (() => {
             if (saving) return;
             const minor = Store.parseAmount(state.amount);
             if (!minor) { UI.toast('请输入正确金额（大于 0，最多两位小数）', 'err'); return; }
+            if (!state.date) { UI.toast('请选择账单日期', 'err'); return; }
+            if (missing.length) { UI.toast('请选择'+missing.join('、'), 'err'); return; }
             if (isTransfer && state.fromId === state.toId) { UI.toast('转出与转入账户不能相同', 'err'); return; }
             if (state.type !== 'transfer' && !state.accountId) { UI.toast('请选择账户', 'err'); return; }
-            if (!state.bookId) { UI.toast('请选择账本', 'err'); return; }
+            if (!(advance ? activeTrip.bookId : state.bookId)) { UI.toast('请选择账本', 'err'); return; }
             let transferTerms;
             try { if(isTransfer)transferTerms=feeTerms(state); }catch(e){UI.toast(e.message,'err');return;}
             saving = true;
@@ -294,6 +332,7 @@ Views.expense = (() => {
           };
         }
         render();
+        if (editItem) initialFields = {...state};
       }
     });
   }
@@ -308,24 +347,26 @@ Views.expense = (() => {
         const roots = Store.rootCategories('', true);
         let pickRoot = draft.categoryId ? (Store.catRoot(draft.categoryId) || {}).id : '';
         function render() {
-          const subs = pickRoot ? Store.subCategories(pickRoot) : [];
+          const categoryKind = draft.type === 'advance' ? 'out' : draft.type;
+          const hasCategories = !['transfer','reimbursement'].includes(draft.type);
+          const subs = pickRoot ? Store.categories('', true).filter(c=>c.parentId===pickRoot) : [];
           body.innerHTML =
             '<div class="field"><label>类型</label><div class="chips-wrap">' +
-            ['', 'out', 'in', 'transfer'].map(t =>
-              '<button class="chip j-f ' + (draft.type === t ? 'on' : '') + '" data-v="' + t + '">' + ({ '': '全部', out: '支出', in: '收入', transfer: '转账/还款' })[t] + '</button>').join('') +
+            ['', 'out', 'in', 'transfer', 'advance', 'reimbursement'].map(t =>
+              '<button class="chip j-f ' + (draft.type === t ? 'on' : '') + '" data-v="' + t + '">' + ({ '': '全部', out: '支出', in: '收入', transfer: '转账/还款', advance:'出差垫付', reimbursement:'报销到账' })[t] + '</button>').join('') +
             '</div></div>' +
             '<div class="field"><label>账户</label><div class="chips-wrap">' +
             '<button class="chip j-a ' + (!draft.accountId ? 'on' : '') + '" data-v="">全部</button>' +
             accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
             '</div></div>' +
-            (draft.type === 'transfer' ? '' : '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
+            (!hasCategories ? '' : '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
             '<button class="chip j-c ' + (!draft.categoryId ? 'on' : '') + '" data-v="">全部</button>' +
-            roots.filter(c => !draft.type || c.kind === draft.type).map(c => '<button class="chip j-c ' + (pickRoot === c.id && draft.categoryId ? 'on' : '') + '" data-v="' + c.id + '">' + UI.categoryIcon(c) + ' ' + U.escapeHtml(c.name) + '</button>').join('') +
+            roots.filter(c => !categoryKind || c.kind === categoryKind).map(c => '<button class="chip j-c ' + (pickRoot === c.id && draft.categoryId ? 'on' : '') + '" data-v="' + U.escapeHtml(c.id) + '">' + UI.categoryIcon(c) + ' ' + U.escapeHtml(c.name) + (c.archived?'（已归档）':'') + '</button>').join('') +
             '</div></div>') +
             (pickRoot && subs.length && draft.categoryId
               ? '<div class="field"><label>二级分类</label><div class="chips-wrap">' +
                 '<button class="chip j-s ' + (draft.subId === '' ? 'on' : '') + '" data-v="">整级（含全部子类）</button>' +
-                subs.map(s => '<button class="chip j-s ' + (draft.subId === s.id ? 'on' : '') + '" data-v="' + s.id + '">' + s.icon + ' ' + U.escapeHtml(s.name) + '</button>').join('') +
+                subs.map(s => '<button class="chip j-s ' + (draft.subId === s.id ? 'on' : '') + '" data-v="' + U.escapeHtml(s.id) + '">' + UI.categoryIcon(s) + ' ' + U.escapeHtml(s.name) + (s.archived?'（已归档）':'') + '</button>').join('') +
                 '</div></div>'
               : '') +
             '<div class="field"><label>关键词</label><input class="j-kw" placeholder="备注、分类或账户" value="' + U.escapeHtml(draft.kw) + '"></div>' +
@@ -336,7 +377,8 @@ Views.expense = (() => {
           const bind = (cls, fn) => body.querySelectorAll(cls).forEach(b => b.onclick = () => fn(b));
           bind('.j-f', b => {
             draft.type = b.dataset.v;
-            if (draft.type && pickRoot && (Store.category(pickRoot) || {}).kind !== draft.type) {
+            const kind = draft.type === 'advance' ? 'out' : draft.type;
+            if (kind && pickRoot && (Store.category(pickRoot) || {}).kind !== kind) {
               pickRoot = draft.categoryId = draft.subId = '';
             }
             render();
@@ -400,7 +442,7 @@ Views.expense = (() => {
       if (needle) {
         const summary = tSummary(t);
         const type = {in:'收入', out:'支出', transfer:'转账'}[t.type];
-        if (![type, summary.title, summary.sub].some(text => (text || '').toLowerCase().includes(needle))) return false;
+        if (![type, summary.title, summary.sub, t.accountId && Store.accountName(t.accountId)].some(text => (text || '').toLowerCase().includes(needle))) return false;
       }
       return true;
     });

@@ -46,7 +46,18 @@ html[data-visual-style="future"] .folio-day>b { font-family: var(--ui-font); fon
 .folio-ledger { padding: 2px 14px 12px; }
 .folio-ledger header { display: flex; align-items: center; gap: 7px; }
 .folio-ledger h2 { flex: none; font: 600 14px/1.4 var(--book-serif); }
-.folio-book-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 11px; color: var(--text-2); }
+.folio-book-filter { flex: 1; min-width: 0; }
+.folio-book-filter select {
+  width: auto; max-width: 100%; min-height: 36px; padding: 0 2px; background-color: transparent;
+  font: 500 12px/1.4 var(--ui-font); color: var(--text); text-overflow: ellipsis;
+}
+.folio-book-filter option { background: var(--card); color: var(--text); }
+.agenda-line { display: flex; align-items: center; min-width: 0; }
+.agenda-line+.agenda-line { border-top: 1px solid var(--hairline); }
+.agenda-line .overview-row { flex: 1; min-width: 0; }
+.agenda-check { display: grid; place-items: center; min-width: 38px; min-height: 42px; color: var(--accent); }
+.agenda-check span { width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 6px; background: var(--accent-weak); }
+.home-agenda .overview-more { font-weight: 550; }
 .folio-ledger .visibility-toggle, .folio-ledger .text-action { min-width: 36px; min-height: 38px; flex: none; }
 .folio-ledger .text-action { color: var(--text); }
 .folio-ledger .visibility-toggle { display: grid; place-items: center; padding: 0; color: var(--text-2); }

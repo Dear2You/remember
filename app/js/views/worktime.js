@@ -5,7 +5,13 @@ Views.worktime = (() => {
   let mode = 'cal'; // cal | list
   let distribution = 'pay';
   let scope = 'month', initialized = false;
-  function openPeriod(){const p=Store.primarySalaryPlan();scope='period';ym=p?.month || U.ymNow();initialized=true;App.go('worktime');}
+  function openCurrent(payroll) {
+    const plan=payroll && Store.primarySalaryPlan();
+    scope=plan?'period':'month';
+    ym=plan?plan.month:U.ymNow();
+    initialized=true;
+    App.go('worktime');
+  }
 
   function dayPayText(day) {
     if (Store.settings.hideAmount) return '••••';
@@ -233,8 +239,10 @@ Views.worktime = (() => {
   /* ---------- 页面 ---------- */
   function mount(root) {
     const primary=Store.primarySalaryPlan() || [...Store.data.salaryMonths].sort((a,b)=>b.month.localeCompare(a.month))[0];
+    if(!primary)scope='month';
     if(!initialized){if(primary&&scope==='period')ym=WorkCalendar.monthFor(U.todayStr(),primary.cycleStartDay || 1);initialized=true;}
     const cycle=scope==='period'?(primary?.cycleStartDay || 1):1;
+    const currentMonth=WorkCalendar.monthFor(U.todayStr(),cycle);
     const range=WorkCalendar.period(ym,cycle),ws=Store.rangeWorkSummary(range.start,range.end);
     const rows=WorkCalendar.matrix(range.start,range.end);
     const first = rows[0][0].date, last = rows[rows.length - 1][6].date;
@@ -321,12 +329,12 @@ Views.worktime = (() => {
       (primary?'<div class="work-scope report-switch page-tabs" role="group" aria-label="统计范围">'+[['month','自然月'],['period','工资周期']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
       '    <header class="work-monthbar"><div class="work-month">' +
-      '      <button class="j-prev" aria-label="上个月">‹</button><h2>' + (scope==='period'&&primary?Number(ym.slice(5))+'月结算期':U.ymLabel(ym)) + '</h2>' +
-      '      <button class="j-next" aria-label="下个月">›</button></div>' +
+      '      <button class="j-prev" aria-label="上个月" '+(ym<='1000-03'?'disabled':'')+'>‹</button><label class="work-month-pick"><span>' + U.ymLabel(ym)+(scope==='period'&&primary?'结算期':'') + '</span><input aria-label="选择工时月份" type="month" value="'+ym+'" min="1000-03" max="9999-11"></label>' +
+      '      <button class="j-next" aria-label="下个月" '+(ym>='9999-11'?'disabled':'')+'>›</button></div>' +
       '      <div class="report-switch" role="group" aria-label="工时视图">' +
       '        <button data-m="cal" aria-pressed="' + (mode === 'cal') + '">月历</button>' +
       '        <button data-m="list" aria-pressed="' + (mode === 'list') + '">列表</button></div></header>' +
-      '<p class="work-range">'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</p>'+
+      '<div class="work-range work-range-nav"><span>'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</span>'+(ym!==currentMonth?'<button class="j-current-range">'+(scope==='period'?'回本期':'回本月')+'</button>':'')+'</div>'+
       '  <div class="stat-grid worktime-summary">' +
       '    <div><div class="lab">已记工时</div><div class="val num">' + U.fmtHours(ws.total) + '</div></div>' +
       '    <div><div class="lab">已计工资</div><div class="val num">¥' + UI.amount(ws.pay, true) + '</div></div>' +
@@ -355,9 +363,16 @@ Views.worktime = (() => {
     root.querySelector('.j-add').onclick=()=>openDaySheet(U.todayStr()>=range.start&&U.todayStr()<=range.end?U.todayStr():range.start);
     root.querySelector('.j-prev').onclick = () => { ym = U.ymShift(ym, -1); App.refresh(true); };
     root.querySelector('.j-next').onclick = () => { ym = U.ymShift(ym, 1); App.refresh(true); };
+    root.querySelector('.work-month-pick input').onchange=e=>{
+      const next=e.target.value;
+      if(!WorkCalendar.validMonth(next)||next<e.target.min||next>e.target.max){e.target.value=ym;return;}
+      ym=next;App.refresh(true);
+    };
+    const reset=root.querySelector('.j-current-range');
+    if(reset)reset.onclick=()=>{ym=currentMonth;App.refresh(true);};
     root.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; App.refresh(true); });
     root.querySelectorAll('.j-day, .j-day2').forEach(el => el.onclick = () => openDaySheet(el.dataset.date));
   }
 
-  return { mount, openDaySheet, openWageSheet, openPeriod };
+  return { mount, openDaySheet, openWageSheet, openCurrent, openPeriod:()=>openCurrent(true) };
 })();

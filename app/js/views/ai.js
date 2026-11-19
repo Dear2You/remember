@@ -14,6 +14,11 @@ Views.ai = (() => {
       return 'v'+window.__APP_VERSION+' 功能手册\n'+titles.map(t=>'· '+t).join('\n')+'\n\n发送其中一个标题可查看步骤，例如“删除报销到账”。';
     }
     if (guideSections.has(text)) return guideSections.get(text);
+    if (/怎么|如何|在哪|哪里|找不到|能不能|可以.*吗/.test(text)) {
+      if (/再记一笔|复制.*(?:账单|旧账)|复用.*(?:支出|收入|账单)/.test(text)) return guideSections.get('从旧账再记一笔');
+      if (/跨月|全部日期|历史流水|查旧账/.test(text) && /账|流水|明细/.test(text)) return guideSections.get('跨月查流水');
+      if (/清单|勾选.*备忘/.test(text) && /备忘|购物清单|待勾|勾选|买菜清单/.test(text)) return guideSections.get('备忘录清单');
+    }
     if(/自动续期|工资.*自动生成|自动生成.*工资/.test(text))return guideSections.get('工资自动续期') || '';
     if(/星空|主题|外观|水墨|碧海|海洋|海岸|未来回响|未来科技|科技风|松间晨雾|落日余温|森林风|配色|色系/.test(text)&&/怎么|如何|在哪|哪里|设置|切换|换|打开|选择/.test(text))return guideSections.get('主题与外观') || '';
     if(/预算|存钱|攒钱|存入|取出/.test(text)&&/怎么|如何|在哪|哪里|设置|修改|删除|操作/.test(text))return guideSections.get('预算与存钱') || '';

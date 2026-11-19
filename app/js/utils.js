@@ -239,14 +239,23 @@ const UI = {
       slide.onfinish = () => { if (page.isConnected) adjacent.click(); };
     },{passive:false});
   },
-  toast(msg, type) {
+  toast(msg, type, action) {
     const root = document.getElementById('toastRoot');
     const t = document.createElement('div');
     t.className = 'toast' + (type === 'err' ? ' err' : '');
+    t.setAttribute('role', type==='err'?'alert':'status');
     t.textContent = msg;
+    if(action){
+      t.classList.add('toast-action');
+      const button=document.createElement('button');
+      button.textContent=action.label;
+      button.onclick=()=>{t.remove();try{action.run();}catch(err){UI.toast(err.message,'err');}};
+      t.appendChild(button);
+    }
     root.appendChild(t);
-    setTimeout(() => { t.style.transition = 'opacity .25s'; t.style.opacity = '0'; }, 1900);
-    setTimeout(() => t.remove(), 2200);
+    const delay=action?7000:1900;
+    setTimeout(() => {t.style.transition='opacity .25s';t.style.opacity='0';},delay);
+    setTimeout(() => t.remove(),delay+300);
   },
 
   confirm(opt) {

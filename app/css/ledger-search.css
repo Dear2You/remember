@@ -1,0 +1,19 @@
+.bill-report .report-period[hidden] { display: none; }
+.bill-report .ledger-search { display: flex; align-items: stretch; gap: 6px; margin: 8px 0; }
+.bill-report .ledger-search input { flex: 1; min-width: 0; }
+.bill-report .ledger-search select { flex: none; width: auto; max-width: 42%; padding-inline: 8px; font-size: 12px; }
+.bill-report .ledger-totals { padding: 9px 12px 11px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px; }
+.bill-report .ledger-totals header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--text-2); font-size: 11px; }
+.bill-report .ledger-totals header span:first-child { font: 600 13px var(--book-serif); color: var(--text); }
+.bill-report .ledger-totals dl { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 7px 0 0; }
+.bill-report .ledger-totals dl>div { flex: 1 1 max-content; min-width: 0; max-width: 100%; }
+.bill-report .ledger-totals dt { color: var(--text-2); font-size: 11px; }
+.bill-report .ledger-totals dd { margin: 1px 0 0; font: 500 18px/1.3 Georgia,var(--ui-font); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bill-report .j-results button.cell { width: 100%; text-align: left; color: var(--text); }
+.bill-report .j-results .day-group { margin-top: 8px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.bill-report .j-results .day-head { gap: 3px 10px; flex-wrap: wrap; padding: 7px 10px; color: var(--text); border-bottom: 1px solid var(--hairline); }
+.bill-report .j-results .day-head .num { margin-left: auto; overflow-wrap: anywhere; }
+.bill-report .j-results .cell-list { border: 0; border-radius: 0; box-shadow: none; }
+.bill-report .j-results :is(.c-title,.c-sub,.c-val) { display: block; }
+.bill-report .ledger-more { width: 100%; min-height: 42px; margin-top: 7px; color: var(--accent); background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 8px; }
+.bill-report .ledger-empty>.art-icon { width: 32px; height: 32px; }

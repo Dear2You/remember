@@ -10,6 +10,10 @@ Views.bills = (() => {
   };
   let statKind = '';
   let chartType = 'line';
+  const batchSize = 60;
+  let detailAllDates = false;
+  let detailLimit = batchSize;
+  let detailQuery = '';
 
   const KIND_LABEL = { week: '周账单', month: '月账单', year: '年账单' };
 
@@ -112,7 +116,7 @@ Views.bills = (() => {
     return `<div class="report-tabs page-tabs j-top" role="group" aria-label="账单视图">${names.map(([key,title]) =>
       `<button data-t="${key}" aria-pressed="${selected===key}">${title}</button>`).join('')}</div>
       <div class="swipe-panel">
-      <div class="report-period"><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
+      <div class="report-period"${selected==='detail' && detailAllDates ? ' hidden' : ''}><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
         <button class="mn-btn j-prev" aria-label="上一周期">‹</button><button class="mn-btn j-next" aria-label="下一周期">›</button></div>`;
   }
   function bindHeader(root, mode) {
@@ -131,20 +135,24 @@ Views.bills = (() => {
     const p = periodOf(mode);
     const bookId = E.curBook();
     const books = Store.books();
-    const stat = Store.periodStats(bookId, p);
+    const allDates = selected === 'detail' && detailAllDates;
+    const bookList = Store.txOfBook(bookId);
+    const inScope = allDates ? bookList : bookList.filter(t => t.date >= p.start && t.date <= p.end);
     const F = { ...E.filter, kw: E.filter.kw.trim() };
-    const filtered = E.applyFilter(stat.list);
+    const filtered = E.applyFilter(inScope);
     const hasFilter = F.type || F.accountId || F.categoryId || F.subId || F.kw;
     const fOut = filtered.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
     const fInc = filtered.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
     const hidden = Store.settings.hideAmount;
     const rows = selected === 'detail' ? [] : FinanceReport.buckets(p, filtered);
     const filterLabels = [
-      ({out:'支出', in:'收入', transfer:'转账/还款'})[F.type],
+      ({out:'支出', in:'收入', transfer:'转账/还款', advance:'出差垫付', reimbursement:'报销到账'})[F.type],
       F.accountId && Store.accountName(F.accountId),
-      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, F.kw
+      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, selected !== 'detail' && F.kw
     ].filter(Boolean).map(U.escapeHtml);
-    const filterBar = hasFilter ? `<div class="report-filter"><span>${filterLabels.join(' · ')} · ${filtered.length}/${stat.list.length} 笔</span><button class="j-clearall">清除筛选</button></div>` : '';
+    const filterCount = selected === 'detail' ? '' : ` · ${filtered.length}/${inScope.length} 笔`;
+    const showFilters = hasFilter && (selected !== 'detail' || F.type || F.accountId || F.categoryId);
+    const filterBar = showFilters ? `<div class="report-filter"><span>${filterLabels.join(' · ') || '已筛选'}${filterCount}</span><button class="j-clearall">清除筛选</button></div>` : '';
     const pageHead = `<div class="page bill-report"><div class="page-head chapter-head">${UI.pageTitle('账单','book')}
       <div class="report-actions"><select class="j-book-select" aria-label="选择账本">
       <option value="">全部账本</option>${books.map(b=>`<option value="${U.escapeHtml(b.id)}" ${bookId===b.id?'selected':''}>${U.escapeHtml(b.name)}</option>`).join('')}
@@ -155,7 +163,7 @@ Views.bills = (() => {
       + `<div class="j-filters">${filterBar}</div>`;
     const comparison = selected === 'report' ? PeriodComparison.collect(p, bookId, filtered) : null;
     const comparisonKind = F.type === 'in' || (comparison && !comparison.now.out && !comparison.before.out) ? 'in' : 'out';
-    const summary = FinanceReport.summary(fOut, fInc, p, filtered.length, PeriodComparison.button(comparison, comparisonKind));
+    const summary = selected === 'detail' ? '' : FinanceReport.summary(fOut, fInc, p, filtered.length, PeriodComparison.button(comparison, comparisonKind));
     function bindCommon() {
       bindHeader(root, mode);
       const compare = root.querySelector('.j-compare');
@@ -163,9 +171,12 @@ Views.bills = (() => {
       const select = root.querySelector('.j-book-select');
       select.onchange = () => {
         if (select.options[select.selectedIndex].dataset.manage) { select.value=bookId; Views.settings.openBooksSheet(); return; }
-        Store.settings.currentBookId=select.value; Store.save(); App.refresh(true);
+        try {Store.mutate(d=>{d.settings.currentBookId=select.value;});}
+        catch(err){select.value=bookId;UI.toast(err.message,'err');}
       };
-      root.querySelector('.j-eye').onclick = () => { Store.settings.hideAmount=!hidden; Store.save(); App.refresh(); };
+      root.querySelector('.j-eye').onclick = () => {
+        try{Store.mutate(d=>{d.settings.hideAmount=!hidden;});}catch(err){UI.toast(err.message,'err');}
+      };
       root.querySelector('.j-filter').onclick = () => E.openFilterSheet();
       root.querySelector('.j-filters').onclick = e => {
         if (e.target.closest('.j-clearall')) { E.clearFilter(); App.refresh(true); }
@@ -211,11 +222,28 @@ Views.bills = (() => {
 
     /* ================= 账单报表 ================= */
     if (selected === 'detail') {
-      const byDay = {};
+      const query = JSON.stringify([bookId, allDates ? 'all' : p.start, allDates ? '' : p.end, F]);
+      if (!preview && query !== detailQuery) {
+        detailLimit = batchSize;
+        detailQuery = query;
+      }
+      const limit = preview ? batchSize : detailLimit;
+      const number = n => hidden ? '••••' : (n < 0 ? '−¥' : '¥') + UI.amount(Math.abs(n), true);
+      const otherLabel = {transfer:'转账本金', advance:'出差垫付', reimbursement:'报销到账'}[F.type];
+      const values = otherLabel
+        ? [[otherLabel, filtered.reduce((s,t)=>s+t.amountMinor,0), '']]
+        : [['支出',fOut,'money-out'],['收入',fInc,'money-in'],['结余',fInc-fOut,'']];
+      const totals = `<section class="ledger-totals" aria-label="流水合计"><header><span>${hasFilter?'匹配结果':allDates?'全部日期':'本期流水'}</span><span>${filtered.length} 笔</span></header>
+        <dl>${values.map(([label,n,cls])=>`<div><dt>${label}</dt><dd class="${cls}">${number(n)}</dd></div>`).join('')}</dl></section>`;
+      const byDay = Object.create(null);
       filtered.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
       const days = Object.keys(byDay).sort().reverse();
+      let remaining = limit;
       const listHtml = days.length
         ? days.map(d => {
+          if (remaining <= 0) return '';
+          const visible = byDay[d].sort((a,b)=>b.createdAt-a.createdAt).slice(0, remaining);
+          remaining -= visible.length;
           const dO = byDay[d].filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
           const dI = byDay[d].filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
           const dT = byDay[d].filter(t => t.type === 'transfer').reduce((s, t) => s + t.amountMinor, 0);
@@ -223,28 +251,32 @@ Views.bills = (() => {
           if (dO) bits.push('支出 ¥' + UI.amount(dO));
           if (dI) bits.push('收入 ¥' + UI.amount(dI));
           if (dT) bits.push('转账 ¥' + UI.amount(dT));
-          return '<div class="day-group"><div class="day-head"><span>' + U.fmtDay(d) + '</span><span class="num">' + bits.join(' · ') + '</span></div>' +
-            '<div class="cell-list">' + byDay[d].sort((a, b) => b.createdAt - a.createdAt).map(t => {
+          const dayLabel = allDates && d.slice(0,4) !== U.todayStr().slice(0,4) ? U.fmtFull(d) : U.fmtDay(d);
+          return '<div class="day-group"><div class="day-head"><span>' + dayLabel + '</span><span class="num">' + bits.join(' · ') + '</span></div>' +
+            '<div class="cell-list">' + visible.map(t => {
               const s = E.tSummary(t);
-              return '<div class="cell j-item" data-id="' + t.id + '"><div class="c-ico">' + UI.entryIcon(t) + '</div>' +
-                '<div class="c-main"><div class="c-title">' + U.escapeHtml(s.title) + '</div><div class="c-sub">' + U.escapeHtml(s.sub) + '</div></div>' +
-                '<div class="c-right"><div class="c-val">' + E.tAmountHtml(t) + '</div></div></div>';
+              return '<button class="cell j-item" data-id="' + U.escapeHtml(t.id) + '"><span class="c-ico">' + UI.entryIcon(t) + '</span>' +
+                '<span class="c-main"><span class="c-title">' + U.escapeHtml(s.title) + '</span><span class="c-sub">' + U.escapeHtml(s.sub) + '</span></span>' +
+                '<span class="c-right"><span class="c-val">' + E.tAmountHtml(t) + '</span></span></button>';
             }).join('') + '</div></div>';
-        }).join('')
-        : '<div class="empty"><span class="emoji">🧾</span><div>' + (hasFilter ? '没有符合条件的账单' : '这个周期还没有记录') + '</div></div>';
+        }).join('') + (filtered.length>limit ? `<button class="j-more-results ledger-more">再看 ${Math.min(batchSize,filtered.length-limit)} 笔</button>` : '')
+        : `<div class="empty ledger-empty">${UI.art('book')}<div>${hasFilter?'没有符合条件的账单':allDates?'这个账本范围还没有记录':'这个周期还没有记录'}</div>
+          ${hasFilter&&!allDates?'<button class="text-action j-expand-dates">查全部日期 ›</button>':''}</div>`;
 
       if (updatingSearch) {
         root.querySelector('.j-filters').innerHTML = filterBar;
-        root.querySelector('.balance-panel').outerHTML = summary;
+        root.querySelector('.ledger-totals').outerHTML = totals;
         root.querySelector('.j-results').innerHTML = listHtml;
         return;
       }
-      root.innerHTML = pageHead + summary +
-        `<div class="report-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}"></div>
-        <div class="j-results">${listHtml}</div></div></div>`;
+      root.innerHTML = pageHead +
+        `<div class="report-search ledger-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}">
+        <select aria-label="流水日期范围" class="j-detail-scope"><option value="period">本期</option><option value="all"${allDates?' selected':''}>全部日期</option></select></div>
+        ${totals}<div class="j-results">${listHtml}</div></div></div>`;
       if (preview) return;
       bindCommon();
       const search = root.querySelector('.j-search');
+      root.querySelector('.j-detail-scope').onchange = e => { detailAllDates = e.target.value === 'all'; App.refresh(true); };
       const applySearch = () => {
         if (E.filter.kw === search.value) return;
         E.filter.kw = search.value;
@@ -253,6 +285,14 @@ Views.bills = (() => {
       search.addEventListener('compositionend', applySearch);
       search.oninput = e => { if (!e.isComposing) applySearch(); };
       root.querySelector('.j-results').onclick = e => {
+        if (e.target.closest('.j-expand-dates')) { detailAllDates = true; App.refresh(true); return; }
+        if (e.target.closest('.j-more-results')) {
+          const previous = detailLimit;
+          detailLimit += batchSize;
+          mount(root, true);
+          root.querySelectorAll('.j-results .j-item')[previous]?.focus({preventScroll:true});
+          return;
+        }
         const row = e.target.closest('.j-item');
         if (!row) return;
         const item=Store.data.transactions.find(t=>t.id===row.dataset.id);
@@ -277,14 +317,14 @@ Views.bills = (() => {
       root.querySelector('.j-empty-action').onclick=()=>{
         if (hidden) root.querySelector('.j-eye').click();
         else if (hasFilter) root.querySelector('.j-clearall').click();
-        else if (filtered.length) { topMode='detail'; App.refresh(true); }
+        else if (filtered.length) { detailAllDates=false; topMode='detail'; App.refresh(true); }
         else E.openEntrySheet(null, 'out', U.todayStr() >= p.start && U.todayStr() <= p.end ? U.todayStr() : p.start);
       };
       return;
     }
     FinanceReport.trend(root.querySelector('.j-trend'),rows,p,chartType,type=>{chartType=type;},bucket=>{
       if (p.kind==='year') {
-        periods.report.kind='month'; periods.report.anchor=bucket.key+'-01'; topMode='detail'; App.refresh(true);
+        periods.report.kind='month'; periods.report.anchor=bucket.key+'-01'; detailAllDates=false; topMode='detail'; App.refresh(true);
       } else openDaySheet(bucket.key,filtered.filter(t=>t.date===bucket.key));
     });
     const area = root.querySelector('.j-categories');
@@ -306,7 +346,7 @@ Views.bills = (() => {
         E.filter.type=kind;
         if (E.filter.categoryId!==b.dataset.id) E.filter.subId='';
         E.filter.categoryId=b.dataset.id;
-        topMode='detail'; App.refresh(true);
+        detailAllDates=false; topMode='detail'; App.refresh(true);
       });
       area.querySelectorAll('.j-category-kind').forEach(b=>b.onclick=()=>{statKind=b.dataset.value;renderCategory();});
     }
@@ -314,9 +354,9 @@ Views.bills = (() => {
   }
 
   function openMonth() {
-    topMode='report'; periods.report.kind='month'; periods.report.anchor=U.todayStr();
+    topMode='report'; detailAllDates=false; periods.report.kind='month'; periods.report.anchor=U.todayStr();
     Views.expense.clearFilter(); statKind=''; App.go('bills');
   }
-  function openDetails(date=U.todayStr()){topMode='detail';periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
+  function openDetails(date=U.todayStr()){topMode='detail';detailAllDates=false;periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
   return {mount,openMonth,openDetails};
 })();

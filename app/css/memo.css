@@ -1,0 +1,18 @@
+.memo-filters { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; margin:2px 0 10px; }
+.memo-filters input, .memo-filters select { min-width:0; min-height:40px; margin:0; padding:7px 10px; font-size:13px; }
+.memo-page .memo-card { margin:0 0 8px; }
+.memo-open { width:100%; min-height:32px; padding:0; text-align:left; color:var(--text); }
+.memo-title-row { align-items:center; }
+.memo-page .memo-title { flex:1; }
+.memo-progress, .memo-chevron, .memo-expand { color:var(--accent); }
+.memo-progress { font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.memo-chevron { font-size:17px; }
+.memo-page .memo-snippet { overflow-wrap:anywhere; white-space:pre-line; }
+.memo-checklist { display:grid; gap:1px; }
+.memo-check { display:flex; align-items:center; gap:9px; width:100%; min-height:35px; padding:5px 2px; text-align:left; color:var(--text); font-size:13px; overflow-wrap:anywhere; }
+.memo-checkmark { display:grid; place-items:center; flex:none; width:17px; height:17px; border:1.5px solid var(--text-2); border-radius:5px; font-size:12px; line-height:1; }
+.memo-check[aria-checked="true"] { color:var(--text-2); }
+.memo-check[aria-checked="true"] .memo-checkmark { color:var(--on-accent,var(--card)); background:var(--accent); border-color:var(--accent); }
+.memo-check[aria-checked="true"] span:last-child { text-decoration:line-through; }
+.memo-expand { min-height:33px; font-size:12px; padding:3px 2px; }
+.memo-page .empty .chip { margin-top:8px; }

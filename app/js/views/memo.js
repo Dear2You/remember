@@ -2,13 +2,8 @@
 /* ============ 备忘录模块 ============ */
 Views.memo = (() => {
   let keyword = '';
-
-  function snippet(m) {
-    if (m.type === 'list') {
-      return (m.items || []).map(i => (i.done ? '☑ ' : '☐ ') + i.text).join('  ').slice(0, 90);
-    }
-    return m.content || '';
-  }
+  let scope = 'all', returnTo = 'home';
+  const expanded = new Set();
 
   /* ---------- 编辑弹层 ---------- */
   function openEditor(memo) {
@@ -30,8 +25,13 @@ Views.memo = (() => {
           if (!Reminders.valid(state,'memo',memo)) return;
           const patch = {...state,title:state.title.trim() || '无标题',items,content};
           let item = memo;
-          if (memo) Store.updateMemo(memo.id,patch);
-          else item = Store.addMemo(patch);
+          try {
+            if (memo) {
+              item = Store.data.memos.find(m=>m.id===memo.id);
+              if (!item) { UI.toast('这条备忘已被删除','err'); return; }
+              Store.updateMemo(memo.id,patch);
+            } else item = Store.addMemo(patch);
+          } catch (error) { UI.toast(error.message,'err'); return; }
           saved = true;
           close();
           UI.toast('已保存');
@@ -48,9 +48,9 @@ Views.memo = (() => {
               ? '<div class="field"><textarea class="j-content" rows="6" placeholder="写点什么…" maxlength="2000">' + U.escapeHtml(state.content) + '</textarea></div>'
               : '<div class="j-items">' + state.items.map((it, i) =>
                 '<div class="todo-item">' +
-                '  <button class="td-box ' + (it.done ? 'on' : '') + '" data-i="' + i + '">' + (it.done ? '✓' : '') + '</button>' +
-                '  <input data-i="' + i + '" value="' + U.escapeHtml(it.text) + '" maxlength="80" placeholder="清单项">' +
-                '  <button class="td-del" data-i="' + i + '">✕</button>' +
+                '  <button class="td-box ' + (it.done ? 'on' : '') + '" aria-label="勾选第 ' + (i+1) + ' 项" aria-pressed="' + !!it.done + '" data-i="' + i + '">' + (it.done ? '✓' : '') + '</button>' +
+                '  <input data-i="' + i + '" value="' + U.escapeHtml(it.text) + '" maxlength="80" placeholder="清单项" enterkeyhint="next">' +
+                '  <button class="td-del" data-i="' + i + '" aria-label="删除第 ' + (i+1) + ' 项">✕</button>' +
                 '</div>'
                 ).join('') +
                 '<button class="btn btn-ghost btn-block j-add-item" style="margin:6px 0 4px">+ 添加一项</button></div>') +
@@ -75,16 +75,27 @@ Views.memo = (() => {
           if (ta) ta.oninput = e => { state.content = e.target.value; };
           const itemsBox = body.querySelector('.j-items');
           if (itemsBox) {
+            function insertItem(index) {
+              state.items.splice(index,0,{text:'',done:false});
+              render();
+              body.querySelector('input[data-i="'+index+'"]').focus();
+            }
             itemsBox.onclick = e => {
               const box = e.target.closest('.td-box');
               const del = e.target.closest('.td-del');
               const add = e.target.closest('.j-add-item');
               if (box) { state.items[+box.dataset.i].done = !state.items[+box.dataset.i].done; render(); }
               else if (del) { state.items.splice(+del.dataset.i, 1); render(); }
-              else if (add) { state.items.push({ text: '', done: false }); render(); }
+              else if (add) insertItem(state.items.length);
             };
             itemsBox.querySelectorAll('input[data-i]').forEach(inp => {
               inp.oninput = e => { state.items[+e.target.dataset.i].text = e.target.value; };
+              inp.onkeydown = e => {
+                if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+                  e.preventDefault();
+                  insertItem(Number(inp.dataset.i)+1);
+                }
+              };
             });
           }
           Reminders.bind(body,state,'memo',memo,save);
@@ -94,7 +105,9 @@ Views.memo = (() => {
           const delBtn = body.querySelector('.j-del');
           if (delBtn) delBtn.onclick = async () => {
             if (await UI.confirm({ title: '删除备忘', msg: '确定删除「' + memo.title + '」吗？', danger: true, okText: '删除' })) {
-              Store.removeMemo(memo.id);
+              try { Store.removeMemo(memo.id); }
+              catch (error) { UI.toast(error.message,'err'); return; }
+              expanded.delete(memo.id);
               UI.toast('已删除');
               close();
             }
@@ -106,61 +119,110 @@ Views.memo = (() => {
   }
 
   /* ---------- 页面 ---------- */
-  function mount(root) {
-    const memos = Store.memosSorted().filter(m =>
-      !keyword || (m.title + ' ' + (m.content || '') + ' ' + (m.items || []).map(i => i.text).join(' ')).toLowerCase().includes(keyword.toLowerCase())
-    );
-    const today = U.todayStr();
-
-    root.innerHTML =
-      '<div class="page decorated-page memo-page">' +
-      '<button class="back-btn j-back" onclick="App.go(&#39;home&#39;)">‹ 返回</button>' +
-      '  <div class="page-head"><span class="page-emblem">' + UI.art('memo') + '</span>' +
-      '    <div><div class="page-title">备忘录</div><div class="page-sub">共 ' + Store.data.memos.length + ' 条</div></div>' +
-      '    <button class="head-btn j-add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>' +
-      '  </div>' +
-      '  <div class="field"><input class="j-search" placeholder="搜索标题或内容…" value="' + U.escapeHtml(keyword) + '"></div>' +
-      (memos.length
-        ? memos.map(m => {
-          const items = m.items || [], done = items.filter(i => i.done).length;
-          const complete = Store.memoComplete(m);
-          const overdue = !complete && m.remindDate && m.remindDate < today;
-          const dueToday = !complete && m.remindDate === today;
-          return '<button class="card memo-card j-item" data-id="' + m.id + '">' +
-            '<div class="memo-title-row">' +
-            '  <div class="memo-title">' + (m.pinned ? '<span class="memo-pin">置顶</span>' : '') + U.escapeHtml(m.title) + '</div>' +
-            (m.type === 'list' ? '<span class="badge gray">' + done + '/' + items.length + '</span>' : '') +
-            '</div>' +
-            (snippet(m) ? '<div class="memo-snippet">' + U.escapeHtml(snippet(m)) + '</div>' : '') +
-            '<div class="memo-meta">' +
-            '  <span>' + U.fmtRel(m.updatedAt) + '</span>' +
-            (overdue ? '<span class="badge red">逾期 ' + (U.parseDate(m.remindDate).getMonth() + 1) + '月' + U.parseDate(m.remindDate).getDate() + '日</span>' : '') +
-            (dueToday ? '<span class="badge red">今天</span>' : '') +
-            (!complete && !overdue && !dueToday && m.remindDate ? '<span class="badge green">' + U.fmtDay(m.remindDate) + '提醒</span>' : '') +
-            (!complete && m.phoneRemind && m.remindTime ? '<span>通知 ' + U.escapeHtml(m.remindTime) + '</span>' : '') + '</div></button>';
-        }).join('')
-        : '<div class="empty"><span class="empty-art">' + UI.art('memo') + '</span><div>' + (keyword ? '没有匹配的备忘' : '还没有备忘') + '</div><div class="tip" style="margin-top:4px">点右上角 + 新建</div></div>') +
-      '</div>';
-
-    root.querySelector('.j-add').onclick = () => openEditor();
-    const search = root.querySelector('.j-search');
-    search.oninput = e => {
-      keyword = e.target.value;
-      // 只重渲染列表部分，保持输入焦点
-      const scroll = root.scrollTop;
-      const active = document.activeElement === search;
-      mount(root);
-      const ns = root.querySelector('.j-search');
-      if (active) { ns.focus(); ns.setSelectionRange(ns.value.length, ns.value.length); }
-      root.scrollTop = scroll;
-    };
-    root.querySelectorAll('.j-item').forEach(el => {
-      el.onclick = () => {
-        const m = Store.data.memos.find(x => x.id === el.dataset.id);
-        if (m) openEditor(m);
-      };
-    });
+  function memoCard(memo, query, today) {
+    const items = memo.items || [];
+    const isList = memo.type === 'list', done = items.filter(item => item.done).length;
+    const complete = Store.memoComplete(memo);
+    const date = memo.remindDate;
+    const labels = [U.escapeHtml(U.fmtRel(memo.updatedAt))];
+    if (!complete && date) {
+      const overdue = date < today;
+      const label = overdue ? '逾期 · ' + U.fmtDay(date) : date === today ? '今天提醒' : U.fmtDay(date) + '提醒';
+      labels.push('<span class="badge '+(date <= today ? 'red' : 'green')+'">'+U.escapeHtml(label)+'</span>');
+      if (memo.phoneRemind && memo.remindTime) labels.push('<span>通知 '+U.escapeHtml(memo.remindTime)+'</span>');
+    }
+    let checklist = '';
+    if (isList && items.length) {
+      const indexes = items.map((_,i) => i);
+      const matches = query && !String(memo.title).toLowerCase().includes(query)
+        ? indexes.filter(i => String(items[i].text).toLowerCase().includes(query)) : indexes;
+      const visible = expanded.has(memo.id) ? matches : matches.slice(0,3);
+      checklist = '<div class="memo-checklist">'+visible.map(i =>
+        '<button class="memo-check" role="checkbox" aria-checked="'+!!items[i].done+'" data-check="'+i+'">' +
+        '<span class="memo-checkmark" aria-hidden="true">'+(items[i].done?'✓':'')+'</span><span>'+U.escapeHtml(items[i].text)+'</span></button>'
+      ).join('')+'</div>';
+      if (matches.length>3) checklist += '<button class="memo-expand" aria-expanded="'+expanded.has(memo.id)+'">'+
+        (expanded.has(memo.id) ? '收起' : '展开剩余 '+(matches.length-3)+' 项')+'</button>';
+    }
+    return '<article class="card memo-card" data-id="'+U.escapeHtml(memo.id)+'">'+
+      '<button class="memo-open j-item" aria-label="编辑备忘 '+U.escapeHtml(memo.title)+'"><span class="memo-title-row">'+
+      '<span class="memo-title">'+(memo.pinned?'<span class="memo-pin">置顶</span>':'')+U.escapeHtml(memo.title)+'</span>'+
+      (isList ? '<span class="memo-progress">'+done+' / '+items.length+'</span>' : '')+'<span class="memo-chevron" aria-hidden="true">›</span></span>'+
+      (!isList && memo.content ? '<span class="memo-snippet">'+U.escapeHtml(memo.content)+'</span>' : '')+
+      '</button>'+checklist+'<div class="memo-meta">'+labels.join(' ')+'</div></article>';
   }
 
-  return { mount, openEditor };
+  function mount(root) {
+    root.innerHTML = '<div class="page decorated-page memo-page">'+
+      '<button class="back-btn j-back">‹ 返回</button>'+
+      '<div class="page-head chapter-head">'+UI.pageTitle('备忘录','memo')+
+      '<span class="page-sub j-count" aria-live="polite"></span>'+
+      '<button class="head-btn j-add" aria-label="新建备忘">'+UI.icon('plus')+'</button></div>'+
+      '<div class="memo-filters"><input class="j-search" type="search" aria-label="搜索备忘" placeholder="搜索标题、正文或清单项">'+
+      '<select class="j-scope" aria-label="筛选备忘"><option value="all">全部备忘</option>'+
+      '<option value="pending">待勾清单</option><option value="dated">有提醒日期</option><option value="pinned">已置顶</option></select></div>'+
+      '<div class="memo-results"></div></div>';
+    const results = root.querySelector('.memo-results'), search = root.querySelector('.j-search');
+    const picker = root.querySelector('.j-scope');
+    search.value = keyword;
+    picker.value = scope;
+    function renderResults() {
+      const query = keyword.trim().toLowerCase(), today = U.todayStr();
+      const memos = Store.memosSorted().filter(m => {
+        if (scope==='pending' && !(m.type==='list' && (m.items||[]).some(item=>!item.done))) return false;
+        if (scope==='dated' && (!m.remindDate || Store.memoComplete(m))) return false;
+        if (scope==='pinned' && !m.pinned) return false;
+        if (!query || String(m.title).toLowerCase().includes(query)) return true;
+        return m.type==='list' ? (m.items||[]).some(item=>String(item.text).toLowerCase().includes(query))
+          : (m.content||'').toLowerCase().includes(query);
+      });
+      const filtered = !!query || scope!=='all';
+      root.querySelector('.j-count').textContent = (filtered?'找到 ':'共 ')+memos.length+' 条';
+      results.innerHTML = memos.length ? memos.map(m=>memoCard(m,query,today)).join('') :
+        '<div class="empty"><span class="empty-art">'+UI.art('memo')+'</span>'+
+        (filtered ? '<div>没有匹配的备忘</div><button class="chip j-reset">查看全部</button>'
+          : '<div>还没有备忘</div><button class="chip j-first">写第一条</button>')+'</div>';
+    }
+    renderResults();
+    root.querySelector('.j-back').onclick = () => App.go(returnTo);
+    root.querySelector('.j-add').onclick = () => openEditor();
+    search.oninput = () => { keyword = search.value; renderResults(); };
+    picker.onchange = () => { scope = picker.value; renderResults(); };
+    results.onclick = event => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      if (button.classList.contains('j-reset')) {
+        keyword = search.value = ''; scope = picker.value = 'all'; renderResults(); return;
+      }
+      if (button.classList.contains('j-first')) { openEditor(); return; }
+      const card = button.closest('[data-id]');
+      const memo = card && Store.data.memos.find(m=>m.id===card.dataset.id);
+      if (!memo) return;
+      if (button.classList.contains('memo-open')) { openEditor(memo); return; }
+      if (button.classList.contains('memo-expand')) {
+        if (expanded.has(memo.id)) expanded.delete(memo.id); else expanded.add(memo.id);
+        renderResults();
+        return;
+      }
+      if (button.hasAttribute('data-check')) {
+        const index = Number(button.dataset.check);
+        const items = memo.items.map((item,i)=> i===index ? {...item,done:!item.done} : item);
+        try { Store.updateMemo(memo.id,{items}); }
+        catch (error) { UI.toast(error.message,'err'); return; }
+        // Saving refreshes the route and may move this note to the top of the list.
+        const updated = Array.from(root.querySelectorAll('.memo-card')).find(el=>el.dataset.id===memo.id);
+        const check = updated?.querySelector('[data-check="'+index+'"]');
+        if (check) check.focus();
+        else if (Store.memoComplete(memo)) UI.toast('清单已完成');
+      }
+    };
+  }
+
+  function open(from='home') {
+    returnTo = from;
+    keyword = ''; scope = 'all'; expanded.clear();
+    App.go('memo');
+  }
+
+  return { mount, open, openEditor };
 })();

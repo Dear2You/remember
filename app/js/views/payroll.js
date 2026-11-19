@@ -199,7 +199,7 @@ Views.payroll = (() => {
     }});
   }
   function linkSheet(month,project) {
-    const options=Store.data.transactions.filter(t=>t.type==='in'&&!t.wageProject).sort((a,b)=>b.date.localeCompare(a.date));
+    const options=Store.data.transactions.filter(t=>t.type==='in'&&!t.wageProject&&!t.subscriptionId).sort((a,b)=>b.date.localeCompare(a.date));
     UI.sheet({title:'选择已记过的收入',content(body) {
       body.innerHTML='<p class="payroll-help">关联后保留原账单，不会再新增收入。</p>'+options.map(t=>`<button class="cell sub-item" data-link="${t.id}"><span class="c-main">${esc(t.date)} · ${esc(Store.accountName(t.accountId))}<small class="c-sub">${t.wageNeedsReview?'周期已调整 · 待重新核对 · ':''}${esc(t.note || Store.category(t.categoryId)?.name || '收入')}</small></span><b>${money(t.amountMinor)}</b></button>`).join('');
       if(!options.length)body.innerHTML+='<p>没有可关联的收入。</p>';
@@ -210,5 +210,24 @@ Views.payroll = (() => {
       });
     }});
   }
-  return {planSheet,paydaySheet,attendance,batch,cards,bind,dayButtons,receipts};
+  function reviewReceipt(id) {
+    const t=Store.data.transactions.find(item=>item.id===id);
+    if(!t || t.type!=='in' || !t.wageNeedsReview)return;
+    const project=t.wageNeedsReview;
+    UI.sheet({title:'核对工资到账',content(body){
+      body.innerHTML=`<section class="entry-review"><div>${esc(project)}</div><strong>${money(t.amountMinor)}</strong><p>${esc(t.date)} 到账 · ${esc(Store.accountName(t.accountId))}</p></section>
+        <label class="field">工资所属结算月<input class="j-receipt-month" type="month"></label>
+        <p class="payroll-help">${t.wagePreviousMonth?'原结算月 '+esc(t.wagePreviousMonth)+'。':''}选好月份后，这笔已有收入会计入该期工资到账。</p>
+        <button class="btn btn-primary btn-block j-confirm" disabled>确认关联</button>`;
+      const month=body.querySelector('input'), confirm=body.querySelector('.j-confirm');
+      month.oninput=month.onchange=()=>{confirm.disabled=!WorkCalendar.validMonth(month.value);};
+      confirm.onclick=()=>{
+        const current=Store.data.transactions.find(item=>item.id===id);
+        if(!current || current.wageNeedsReview!==project || !WorkCalendar.validMonth(month.value))return;
+        try{Store.linkWageReceipt(id,project,month.value);receipts(month.value,project);UI.toast('已关联这笔工资到账');}
+        catch(err){UI.toast(err.message,'err');}
+      };
+    }});
+  }
+  return {planSheet,paydaySheet,attendance,batch,cards,bind,dayButtons,receipts,reviewReceipt};
 })();

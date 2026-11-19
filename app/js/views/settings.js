@@ -485,7 +485,8 @@ Views.settings = (() => {
 
     const save = patch => { Object.assign(Store.settings, patch); Store.save(); };
 
-    root.querySelectorAll('.j-mod').forEach(b => b.onclick = () => App.go(b.dataset.r));
+    root.querySelectorAll('.j-mod').forEach(b => b.onclick = () =>
+      b.dataset.r === 'memo' ? Views.memo.open('settings') : App.go(b.dataset.r));
     root.querySelector('.j-books').onclick = openBooksSheet;
     root.querySelector('.j-budget').onclick = () => Views.money.open('settings');
     root.querySelector('.j-accounts').onclick = openAccountsSheet;

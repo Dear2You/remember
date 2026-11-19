@@ -8,7 +8,7 @@
 
 ## 已发布基线与入口
 
-本说明更新于2026-11-18，当前应用为 **v3.2 / 30200**，发布代码以 `v3.2` 标签为准。首页以一幅主题插画贯穿日期、收支和各栏，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
+本说明更新于2026-11-19，当前应用为 **v3.3 / 30300**，发布代码以 `v3.3` 标签为准。首页以一幅主题插画贯穿日期、收支和各栏，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
 
 - 公开仓库：[Dear2You/remember](https://github.com/Dear2You/remember)。应用内更新依赖公开读取清单和安装包。
 - 包名：`com.nianxiatian.app`。Android最低API24、目标API35，原生Java外壳加载随包附带的HTML/CSS/JavaScript。
@@ -81,7 +81,7 @@ b08fc9b85314e227d8d97779db460830a7acfeac58e2e3c88fcde9c64ea5827f
 
 此流程不依赖本机 `build/preview-*` 内的临时发布脚本。应用更改才需要新APK；仅维护文档的提交保持现有版本和清单，不制造空更新。
 
-浏览器回归用例在 `tests/browser/`。安装 Playwright 及 Chromium 后运行 `node --test tests/browser/*.cjs`。可设置 `BROWSER_CHANNEL=msedge` 使用本机 Edge，`APP_HTML` 可指向成品 APK 解包后的 `assets/www/index.html`。记账用例核对编辑旧账后的账本、账户、日期和金额。首页用例从设置切换六套主题，检查横竖屏铺图，点日期查日历及点收支查月报。
+浏览器回归用例在 `tests/browser/`。安装 Playwright 及 Chromium 后运行 `node --test --test-concurrency=2 tests/browser/*.cjs`。可设置 `BROWSER_CHANNEL=msedge` 使用本机 Edge，`APP_HTML` 可指向成品 APK 解包后的 `assets/www/index.html`。用例覆盖六套首页插画、日程跳转、循环待办撤销、工资到账核对、旧账编辑与复用、跨月流水筛选、备忘录中文输入与清单勾选。发布时在成品页面运行，并目视检查主题插画上的文字和窄屏排版。
 
 ## 已知边界
 

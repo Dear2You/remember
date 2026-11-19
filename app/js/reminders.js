@@ -218,7 +218,7 @@ window.Reminders = (() => {
     const item = (kind==='task'?Store.data.tasks:Store.data.memos).find(x=>x.id===id);
     if (!item) { UI.toast('这条记录已删除'); return; }
     if (kind==='task') { Views.lifetasks.openList('all'); Views.lifetasks.openTaskSheet(item,null,date); }
-    else { App.go('memo'); Views.memo.openEditor(item); }
+    else { Views.memo.open(); Views.memo.openEditor(item); }
   }
 
   function resume() { if (ready && available()) { sync(true); paintStatus(); openPending(); } }

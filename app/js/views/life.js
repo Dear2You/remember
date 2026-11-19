@@ -156,7 +156,8 @@ Views.life = (() => {
         '  <div class="c-main"><div class="c-title">' + name + '</div><div class="c-sub">' + desc + '</div></div>' +
         '  <div class="c-right" style="color:var(--text-3)">›</div></div>').join('') +
       '</div>';
-    root.querySelectorAll('.j-mod').forEach(el => el.onclick = () => App.go(el.dataset.r));
+    root.querySelectorAll('.j-mod').forEach(el => el.onclick = () =>
+      el.dataset.r === 'memo' ? Views.memo.open('life') : App.go(el.dataset.r));
   }
 
   return { mount, go(s) { sub = s; App.go('life'); App.refresh(true); } };

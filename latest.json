@@ -1,8 +1,8 @@
 {
-  "versionCode": 30200,
-  "versionName": "3.2",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.2/nianxiatian.apk",
-  "sha256": "95b7fbd5205f9318ed22a200a8738cd3bff24fa585793ba90210a7b3b4ddcbb3",
-  "apkBlob": "2055a1862917c73e65c70fafca3451b97c473f97",
-  "note": "v3.2：首页改用一幅连续的主题插画，画面从日期、收支延伸到待办与预算。六套主题都支持整页铺图，横竖屏各自取景，点日期仍可直达今天。"
+  "versionCode": 30300,
+  "versionName": "3.3",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.3/nianxiatian.apk",
+  "sha256": "4e55fc1e64cf7d65bed7ca9a3cef8e0fcd710005be09d903370361dc305a0fe5",
+  "apkBlob": "d07e9404744a4e0a4bb32d6e1addc05a8ad7e913",
+  "note": "v3.3：旧账可再记一笔，流水可跨月搜索，单看转账本金、出差垫付或报销到账。首页可换账本、完成和撤销待办、核对工资到账；工时可跳月和回本期。备忘清单支持直接勾选，修复中文搜索光标跳动。"
 }

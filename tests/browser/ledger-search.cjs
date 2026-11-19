@@ -1,0 +1,78 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const test = require('node:test');
+const {pathToFileURL} = require('node:url');
+const {chromium} = require('playwright');
+
+test('流水跨年查询、账本筛选、分页与出差金额口径', async t => {
+  const browser = await chromium.launch({channel:process.env.BROWSER_CHANNEL || undefined});
+  t.after(() => browser.close());
+  const page = await browser.newPage({viewport:{width:320,height:720}, reducedMotion:'reduce'});
+  const html = process.env.APP_HTML || path.join(__dirname,'../../app/index.html');
+  await page.goto(pathToFileURL(path.resolve(html)).href);
+  const data = await page.evaluate(() => {
+    const book = Store.addBook({name:'样例查账'}).id;
+    const date = (Number(U.todayStr().slice(0,4))-1)+'-03-15';
+    const common = {accountId:'acc-cash',bookId:book,date,amountMinor:100};
+    const categoryId = Store.rootCategories('out')[0].id;
+    for (let i=0;i<65;i++) Store.addTransaction({...common,type:'out',categoryId,note:'样例午饭'});
+    Store.addTransaction({...common,type:'out',bookId:'book-life',categoryId,amountMinor:9900,note:'样例午饭'});
+    Store.addTransaction({...common,type:'transfer',fromId:'acc-cash',toId:'acc-wx',amountMinor:10000,feeMinor:100,feeMode:'extra'});
+    const trip = Store.startTrip('样例外勤',book);
+    Store.addTransaction({...common,type:'advance',tripId:trip.id,categoryId,amountMinor:2000});
+    Store.addTransaction({...common,type:'reimbursement',tripId:trip.id,amountMinor:1500});
+    return {book,date};
+  });
+  await page.locator('#tabbar [data-route="bills"]').click();
+  const scope = page.getByLabel('流水日期范围');
+  const search = page.getByRole('searchbox');
+  const rows = page.locator('.j-results .j-item');
+  const totals = page.locator('.ledger-totals');
+  await page.locator('.j-book-select').selectOption(data.book);
+  await search.fill('样例午饭');
+  assert.equal(await rows.count(), 0);
+  await page.getByRole('button',{name:'查全部日期 ›'}).click();
+  assert.equal(await scope.inputValue(),'all');
+  assert.equal(await page.locator('.report-period').isVisible(),false);
+  assert.equal(await rows.count(),60);
+  assert.match(await totals.innerText(),/65 笔/);
+  assert.match(await totals.innerText(),/¥65/);
+  assert.match(await page.locator('.j-results .day-head').innerText(),new RegExp(data.date.slice(0,4)+'年'));
+  await page.getByRole('button',{name:'收支分析',exact:true}).click();
+  assert.equal(await page.locator('.report-period').isVisible(),true);
+  assert.match(await page.locator('.record-count').innerText(),/^0 笔/);
+  await page.getByRole('button',{name:'账单日历',exact:true}).click();
+  assert.equal(await page.locator('.report-period').isVisible(),true);
+  await page.getByRole('button',{name:'流水明细',exact:true}).click();
+  assert.equal(await scope.inputValue(),'all');
+  await page.getByRole('button',{name:'再看 5 笔'}).click();
+  assert.equal(await rows.count(),65);
+  await rows.last().click();
+  assert.equal(await page.locator('.j-amount').inputValue(),'1');
+  await page.locator('.sheet-close').click();
+  await page.locator('.j-book-select').selectOption('');
+  assert.match(await totals.innerText(),/66 笔/);
+  assert.match(await totals.innerText(),/¥164/);
+  await page.locator('.j-book-select').selectOption(data.book);
+  await search.fill('');
+  assert.match(await totals.innerText(),/69 笔/);
+  assert.deepEqual(await totals.locator('dd').allInnerTexts(),['¥66','¥0','−¥66']);
+  for (const [type,label,amount] of [['advance','出差垫付','20'],['reimbursement','报销到账','15'],['transfer','转账本金','100']]) {
+    await page.getByRole('button',{name:'筛选账单'}).click();
+    await page.locator('.j-f[data-v="'+type+'"]').click();
+    await page.getByRole('button',{name:'应用筛选'}).click();
+    await page.locator('.sheet-panel').waitFor({state:'hidden'});
+    assert.equal(await rows.count(),1);
+    assert.equal(await totals.locator('dt').innerText(),label);
+    assert.equal(await totals.locator('dd').innerText(),'¥'+amount);
+  }
+  await page.getByRole('button',{name:'隐藏金额'}).click();
+  assert.equal(await totals.locator('dd').innerText(),'••••');
+  await page.getByRole('button',{name:'清除筛选'}).click();
+  assert.deepEqual(await totals.locator('dd').allInnerTexts(),['••••','••••','••••']);
+  await scope.selectOption('period');
+  assert.equal(await rows.count(),0);
+  assert.equal(await page.locator('.report-period').isVisible(),true);
+});
