@@ -358,5 +358,5 @@ Views.bills = (() => {
     Views.expense.clearFilter(); statKind=''; App.go('bills');
   }
   function openDetails(date=U.todayStr()){topMode='detail';detailAllDates=false;periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
-  return {mount,openMonth,openDetails,openDaySheet};
+  return {mount,openMonth,openDetails};
 })();

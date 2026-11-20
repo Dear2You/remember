@@ -15,7 +15,6 @@ Views.ai = (() => {
     }
     if (guideSections.has(text)) return guideSections.get(text);
     if (/怎么|如何|在哪|哪里|找不到|能不能|可以.*吗/.test(text)) {
-      if (/近七天|近7天|七天支出图/.test(text)) return guideSections.get('记账与查账');
       if (/白条|信用.*还款|全部欠款|记还款/.test(text)) return guideSections.get('白条与信用消费');
       if (/订阅|免扣|本期未扣|续费/.test(text)) return guideSections.get('订阅扣款与提醒');
       if (/逾期.*待办|待办.*逾期|移到明天/.test(text)) return guideSections.get('时光、备忘与习惯');

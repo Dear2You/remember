@@ -6,7 +6,7 @@ const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {chromium} = require('playwright');
 
-test('跨月七日支出、隐藏金额、出差期间个人信用消费及还款核对', async t => {
+test('首页月收支与常用入口、日历补记、出差期间个人信用消费及还款核对', async t => {
   const browser = await chromium.launch({channel:process.env.BROWSER_CHANNEL || undefined});
   t.after(()=>browser.close());
   const page = await browser.newPage({viewport:{width:320,height:700},timezoneId:'Asia/Shanghai',reducedMotion:'reduce'});
@@ -23,19 +23,23 @@ test('跨月七日支出、隐藏金额、出差期间个人信用消费及还�
     Store.mutate(d=>{d.settings.currentBookId=book;});
     return {book,credit};
   });
-  const week = page.getByRole('region',{name:'近七天支出'});
-  assert.equal(await week.locator('strong').innerText(),'¥13.34');
-  assert.equal(await week.locator('button').count(),7);
-  await week.locator('[data-ledger-day="2026-02-28"]').click();
+  const metrics = page.locator('.folio-metrics b');
+  assert.equal(await metrics.first().innerText(),'¥1');
+  assert.equal(await page.getByRole('region',{name:'近七天支出'}).count(),0);
+  assert.deepEqual(await page.locator('.folio-ledger + .folio-tools button').allInnerTexts(),
+    ['记工时','记待办','备忘录','出差报销']);
+  await page.getByRole('button',{name:'隐藏金额'}).click();
+  assert.deepEqual(await metrics.allInnerTexts(),['••••','••••','••••']);
+  await page.getByRole('button',{name:'显示金额'}).click();
+  await page.locator('#tabbar [data-route="bills"]').click();
+  await page.getByRole('button',{name:'账单日历',exact:true}).click();
+  await page.getByRole('button',{name:'上一周期'}).click();
+  await page.locator('.ledger-day[data-date="2026-02-28"]').click();
   assert.match(await page.locator('.sheet-title').innerText(),/2月28日/);
   await page.getByRole('button',{name:/补记这一天/}).click();
   assert.equal(await page.locator('.entry-sheet .j-date').inputValue(),'2026-02-28');
   await page.locator('.sheet-close').click();
-  await page.getByRole('button',{name:'隐藏金额'}).click();
-  assert.equal(await week.locator('strong').innerText(),'••••');
-  assert(await week.locator('i').evaluateAll(items=>items.every(e=>e.offsetHeight===0)));
-  assert(!await week.locator('button').evaluateAll(items=>items.some(e=>e.ariaLabel.includes('元'))));
-  await page.getByRole('button',{name:'显示金额'}).click();
+  await page.locator('#tabbar [data-route="home"]').click();
   await page.locator('.home-money header [data-dest="money"]').click();
   await page.locator('[data-credit-buy="'+credit+'"]').click();
   const entry=page.locator('.entry-sheet');
