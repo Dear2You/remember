@@ -1,27 +1,65 @@
-/* The date and the ledger share the existing full-page illustration. */
-.home-refined .folio-cover { min-height: 102px; }
-.home-refined .folio-date { padding-left: 15px; }
-.home-refined .folio-day { gap: 12px; }
-.home-refined .folio-day>b { font-size: clamp(44px,12vw,52px); }
-.home-refined .folio-ledger { padding: 0 14px 3px; }
+/* A dated ledger and a continuous ruled sheet share the current theme illustration. */
+.home-refined .folio-cover { min-height: 99px; }
+.folio-date { display: flex; align-items: center; gap: 12px; padding: 9px 13px; }
+.folio-date-number { font: 500 clamp(43px,12vw,54px)/1 Georgia,var(--book-serif); color: var(--accent); letter-spacing: -.055em; font-variant-numeric: lining-nums tabular-nums; }
+.folio-date-lines { border-left: 1px solid var(--accent); padding-left: 11px; }
+.folio-date-lines .folio-month { font: 500 12px/1.6 var(--ui-font); letter-spacing: .025em; }
+.folio-date-lines .folio-month::before { content: none; }
+.folio-date-lines strong { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 7px; font: 600 15px/1.5 var(--book-serif); }
+.folio-date-lines small { font: 12px/1.5 var(--ui-font); color: var(--text); }
+html[data-visual-style="future"] .folio-date-number { font-family: var(--ui-font); font-weight: 350; }
+
+.home-refined .folio-ledger { padding: 0 14px 4px; }
 .folio-ledger header { border-bottom: 1px solid var(--hairline); }
-.folio-ledger .folio-metrics { padding: 9px 0 7px; }
-.folio-ledger .folio-metrics b { letter-spacing: -.025em; }
-.folio-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.home-spread .folio-tools { border-top: 1px solid var(--hairline); gap: 2px; padding: 0 5px 5px; }
-.home-spread .folio-tools button { flex-direction: column; gap: 1px; padding: 3px 1px 2px; min-height: 49px; font-size: 11px; }
+.folio-ledger .folio-metrics {
+  display: grid; grid-template-columns: minmax(0,1.12fr) minmax(0,1fr);
+  align-items: center; gap: 4px 14px; padding: 12px 0 10px;
+}
+.folio-metrics>span { display: flex; align-items: baseline; justify-content: space-between; gap: 3px 6px; }
+.folio-metrics>span:first-child { display: block; grid-row: span 2; }
+.folio-metrics small { flex: none; }
+.folio-ledger .folio-metrics b { font: 550 clamp(14px,3.9vw,17px)/1.25 var(--ui-font); font-variant-numeric: lining-nums tabular-nums; text-align: right; }
+.folio-ledger .folio-metrics>span:first-child b { margin-top: 2px; font: 500 clamp(25px,7.3vw,33px)/1.14 Georgia,var(--ui-font); letter-spacing: -.035em; text-align: left; }
+/* Give large balances a full line so a final digit or a decimal never hangs alone. */
+.folio-ledger .long-amounts { grid-template-columns: minmax(0,1fr); gap: 5px; }
+.folio-ledger .long-amounts>span { display: flex; flex-wrap: wrap; grid-row: auto; }
+.folio-ledger .long-amounts b { margin-left: auto; }
+.folio-ledger .long-amounts>span:first-child b { margin-top: 0; font-size: clamp(19px,5vw,24px); }
+.home-spread .folio-tools { border-top: 1px solid var(--hairline); gap: 3px; padding: 3px 5px 4px; }
+.home-spread .folio-tools button { flex-direction: column; gap: 1px; padding: 3px 1px; min-height: 47px; font-size: 12px; }
 .home-spread .folio-tools button::before { content: none; }
-.folio-tool-art { display: grid; place-items: center; min-width: 35px; min-height: 26px; border-radius: 9px 5px 9px 5px; background: var(--accent-weak); }
-.folio-tools button:nth-child(2) .folio-tool-art { background: var(--blue-wash); }
-.folio-tools button:nth-child(3) .folio-tool-art { background: var(--gold-wash); }
-.folio-tools button:nth-child(4) .folio-tool-art { background: var(--rose-wash); }
-.home-refined .overview-agenda .agenda-check span { border-radius: 50%; background: var(--card); }
-.home-refined .agenda-line .overview-row small { font-variant-numeric: tabular-nums; }
+.folio-tool-art { display: grid; place-items: center; height: 25px; }
+.folio-tool-art .art-icon { width: 25px; height: 25px; }
+.folio-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.home-refined .home-sections { background: var(--home-paper); border-radius: 10px; padding: 0 14px; gap: 0; }
+#app.home-scene .home-sections>section { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 7px 0 8px; }
+#app.home-scene .home-sections>section+section { border-top: 1px solid var(--hairline); }
+.home-refined .home-sections>section>header { margin: 0; min-height: 35px; border: 0; gap: 6px; }
+.home-refined .home-sections>section h2 { color: var(--text); font: 600 15px/1.5 var(--book-serif); }
+.home-refined .home-sections>section h2 svg { width: 21px; height: 21px; }
+.home-refined .home-sections>section header .text-action { font-size: 11px; min-height: 36px; }
+.home-refined .home-sections .overview-row-title, .home-refined .overview-tx-label b { font-size: 13px; }
+.home-refined .agenda-check { min-width: 33px; justify-items: start; }
+.home-refined .agenda-check span { width: 18px; height: 18px; border-radius: 6px; background: var(--card); }
+.home-refined .agenda-line .overview-row small { font-variant-numeric: tabular-nums; font-size: 11px; }
+.home-refined .home-money-grid b { font-size: 21px; line-height: 1.3; overflow-wrap: anywhere; }
+.home-refined .home-money-grid small, .home-refined .home-money-grid>button>span, .home-refined .overview-work-values small { font-size: 11px; }
+.home-refined .home-money-grid .plan-link { font-size: 14px; }
+.home-refined .home-credit { display: flex; flex-wrap: wrap; margin-bottom: 0; padding: 6px 8px; font-size: 11px; }
+.home-refined .overview-work footer { gap: 8px; }
+.home-refined .overview-work footer span { font-size: 10px; }
+.home-refined .overview-tx-icon { background: transparent; }
+.home-refined .overview-tools summary { padding: 10px 14px; }
+
 .goal-pace { display: block; margin-top: 4px; font: 12px/1.6 var(--ui-font); color: var(--text-2); }
 .repay-tip .j-fill-debt { min-height: 36px; margin-left: 4px; text-decoration: underline; text-underline-offset: 3px; }
 .repay-tip .j-debt-after { color: var(--text); font-variant-numeric: tabular-nums; }
 @media (min-width:680px) {
   .home-refined .folio-cover { align-items: end; }
   .home-refined .folio-date { padding-bottom: 20px; }
-  .home-spread .folio-tools button { flex-direction: row; gap: 6px; min-height: 42px; }
+  .home-spread .folio-tools button { flex-direction: row; gap: 7px; min-height: 44px; }
+  .home-refined .home-sections { background: transparent; padding: 0; gap: 10px; align-items: stretch; }
+  #app.home-scene .home-sections>section { padding: 8px 14px; background: var(--home-paper); border-radius: 10px; }
+  #app.home-scene .home-sections>section+section { border: 0; }
 }

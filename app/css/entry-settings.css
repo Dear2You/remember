@@ -1,0 +1,119 @@
+/* The settings index uses the same fine rules as a ledger page. */
+.settings-page .section-title {
+  margin: 0; padding: 0 0 7px; border-bottom: 1px solid var(--hairline);
+  font: 600 13px/1.5 var(--book-serif); color: var(--text);
+}
+.settings-page .appearance-card .set-row { padding-block: 5px; }
+.settings-page .appearance-card .scene-choice { min-height: 56px; gap: 9px; }
+.settings-page .scene-choice .scene-thumb { width: 58px; height: 39px; border-radius: 4px; }
+.settings-page .appearance-select select { width: min(44%, 165px); min-height: 36px; }
+.settings-page .appearance-card .theme-note:empty { display: none; }
+.settings-page .appearance-card .theme-note:not(:empty) { margin: 3px 0 6px; color: var(--text-2); text-align: end; }
+.settings-page .appearance-mode[hidden] { display: none; }
+.settings-page .settings-shortcuts { padding: 5px 12px 2px; }
+.settings-page .settings-tools {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 3px 0 0;
+}
+.settings-page .settings-tools button {
+  flex-direction: row; justify-content: center; gap: 4px; padding: 5px 1px;
+  min-height: 41px; font-size: 12px; color: var(--text);
+}
+.settings-page .settings-tools svg { flex: none; width: 21px; height: 21px; }
+.settings-page .settings-nav-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settings-page .settings-nav-grid .settings-nav {
+  min-width: 0; min-height: 59px; gap: 6px; padding: 7px 5px; border: 0; border-radius: 0;
+}
+.settings-page .settings-nav-grid .settings-nav:nth-child(2n) {
+  border-inline-start: 1px solid var(--hairline); padding-inline-start: 10px;
+}
+.settings-page .settings-nav-grid .settings-nav:nth-child(n+3) { border-top: 1px solid var(--hairline); }
+.settings-page .settings-entry-icon svg { width: 23px; height: 23px; }
+.settings-page .settings-nav .sr-lab, .settings-page .settings-nav .sr-desc { display: block; }
+.settings-page .settings-nav > span:last-child { font-size: 15px; }
+.settings-page .settings-more { padding-block: 10px 2px; }
+.settings-page .settings-more summary { min-height: 43px; }
+.settings-page .settings-version .set-row { padding-bottom: 2px; }
+.settings-page .settings-local-note {
+  margin: 9px 12px 6px; font-size: 11px; line-height: 1.6; color: var(--text-2);
+}
+
+/* All three entry types share a fixed reading order and an editable amount line. */
+.ledger-entry-panel .sheet-head { margin-bottom: 2px; }
+.ledger-entry-panel .entry-sheet .j-type {
+  margin: 0 0 6px; padding: 0; gap: 6px; background: transparent;
+  border: 0; border-bottom: 1px solid var(--hairline); border-radius: 0;
+}
+.ledger-entry-panel .j-type button {
+  position: relative; min-height: 41px; padding-inline: 2px; border: 0; border-radius: 0;
+}
+.ledger-entry-panel .entry-sheet .j-type button.on { background: transparent; box-shadow: none; }
+.ledger-entry-panel .j-type button.on::after {
+  content: ''; position: absolute; inset: auto 18% -1px;
+  height: 3px; background: currentColor; border-radius: 2px 2px 0 0;
+}
+.ledger-entry-panel .entry-sheet .entry-amount {
+  grid-template-columns: auto minmax(0, 1fr); gap: 2px 7px;
+  padding: 7px 3px 8px; border: 0; border-bottom: 1px solid var(--hairline);
+  border-radius: 0; background: transparent; box-shadow: none;
+}
+.ledger-entry-panel .entry-sheet .entry-amount:focus-within { border-bottom: 2px solid var(--accent); padding-bottom: 7px; }
+.ledger-entry-panel .entry-amount small { font-weight: 500; }
+.ledger-entry-panel .entry-amount .amount-input { font-size: 32px; }
+.ledger-entry-panel .entry-amount .amount-input::placeholder { color: var(--text-3); opacity: .82; }
+.entry-date-row, .entry-note { display: flex; align-items: center; gap: 6px; }
+.entry-date-row { min-height: 41px; }
+.entry-date-row > span, .entry-note > span { flex: none; font-size: 12px; color: var(--text-2); }
+.ledger-entry-panel .entry-date-row .j-date {
+  flex: 1; width: 0; min-width: 105px; min-height: 36px; padding: 2px 4px; border: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: 13px;
+}
+.ledger-entry-panel .entry-date-row .chip { padding: 4px 10px; }
+.ledger-entry-panel .entry-context {
+  margin: 1px 0 10px; padding-block: 5px; border-block: 1px solid var(--hairline);
+}
+.ledger-entry-panel .entry-context .entry-book,
+.ledger-entry-panel .entry-context .sentence-entry { border: 0; border-radius: 0; background: transparent; }
+.ledger-entry-panel .entry-context .entry-book { padding-inline: 0 4px; }
+.ledger-entry-panel .sentence-entry:not([open]) { border-inline-start: 1px solid var(--hairline); }
+.ledger-entry-panel .entry-fields .field { margin: 0 0 10px; }
+.ledger-entry-panel .entry-fields .field > label { margin-bottom: 5px; color: var(--text-2); font-size: 12px; }
+.ledger-entry-panel .entry-fields .acct-chips { gap: 5px; }
+.ledger-entry-panel .entry-fields .cat-grid { gap: 4px; }
+.ledger-entry-panel .entry-fields .cat-item {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 4px;
+  min-height: 39px; padding: 4px 2px; font-size: 12px; line-height: 1.25;
+}
+.ledger-entry-panel .entry-fields .cat-item .ci {
+  display: grid; flex: none; place-items: center; width: 22px; height: 22px;
+  background: transparent; border: 0; box-shadow: none; transform: none;
+}
+.ledger-entry-panel .entry-fields .cat-item .ci .art-icon { width: 22px; height: 22px; }
+.ledger-entry-panel .entry-note {
+  margin: 4px 0; min-height: 41px; border-block: 1px solid var(--hairline); gap: 12px;
+}
+.ledger-entry-panel .entry-note input {
+  flex: 1; min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 6px 2px;
+}
+.ledger-entry-panel .entry-payment { margin: 0 0 4px; }
+.ledger-entry-panel .entry-payment summary {
+  display: flex; align-items: center; gap: 6px; min-height: 38px;
+  list-style: none; cursor: pointer; font-size: 12px; color: var(--text-2);
+}
+.entry-payment summary::-webkit-details-marker { display: none; }
+.entry-payment summary span { margin-inline-start: auto; color: var(--text-3); }
+.entry-payment summary::after {
+  content: ''; width: 6px; height: 6px; margin: 0 5px 4px 2px;
+  border: solid currentColor; border-width: 0 1px 1px 0; transform: rotate(45deg);
+}
+.entry-payment[open] summary::after { transform: rotate(225deg); margin-bottom: -3px; }
+.ledger-entry-panel .entry-payment .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ledger-entry-panel .entry-payment select { width: 65%; }
+.entry-payment p { margin: 0 0 12px; font-size: 11px; line-height: 1.5; color: var(--text-2); }
+.ledger-entry-panel .entry-submit { padding-top: 8px; }
+@media (max-width: 350px) {
+  .settings-page .settings-tools button { gap: 3px; }
+  .settings-page .settings-nav-grid .settings-nav { gap: 4px; }
+  .settings-page .settings-entry-icon svg { width: 20px; }
+  .settings-page .scene-choice .scene-thumb { width: 44px; }
+  .ledger-entry-panel .entry-fields .cat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

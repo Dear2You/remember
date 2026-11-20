@@ -6,6 +6,27 @@ const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 const {chromium} = require('playwright');
 
+test('首页长金额在窄屏和横屏各占完整一行', async t => {
+  const browser = await chromium.launch({channel:process.env.BROWSER_CHANNEL || undefined});
+  t.after(()=>browser.close());
+  const page = await browser.newPage({reducedMotion:'reduce'});
+  await page.goto(pathToFileURL(path.resolve(process.env.APP_HTML || 'app/index.html')).href);
+  await page.evaluate(()=>{
+    const fields = {date:U.todayStr(), accountId:'acc-bank', bookId:'book-life'};
+    Store.addTransaction({...fields, type:'out', amountMinor:1234567890123});
+    Store.addTransaction({...fields, type:'in', amountMinor:98765432123});
+  });
+  for (const viewport of [{width:320,height:680}, {width:740,height:920}, {width:844,height:350}]) {
+    await page.setViewportSize(viewport);
+    const fits = await page.locator('.folio-metrics b').evaluateAll(amounts => amounts.map(el=>{
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return range.getClientRects().length===1 && el.scrollWidth<=el.clientWidth+1;
+    }));
+    assert.deepEqual(fits,[true,true,true],JSON.stringify(viewport));
+  }
+});
+
 test('首页月收支与常用入口、日历补记、出差期间个人信用消费及还款核对', async t => {
   const browser = await chromium.launch({channel:process.env.BROWSER_CHANNEL || undefined});
   t.after(()=>browser.close());

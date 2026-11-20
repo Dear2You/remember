@@ -1,0 +1,55 @@
+/* One account statement, with the balance and its underlying accounts together. */
+.assets-page .asset-folio, .assets-page .asset-month {
+  border: 1px solid var(--hairline); border-radius: 11px; background: var(--paper-glass);
+  margin: 0; overflow: hidden; box-shadow: none;
+}
+.assets-page .asset-folio .asset-overview {
+  position: relative; isolation: isolate; border: 0; border-radius: 0; box-shadow: none;
+  margin: 0; padding: 12px 15px 8px; background: var(--paper-glass);
+}
+.assets-page .asset-overview::before, .assets-page .asset-overview::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+}
+.assets-page .asset-overview::before {
+  background: var(--scene-image,url('../images/summer-mist.webp')) var(--scene-cover-position,right center) / cover; opacity: .25;
+}
+.assets-page .asset-overview::after {
+  background: linear-gradient(98deg,var(--card) 2%,transparent 130%),linear-gradient(0deg,var(--card),transparent 60%);
+}
+.asset-overview header>div { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.assets-page .asset-overview header h2, .assets-page .asset-month header h2 { margin: 0; font: 600 16px/1.4 var(--book-serif); color: var(--text); }
+.assets-page .asset-overview header small { font: 12px/1.4 var(--ui-font); color: var(--text-2); }
+.assets-page .asset-overview header button, .assets-page .asset-month header button { min-height: 35px; }
+.assets-page .asset-total { padding: 3px 0 14px; font: 500 clamp(30px,8vw,36px)/1.15 Georgia,var(--book-serif); letter-spacing: -.035em; color: var(--text); }
+.asset-folio .asset-overview .asset-composition { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 8px 0 2px; align-items: start; }
+.asset-folio .asset-composition small { font-size: 12px; }
+.asset-folio .asset-composition b { font-size: 19px; line-height: 1.35; }
+.asset-folio .j-toggle-debt { min-height: 42px; }
+.asset-folio .asset-debts { margin: 0; padding: 0 12px; border-top: 1px solid var(--hairline); }
+.asset-folio .asset-debts[hidden]{ display: none; }
+.asset-folio :is(.account-drawer,.asset-pending) { border: 0; border-top: 1px solid var(--hairline); border-radius: 0; margin: 0; box-shadow: none; background: transparent; }
+.asset-folio .account-drawer>summary, .asset-folio .asset-pending { padding: 5px 14px; display: flex; align-items: center; gap: 9px; min-height: 45px; color: var(--text); }
+.asset-folio .account-drawer>summary .art-icon, .asset-folio .asset-pending .art-icon { width: 24px; height: 24px; flex: none; }
+.asset-folio .account-drawer>summary b, .asset-folio .asset-pending span { font: 550 13px/1.5 var(--ui-font); }
+.asset-folio .account-drawer>summary small { font-size: 11px; color: var(--text-2); }
+.asset-folio .account-drawer>summary>span small { display: block; overflow-wrap: anywhere; }
+.asset-folio .asset-pending { text-align: left; width: 100%; }
+.asset-folio .asset-pending b { margin-left: auto; font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.asset-folio .asset-pending i { font-style: normal; color: var(--text-2); }
+.assets-page .asset-shortcuts { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; padding: 3px 0; margin: 6px 0; border: 0; border-radius: 8px; background: var(--paper-glass); }
+.assets-page .asset-shortcuts button { flex-direction: column; gap: 1px; min-height: 48px; padding: 2px 0; border: 0; font: 500 12px/1.5 var(--ui-font); color: var(--text); }
+.assets-page .asset-shortcuts svg { width: 24px; height: 24px; }
+.assets-page .asset-month { padding: 6px 14px 13px; }
+.assets-page .asset-month>header { display: flex; gap: 8px; align-items: center; justify-content: start; }
+.assets-page .asset-month header h2, .assets-page .asset-month header button { flex: none; }
+.asset-month .asset-book-select { width: auto; min-width: 0; max-width: 43%; min-height: 35px; padding: 3px 2px; font: 12px/1.4 var(--ui-font); color: var(--text-2); background: transparent; text-overflow: ellipsis; }
+.asset-month .asset-book-select option { color: var(--text); background: var(--card); }
+.assets-page .asset-month header button { margin-left: auto; }
+.asset-month-figures { display: flex; gap: 7px 12px; flex-wrap: wrap; margin: 4px 0 0; padding-top: 9px; border-top: 1px solid var(--hairline); }
+.asset-month-figures div { flex: 1 1 max-content; min-width: 0; max-width: 100%; }
+.asset-month-figures dt { font-size: 12px; color: var(--text-2); }
+.asset-month-figures dd { font: 500 19px/1.4 Georgia,var(--book-serif); font-variant-numeric: tabular-nums; margin: 2px 0 0; overflow-wrap: anywhere; }
+.asset-budget { border-top: 1px solid var(--hairline); margin-top: 10px; padding-top: 4px; }
+.asset-budget header h3 { font: 600 13px/1.5 var(--book-serif); margin: 0; }
+.asset-budget-facts { display: flex; justify-content: space-between; gap: 5px 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+.asset-budget p { font-size: 12px; margin: 6px 0 0; }

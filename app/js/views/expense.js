@@ -92,6 +92,7 @@ Views.expense = (() => {
         body.classList.add('entry-sheet');body.closest('.sheet-panel').classList.add('ledger-entry-panel');
         body.closest('.sheet-panel').querySelector('.sheet-title').insertAdjacentHTML('afterbegin',UI.art('edit'));
         let initialFields;
+        let paymentExpanded = !!state.paymentChannel;
         function render() {
           const isTransfer = state.type === 'transfer';
           const advance = tripExpense && state.type === 'out';
@@ -139,6 +140,10 @@ Views.expense = (() => {
               <small>${isTransfer?'转账金额':advance?'垫付金额':state.type==='out'?'支出金额':'收入金额'}</small><span aria-hidden="true">¥</span>
               <input aria-label="金额（元）" class="amount-input j-amount num" inputmode="decimal" placeholder="0.00" value="${U.escapeHtml(state.amount)}" autocomplete="off">
             </label><div class="entry-budget-check" aria-live="polite"></div>` +
+            '<div class="entry-date-row"><span>日期</span>' +
+            '  <input type="date" aria-label="账单日期" class="j-date" value="' + state.date + '">' +
+            '  <button class="chip j-today">今天</button><button class="chip j-yest">昨天</button>' +
+            '</div>' +
             '<div class="entry-context">' +
             `<label class="entry-book"${advance?' hidden':''}><span>账本</span><select class="j-book">${!state.bookId?'<option value="" disabled selected>请选择账本</option>':''}${archivedOption}${bookOptions}</select></label>` +
             (canRepeat(editItem) ? '<button class="btn btn-ghost j-repeat" type="button">再记一笔</button>' : '') +
@@ -148,10 +153,10 @@ Views.expense = (() => {
             '</div>' + (missing.length ? '<p class="payroll-help" role="status">请为新账单选择'+missing.join('、')+'。</p>' : '') +
 
             (isTransfer
-              ? '<div class="field" style="margin-top:12px"><label>转出账户（资产）</label><div class="acct-chips j-from">' +
+              ? '<div class="field"><label>转出账户</label><div class="acct-chips j-from">' +
                 accountChoices(assetAccs, 'fromId').map(a => '<button class="chip ' + (state.fromId === a.id ? 'on' : '') + '" data-id="' + a.id + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + '</button>').join('') +
                 '</div></div>' +
-                '<div class="field"><label>转入账户（选负债账户 = 还款）</label><div class="acct-chips j-to">' +
+                '<div class="field"><label>转入账户（含还款）</label><div class="acct-chips j-to">' +
                 accountChoices(accsAll, 'toId').map(a => '<button class="chip ' + (state.toId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·负债' : '') + '</button>').join('') +
                 '</div></div>' + feeFields(state) +
                 (isRepayMode
@@ -159,7 +164,7 @@ Views.expense = (() => {
                     (debt&&!Store.settings.hideAmount?' <button type="button" class="text-action j-fill-debt">按全部欠款填入</button>':'')+
                     '<div class="j-debt-after" aria-live="polite"></div></div>'
                   : '')
-              : '<div class="field" style="margin-top:12px"><label>'+(state.type==='out'?'实际扣款账户（信用卡消费选负债账户）':'收款账户')+'</label><div class="acct-chips j-acc">' +
+              : '<div class="field"><label>'+(state.type==='out'?'实际扣款账户':'收款账户')+'</label><div class="acct-chips j-acc">' +
                 accs.map(a => '<button class="chip ' + (state.accountId === a.id ? 'on' : '') + '" data-id="' + a.id + '" style="' + (a.type === 'liability' ? 'border-style:dashed' : '') + '">' + UI.accountIcon(a) + ' ' + accountLabel(a) + (a.type === 'liability' ? '·刷卡' : savingIds.has(a.id)?'·存钱':'') + '</button>').join('') +
                 '</div></div>' +
                 (state.type==='out'&&Store.account(state.accountId)?.type==='liability'?'<p class="credit-entry-hint">'+UI.art('card')+'这笔现在就计入消费和预算，同时增加待还；之后还款请用“转账/还款”。</p>':'')+
@@ -173,13 +178,13 @@ Views.expense = (() => {
                     '</div></div>'
                   : '')) +
 
-            (state.type==='out'?'<label class="field">支付渠道（选填）<select class="j-channel">'+['','微信','支付宝','银行卡','现金','其他'].map(c=>'<option value="'+c+'" '+((state.paymentChannel||'')===c?'selected':'')+'>'+(c||'未指定')+'</option>').join('')+'</select></label><p class="payroll-help">用微信或支付宝扣银行卡时，上方选实际扣款的银行卡。</p>':'')+
             (editItem?.wageProject?'<p class="payroll-help">已关联 '+U.escapeHtml(editItem.wageProject)+' · '+U.escapeHtml(editItem.wageMonth)+' 工资，修改金额会同步更新结算。</p>':'')+
-            '<div class="field"><input class="j-note" placeholder="备注（选填）" maxlength="60" value="' + U.escapeHtml(state.note) + '"></div>' +
-            '<div class="field field-row">' +
-            '  <button class="chip j-today">今天</button><button class="chip j-yest">昨天</button>' +
-            '  <input type="date" aria-label="账单日期" class="j-date" style="flex:1" value="' + state.date + '">' +
-            '</div>' +
+            '<label class="entry-note"><span>备注</span><input class="j-note" placeholder="写点什么（选填）" maxlength="60" value="' + U.escapeHtml(state.note) + '"></label>' +
+            (state.type === 'out' ? '<details class="entry-payment"' + (paymentExpanded ? ' open' : '') + '><summary>支付渠道' +
+              '<span>' + U.escapeHtml(state.paymentChannel || '选填') + '</span></summary><label class="field"><span>付款方式</span>' +
+              '<select class="j-channel" aria-label="支付渠道">' + ['', '微信', '支付宝', '银行卡', '现金', '其他'].map(c =>
+                '<option value="' + c + '"' + ((state.paymentChannel || '') === c ? ' selected' : '') + '>' + (c || '未指定') + '</option>').join('') +
+              '</select></label><p>微信或支付宝扣银行卡时，实际扣款账户选该银行卡。</p></details>' : '') +
             '</div><div class="field-row entry-submit">' +
             (reviewing ? '<button class="btn btn-ghost j-amend" style="flex:1">修改</button>' : '') +
             (editItem ? '<button class="btn btn-danger j-del" style="flex:1">删除</button>' : '') +
@@ -269,7 +274,14 @@ Views.expense = (() => {
             setTimeout(() => { if (amt.isConnected && !quick.open && !body.contains(document.activeElement)) amt.focus(); },250);
           }
           body.querySelector('.j-note').oninput = e => { state.note = e.target.value; paintBudget(); };
-          const channel=body.querySelector('.j-channel');if(channel)channel.onchange=e=>{state.paymentChannel=e.target.value;};
+          const payment = body.querySelector('.entry-payment');
+          if (payment) {
+            payment.ontoggle = () => { paymentExpanded = payment.open; };
+            payment.querySelector('.j-channel').onchange = e => {
+              state.paymentChannel = e.target.value;
+              payment.querySelector('summary span').textContent = state.paymentChannel || '选填';
+            };
+          }
           body.querySelector('.j-date').onchange = e => { state.date = e.target.value; syncChips(); };
           body.querySelector('.j-today').onclick = () => { state.date = U.todayStr(); body.querySelector('.j-date').value = state.date; syncChips(); };
           body.querySelector('.j-yest').onclick = () => {

@@ -8,7 +8,7 @@
 
 ## 已发布基线与入口
 
-本说明更新于2026-11-20，当前应用为 **v3.5 / 30500**，发布代码以 `v3.5` 标签为准。首页以一幅主题插画贯穿日期、收支和各栏，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
+本说明更新于2026-11-20，当前应用为 **v3.6 / 30600**，发布代码以 `v3.6` 标签为准。首页以一幅主题插画贯穿日期、收支和各栏，主要页面共用主题标题和页签样式，图表及功能框以 v2.39 为基础。接手时核对 `latest.json`、`app/index.html`、Git 标签和 GitHub Releases，取得当时的版本。
 
 - 公开仓库：[Dear2You/remember](https://github.com/Dear2You/remember)。应用内更新依赖公开读取清单和安装包。
 - 包名：`com.nianxiatian.app`。Android最低API24、目标API35，原生Java外壳加载随包附带的HTML/CSS/JavaScript。

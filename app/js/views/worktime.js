@@ -283,7 +283,9 @@ Views.worktime = (() => {
         if(scheduled.length){
           classes.push('work-scheduled');const status=c.date>U.todayStr()?'预计':'待确认';
           const pay=scheduled.reduce((s,p)=>s+Store.salaryEntryPay({date:c.date,paidDays:1},p),0);
-          details=`<span class="day-hours">${status}</span><span class="day-pay compact">¥${UI.amount(pay)}</span>`;label+='，应出勤，'+status;
+          const amount=UI.amount(pay);
+          details=`<span class="day-hours">${status}</span><span class="day-pay compact">¥${amount.replace(/,/g,',<wbr>')}</span>`;
+          label+='，应出勤，'+status+'，'+(Store.settings.hideAmount?'工资已隐藏':'预计工资 '+amount);
         } else if(c.inMonth){const active=salaryPlans.filter(p=>{const r=Store.salaryRange(p);return c.date>=r.start&&c.date<=r.end;});if(active.length)details='<span class="day-hours rest-label">'+(active.every(p=>p.employmentStart&&c.date<p.employmentStart)?'未入职':'休息')+'</span>';}
       }
       return `<td><button class="${classes.join(' ')}" data-date="${c.date}" aria-label="${label}"
@@ -295,7 +297,7 @@ Views.worktime = (() => {
     const calendar = mode === 'cal' ? `<table class="cal ledger-grid work-grid" aria-label="${U.ymLabel(ym)}工时与工资">
       <thead><tr>${[...'一二三四五六日'].map(d => '<th scope="col">周' + d + '</th>').join('')}</tr></thead>
       <tbody>${rows.map(week => '<tr>'+week.map(tile).join('')+'</tr>').join('')}</tbody></table>
-      <div class="work-key">${salaryPlans.length?'实色：已确认 · 红色：缺勤 · 虚线：待确认／预计':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
+      <div class="work-key">${salaryPlans.length?'<span><i class="confirmed"></i>已确认</span><span><i class="absent"></i>缺勤</span><span><i class="scheduled"></i>待确认／预计</span>':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
       ${partialPay ? '<p class="work-pay-note">* 当天有工时待设时薪，工资显示已计部分。</p>' : ''}
       ${partialHours ? '<p class="work-pay-note">工时后的 + 表示另有日薪记录未填实际工时。</p>' : ''}` : '';
 
@@ -317,6 +319,15 @@ Views.worktime = (() => {
       }).join('');
     })();
 
+    const month = U.ymParts(ym);
+    const viewSwitch = '<div class="report-switch work-mode" role="group" aria-label="工时视图">' +
+      '<button data-m="cal" aria-pressed="' + (mode === 'cal') + '">月历</button>' +
+      '<button data-m="list" aria-pressed="' + (mode === 'list') + '">列表</button></div>';
+    const scopeSwitch = primary ? '<div class="work-viewbar"><div class="work-scope" role="group" aria-label="统计范围">' +
+      [['month','自然月'],['period','工资周期']].map(([value,label])=>
+        `<button data-scope="${value}" aria-pressed="${scope===value}">${label}</button>`).join('') +
+      '</div>' + viewSwitch + '</div>' : '';
+
     root.innerHTML =
       '<div class="page worktime-page">' +
       '  <div class="page-head chapter-head">' + UI.pageTitle('记工时','worktime') +
@@ -326,23 +337,21 @@ Views.worktime = (() => {
       '    </div>' +
       '  </div>' +
 
-      (primary?'<div class="work-scope report-switch page-tabs" role="group" aria-label="统计范围">'+[['month','自然月'],['period','工资周期']].map(([v,t])=>`<button data-scope="${v}" aria-pressed="${scope===v}">${t}</button>`).join('')+'</div>':'')+
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
-      '    <header class="work-monthbar"><div class="work-month">' +
-      '      <button class="j-prev" aria-label="上个月" '+(ym<='1000-03'?'disabled':'')+'>‹</button><label class="work-month-pick"><span>' + U.ymLabel(ym)+(scope==='period'&&primary?'结算期':'') + '</span><input aria-label="选择工时月份" type="month" value="'+ym+'" min="1000-03" max="9999-11"></label>' +
-      '      <button class="j-next" aria-label="下个月" '+(ym>='9999-11'?'disabled':'')+'>›</button></div>' +
-      '      <div class="report-switch" role="group" aria-label="工时视图">' +
-      '        <button data-m="cal" aria-pressed="' + (mode === 'cal') + '">月历</button>' +
-      '        <button data-m="list" aria-pressed="' + (mode === 'list') + '">列表</button></div></header>' +
-      '<div class="work-range work-range-nav"><span>'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</span>'+(ym!==currentMonth?'<button class="j-current-range">'+(scope==='period'?'回本期':'回本月')+'</button>':'')+'</div>'+
+      scopeSwitch +
+      '    <header class="work-monthbar"><label class="work-month-pick calendar-month-picker"><span><small>' + month.y + '年</small> ' + (month.m+1) + '月</span><input aria-label="选择工时月份" type="month" value="'+ym+'" min="1000-03" max="9999-11"></label>' +
+      (primary?'':viewSwitch) + '<div class="work-month">' +
+      '      <button class="j-prev" aria-label="上个月" '+(ym<='1000-03'?'disabled':'')+'>‹</button>' +
+      '      <button class="j-next" aria-label="下个月" '+(ym>='9999-11'?'disabled':'')+'>›</button></div></header>' +
+      (scope==='period'||ym!==currentMonth?'<div class="work-range work-range-nav"><span>'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</span>'+(ym!==currentMonth?'<button class="j-current-range">'+(scope==='period'?'回本期':'回本月')+'</button>':'')+'</div>':'')+
       '  <div class="stat-grid worktime-summary">' +
       '    <div><div class="lab">已记工时</div><div class="val num">' + U.fmtHours(ws.total) + '</div></div>' +
       '    <div><div class="lab">已计工资</div><div class="val num">¥' + UI.amount(ws.pay, true) + '</div></div>' +
       '    <div><div class="lab">区间日均工资</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
       '    <div><div class="lab">出勤天数</div><div class="val num">' + ws.days + ' 天</div></div>' +
-      '  </div>' + calendar +
+      '  </div>' + calendar + listHtml +
 
-      '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym,salaryPlans) + listHtml +
+      '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym,salaryPlans) +
 
       (projArr.length
         ? '<div class="card"><div class="section-title">项目分布</div><div class="report-switch work-distribution">'+[['pay','工资'],['days','出勤天数'],['hours','已填小时']].map(([key,text])=>`<button data-distribution="${key}" aria-pressed="${distribution===key}">${text}</button>`).join('')+'</div>' + projArr.map(p =>

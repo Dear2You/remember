@@ -37,19 +37,20 @@ Views.home = (() => {
       ['收入', amount(stat.inc), 'money-in'],
       ['结余', amount(stat.net), '']
     ];
+    const longAmounts = metrics.some(([, value]) => value.length > 10);
     root.innerHTML=`<div class="page overview-page handpage home-refined">
       <section class="home-spread">
         <button class="folio-cover" data-dest="calendar-today" aria-label="今天 ${esc(U.fmtFull(today))}，打开日历">
-          <span class="folio-date"><span class="folio-month">${today.slice(0,4)} 年 ${month} 月</span>
-            <span class="folio-day"><b>${today.slice(8)}</b><span><strong>星期${'日一二三四五六'[U.parseDate(today).getDay()]}</strong><small>${esc(calendar.lunarFull.replace(/^.*年 /,''))}${festival?' · '+esc(festival):''}</small></span></span>
-          </span>
+          <time class="folio-date" datetime="${today}"><b class="folio-date-number">${today.slice(8)}</b>
+            <span class="folio-date-lines"><span class="folio-month">${today.slice(0,4)} 年 ${month} 月</span><strong>星期${'日一二三四五六'[U.parseDate(today).getDay()]}<small>${esc(calendar.lunarFull.replace(/^.*年 /,''))}${festival?' · '+esc(festival):''}</small></strong></span>
+          </time>
         </button>
         <section class="folio-ledger"><header>
           <h2>${month}月收支</h2><label class="folio-book-filter"><select aria-label="首页收支账本"><option value="">全部账本</option>${Store.books().map(b=>`<option value="${esc(b.id)}"${bookId===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select></label>
           <button class="visibility-toggle" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button>
           <button class="text-action" data-dest="month">账单 ›</button>
         </header>
-        <button class="folio-metrics" data-dest="month">${metrics.map(([label,value,color])=>`<span><small>${label}</small><b class="${color}">${value}</b></span>`).join('')}</button></section>
+        <button class="folio-metrics${longAmounts?' long-amounts':''}" data-dest="month">${metrics.map(([label,value,color])=>`<span><small>${label}</small><b class="${color}">${value}</b></span>`).join('')}</button></section>
         <nav class="folio-tools" aria-label="常用操作">${quick.map(([route,icon,label])=>`<button data-dest="${route}"><span class="folio-tool-art" aria-hidden="true">${UI.art(icon)}</span><span>${label}</span></button>`).join('')}</nav>
       </section>
       <div class="home-sections">

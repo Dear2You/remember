@@ -7,11 +7,11 @@ Views.life = (() => {
     // 壳：子导航 + 子页面容器（一级 tab，无需返回按钮）
     root.innerHTML =
       '<div class="page life-page ' + (selected==='cal'?'calendar-mode':'') + '">' +
-      '  <div class="page-head chapter-head">' + UI.pageTitle('时光','calendar') + '<span class="page-sub j-sub"></span></div>' +
+      '  <div class="page-head chapter-head">' + UI.pageTitle('时光','calendar') +
       '  <div class="seg page-tabs j-subnav" role="group" aria-label="时光视图">' +
       [['cal','日历'],['today','今日'],['tasks','事项'],['more','更多']].map(([id,label]) =>
         `<button data-s="${id}" class="${selected===id?'on':''}" aria-pressed="${selected===id}">${label}</button>`).join('') +
-      '  </div>' +
+      '  </div></div>' +
       '  <div class="swipe-panel j-subbody"></div>' +
       '</div>';
 
@@ -28,7 +28,6 @@ Views.life = (() => {
     else if (selected === 'tasks') Views.lifetasks.mount(subbody, ctx);
     else if (selected === 'cal') Views.lifecal.mount(subbody, ctx);
     else mountMore(subbody);
-    root.querySelector('.j-sub').textContent = ({ today: U.fmtFull(U.todayStr()), tasks: '待办事项', cal: '日程与待办', more: '生活工具' })[selected];
   }
 
   /* ---------- 今日工作台（只读引用各模块，不建副本） ---------- */
@@ -46,6 +45,7 @@ Views.life = (() => {
     root.innerHTML =
       // 待办
       '<div class="card j-go-tasks" style="cursor:pointer">' +
+      '  <div class="life-today-date">' + U.fmtFull(today) + '</div>' +
       '  <div class="section-title">今日待办 <button class="link">查看今日 ›</button></div>' +
       (dg.tasksOverdue ? '<button class="text-action j-overdue" style="color:var(--danger)">' + dg.tasksOverdue + ' 项已逾期 ›</button>' : '') +
       (dg.tasksOpen

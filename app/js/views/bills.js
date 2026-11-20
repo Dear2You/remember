@@ -238,6 +238,8 @@ Views.bills = (() => {
       const byDay = Object.create(null);
       filtered.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
       const days = Object.keys(byDay).sort().reverse();
+      const today = U.todayStr();
+      const yesterday = U.addDays(today, -1);
       let remaining = limit;
       const listHtml = days.length
         ? days.map(d => {
@@ -251,12 +253,17 @@ Views.bills = (() => {
           if (dO) bits.push('支出 ¥' + UI.amount(dO));
           if (dI) bits.push('收入 ¥' + UI.amount(dI));
           if (dT) bits.push('转账 ¥' + UI.amount(dT));
-          const dayLabel = allDates && d.slice(0,4) !== U.todayStr().slice(0,4) ? U.fmtFull(d) : U.fmtDay(d);
-          return '<div class="day-group"><div class="day-head"><span>' + dayLabel + '</span><span class="num">' + bits.join(' · ') + '</span></div>' +
+          const date = U.parseDate(d);
+          const month = (d.slice(0,4) === today.slice(0,4) ? '' : date.getFullYear() + '年') + (date.getMonth() + 1) + '月';
+          const weekday = d === today ? '今天' : d === yesterday ? '昨天' : '周' + U.weekdayCN(date.getDay());
+          return '<div class="day-group"><div class="day-head"><time datetime="' + U.escapeHtml(d) + '" aria-label="' + U.fmtFull(d) + '"><b>' + U.pad(date.getDate()) + '</b><span>' + month + ' · ' + weekday + '</span></time>' +
+            '<span class="ledger-day-sums">' + (bits.length ? bits.map(bit => '<span>' + bit + '</span>').join('') : byDay[d].length + ' 笔') + '</span></div>' +
             '<div class="cell-list">' + visible.map(t => {
-              const s = E.tSummary(t);
+              const note = (t.note || '').trim();
+              const s = E.tSummary(note ? {...t, note:''} : t);
+              const detail = [note && note !== s.title && s.title, s.sub.replace(/^ · /,'')].filter(Boolean).join(' · ');
               return '<button class="cell j-item" data-id="' + U.escapeHtml(t.id) + '"><span class="c-ico">' + UI.entryIcon(t) + '</span>' +
-                '<span class="c-main"><span class="c-title">' + U.escapeHtml(s.title) + '</span><span class="c-sub">' + U.escapeHtml(s.sub) + '</span></span>' +
+                '<span class="c-main"><span class="c-title">' + U.escapeHtml(note || s.title) + '</span><span class="c-sub">' + U.escapeHtml(detail) + '</span></span>' +
                 '<span class="c-right"><span class="c-val">' + E.tAmountHtml(t) + '</span></span></button>';
             }).join('') + '</div></div>';
         }).join('') + (filtered.length>limit ? `<button class="j-more-results ledger-more">再看 ${Math.min(batchSize,filtered.length-limit)} 笔</button>` : '')
@@ -269,10 +276,10 @@ Views.bills = (() => {
         root.querySelector('.j-results').innerHTML = listHtml;
         return;
       }
-      root.innerHTML = pageHead +
+      root.innerHTML = pageHead + totals +
         `<div class="report-search ledger-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}">
         <select aria-label="流水日期范围" class="j-detail-scope"><option value="period">本期</option><option value="all"${allDates?' selected':''}>全部日期</option></select></div>
-        ${totals}<div class="j-results">${listHtml}</div></div></div>`;
+        <div class="j-results">${listHtml}</div></div></div>`;
       if (preview) return;
       bindCommon();
       const search = root.querySelector('.j-search');

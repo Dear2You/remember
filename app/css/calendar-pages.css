@@ -1,0 +1,125 @@
+/* Both calendars use the same month picker and a ruled paper layout. */
+.worktime-page .calendar-month-picker,
+.life-calendar-spread .calendar-month-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 38px;
+  text-align: left;
+}
+.worktime-page .calendar-month-picker > span,
+.life-calendar-spread .calendar-month-picker > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--text);
+  font: 600 22px/1.25 Georgia, var(--book-serif);
+  white-space: nowrap;
+}
+.calendar-month-picker > span small { margin: 0; color: var(--text-2); font: 500 12px/1.2 var(--ui-font); }
+.work-month-pick.calendar-month-picker span::after,
+.lc-month.calendar-month-picker span::after {
+  content: '';
+  align-self: center;
+  width: 5px;
+  height: 5px;
+  margin: -3px 3px 0 1px;
+  border: solid var(--accent);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.work-viewbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-inline: 3px;
+  border-bottom: 1px solid var(--hairline);
+}
+.work-viewbar .work-scope { display: inline-flex; margin: 0; gap: 12px; }
+.work-scope button {
+  position: relative;
+  min-height: 39px;
+  padding: 0 2px;
+  background: transparent;
+  color: var(--text-2);
+  font: 500 12px/1.4 var(--ui-font);
+}
+.work-scope button[aria-pressed="true"] { color: var(--accent); font-weight: 650; }
+.work-scope button[aria-pressed="true"]::after {
+  position: absolute; content: ''; bottom: -1px; left: 2px; right: 2px;
+  height: 2px; border-radius: 2px; background: var(--accent);
+}
+.worktime-page .work-mode { display: inline-flex; background: transparent; padding: 0; gap: 2px; }
+.worktime-page .work-mode button { min-height: 34px; padding-inline: 8px; color: var(--text-2); font-size: 11px; }
+.worktime-page .work-mode button[aria-pressed="true"] { background: var(--tint-surface); color: var(--accent); box-shadow: none; }
+.work-panel .work-monthbar { padding: 4px 0 0; gap: 5px; }
+.work-monthbar .calendar-month-picker { margin-right: auto; }
+.work-monthbar .work-month { gap: 1px; }
+.work-monthbar .work-month button, .lc-toolbar > :is(.j-prev,.j-next) {
+  flex: none; min-width: 32px; width: 32px; min-height: 36px; height: 36px;
+  color: var(--text-2); font: 20px/1 Georgia, serif;
+}
+.work-panel .work-range-nav { margin-block: 0 4px; font: 11px/1.5 var(--ui-font); color: var(--text-2); }
+.work-panel .worktime-summary {
+  grid-template-columns: .85fr 1.3fr 1.15fr .8fr;
+  margin: 3px 3px 0;
+  padding: 7px 0 9px;
+  background: transparent;
+  border-radius: 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.worktime-summary > div { min-width: 0; text-align: left; }
+.worktime-summary > div + div { border-left: 1px solid var(--hairline); padding-left: 6px; }
+.worktime-summary .lab { font: 11px/1.5 var(--ui-font); color: var(--text-2); }
+.worktime-summary .val { margin-top: 2px; font: 600 clamp(13px,3.8vw,17px)/1.3 Georgia,var(--ui-font); font-variant-numeric: tabular-nums; }
+.work-panel:not(.work-calendar) .day-group { margin: 9px 0 3px; }
+.work-panel:not(.work-calendar) .empty { padding-block: 18px; }
+.work-grid td { vertical-align: top; }
+.work-calendar .work-day { justify-content: flex-start; min-height: clamp(57px,15vw,71px); gap: 1px; padding: 4px 1px; }
+.work-calendar .work-day > b { font: 600 clamp(15px,4vw,18px)/1.2 Georgia,var(--ui-font); font-variant-numeric: tabular-nums; }
+.work-calendar .day-hours { font: 550 11px/1.3 var(--ui-font); }
+.work-calendar .day-pay, .work-calendar .day-pay.compact { font-variant-numeric: tabular-nums; font-size: clamp(9px,2.6vw,11px); }
+.work-calendar .work-key { margin-block: 0; padding-block: 8px; gap: 9px; color: var(--text-2); }
+.work-key > span { align-items: center; gap: 3px; }
+.work-key .confirmed { background: var(--accent-weak); border: 1px solid var(--accent); }
+.work-key .absent { background: var(--rose-wash); border: 1px solid var(--danger); }
+.work-key .scheduled { border: 1px dashed var(--text-2); }
+
+/* The four life views fit alongside the heading, leaving the page to the calendar. */
+.life-page .chapter-head .j-subnav {
+  flex: 0 1 auto; width: auto; max-width: 100%; min-width: 0;
+  margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent;
+}
+.life-page .chapter-head .j-subnav button { flex: 1 1 auto; min-width: 36px; padding-inline: clamp(5px,1.9vw,10px); }
+.life-page .chapter-head .j-subnav button[aria-pressed="true"]::after { left: 5px; right: 5px; }
+.life-today-date { color: var(--text-2); font-size: 11px; margin-bottom: 5px; }
+.life-calendar-spread .lc-toolbar { padding: 5px 7px 4px 10px; gap: 2px; }
+.lc-toolbar .calendar-month-picker { flex: none; margin-right: auto; }
+.lc-toolbar > .j-today { flex: none; min-width: 42px; margin-left: 2px; padding-inline: 6px; white-space: nowrap; }
+.lc-toolbar > .lc-toolbar-add { margin-left: 2px; display: grid; place-items: center; }
+.lc-toolbar-add svg { width: 19px; height: 19px; }
+.life-calendar-spread .lc-weekdays { padding: 5px 0; background: var(--tint-surface); color: var(--text-2); }
+.life-calendar-spread .lc-cell { min-height: clamp(63px,18vw,94px); padding: 4px 3px; }
+.lc-cell .lc-day-top { min-height: 23px; padding-inline: 1px; }
+.lc-cell .lc-day-top b { font-variant-numeric: tabular-nums; }
+.lc-cell .lc-lunar, .lc-cell .lc-festival { padding-left: 4px; font-size: 10px; line-height: 1.4; }
+.lc-cell .lc-items { gap: 2px; margin-top: 3px; }
+.lc-cell .lc-item { font-size: 10px; line-height: 1.4; }
+.lc-cell .lc-cell-foot { min-height: 0; color: var(--text-2); }
+.lc-cell .lc-cell-foot i, .lc-cell .lc-cell-foot small { font-size: 9px; }
+.lc-cell .lc-items:empty, .lc-cell .lc-cell-foot:empty { display: none; }
+.life-calendar-spread .lc-cell.outside > * { opacity: .72; }
+.life-calendar-spread .lc-key { padding: 3px 8px; font-size: 10px; }
+.life-calendar-spread .lc-key button { min-height: 31px; font-size: 10px; color: var(--text-2); }
+.lc-day-agenda .lc-agenda-heading { align-items: center; }
+.lc-day-agenda .lc-agenda-heading h2 { font-size: 17px; }
+.lc-day-agenda .lc-agenda-heading p { margin: 3px 0; color: var(--text-2); }
+.lc-day-agenda .lc-agenda-rows { border-top: 1px solid var(--hairline); margin-top: 7px; }
+.lc-day-agenda .lc-empty { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lc-day-agenda .lc-empty button { margin: 0; min-height: 32px; }
+@media (min-width: 600px) {
+  .life-calendar-spread .lc-cell { min-height: 96px; padding: 6px; }
+  .work-calendar .work-day { min-height: 72px; }
+}

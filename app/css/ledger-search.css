@@ -1,19 +1,49 @@
+/* The period totals lead into one chronological register. */
 .bill-report .report-period[hidden] { display: none; }
-.bill-report .ledger-search { display: flex; align-items: stretch; gap: 6px; margin: 8px 0; }
-.bill-report .ledger-search input { flex: 1; min-width: 0; }
-.bill-report .ledger-search select { flex: none; width: auto; max-width: 42%; padding-inline: 8px; font-size: 12px; }
-.bill-report .ledger-totals { padding: 9px 12px 11px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px; }
-.bill-report .ledger-totals header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--text-2); font-size: 11px; }
-.bill-report .ledger-totals header span:first-child { font: 600 13px var(--book-serif); color: var(--text); }
-.bill-report .ledger-totals dl { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 7px 0 0; }
-.bill-report .ledger-totals dl>div { flex: 1 1 max-content; min-width: 0; max-width: 100%; }
-.bill-report .ledger-totals dt { color: var(--text-2); font-size: 11px; }
-.bill-report .ledger-totals dd { margin: 1px 0 0; font: 500 18px/1.3 Georgia,var(--ui-font); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.bill-report .j-results button.cell { width: 100%; text-align: left; color: var(--text); }
-.bill-report .j-results .day-group { margin-top: 8px; background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
-.bill-report .j-results .day-head { gap: 3px 10px; flex-wrap: wrap; padding: 7px 10px; color: var(--text); border-bottom: 1px solid var(--hairline); }
-.bill-report .j-results .day-head .num { margin-left: auto; overflow-wrap: anywhere; }
-.bill-report .j-results .cell-list { border: 0; border-radius: 0; box-shadow: none; }
-.bill-report .j-results :is(.c-title,.c-sub,.c-val) { display: block; }
-.bill-report .ledger-more { width: 100%; min-height: 42px; margin-top: 7px; color: var(--accent); background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 8px; }
+.bill-report .ledger-totals {
+  background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 8px 13px 11px;
+}
+.ledger-totals header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--text-2); font-size: 12px; }
+.ledger-totals header span:first-child { font: 600 15px/1.5 var(--book-serif); color: var(--text); }
+.ledger-totals dl { display: flex; flex-wrap: wrap; margin: 8px 0 0; gap: 7px 11px; }
+.ledger-totals dl>div { flex: 1 1 max-content; max-width: 100%; min-width: 0; }
+.ledger-totals dt { color: var(--text-2); font-size: 12px; }
+.ledger-totals dd { margin: 1px 0 0; font: 500 clamp(18px,5vw,23px)/1.3 Georgia,var(--book-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bill-report .ledger-search {
+  display: flex; position: relative; gap: 0; align-items: center; margin: 8px 0;
+  background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 8px;
+}
+.ledger-search::before { content: ''; position: absolute; left: 12px; width: 10px; height: 10px; margin-top: -3px; border: 1.5px solid var(--text-2); border-radius: 50%; pointer-events: none; }
+.ledger-search::after { content: ''; position: absolute; left: 22px; width: 6px; height: 1.5px; margin-top: 9px; background: var(--text-2); transform: rotate(45deg); pointer-events: none; }
+.bill-report .ledger-search input, .bill-report .ledger-search select { min-height: 40px; margin: 0; font-size: 13px; color: var(--text); border: 0; background: transparent; }
+.bill-report .ledger-search input { flex: 1; min-width: 0; padding: 6px 4px 6px 34px; }
+.bill-report .ledger-search input::placeholder { color: var(--text-2); }
+.bill-report .ledger-search select { flex: none; width: auto; max-width: 42%; padding-inline: 7px; border-radius: 0 8px 8px 0; }
+.bill-report .ledger-search select option { color: var(--text); background: var(--card); }
+.bill-report .ledger-search:focus-within { outline: 1px solid var(--accent); }
+.bill-report .j-results { background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.bill-report .j-results .day-group { border: 0; margin: 0; background: transparent; }
+.bill-report .j-results .day-group + .day-group { border-top: 1px solid var(--hairline); }
+#pageBody .bill-report .j-results .day-head {
+  display: flex; align-items: center; gap: 4px 12px; margin: 0; padding: 5px 12px;
+  background: var(--input-bg); color: var(--text); border: 0;
+}
+.bill-report .day-head time { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 7px; color: var(--text); flex: 0 0 auto; }
+.bill-report .day-head time b { font: 500 22px/1.2 Georgia,var(--book-serif); font-variant-numeric: tabular-nums; }
+.bill-report .day-head time span { color: var(--text-2); font-size: 12px; }
+.ledger-day-sums { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 9px; text-align: right; font-size: 12px; color: var(--text-2); }
+.ledger-day-sums span { overflow-wrap: anywhere; }
+.bill-report .j-results .cell-list { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.bill-report .j-results .cell {
+  width: 100%; min-height: 49px; display: grid; grid-template-columns: auto minmax(0,1fr) fit-content(43%); align-items: center;
+  gap: 9px; padding: 6px 12px; text-align: left; color: var(--text);
+}
+.bill-report .j-results .cell + .cell::before { left: 49px; right: 12px; }
+.bill-report .j-results .c-ico { width: 29px; height: 29px; background: transparent; }
+.bill-report .j-results .c-title { display: block; font: 550 14px/1.45 var(--ui-font); }
+.bill-report .j-results .c-sub { display: block; font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.bill-report .j-results .c-right { min-width: 0; overflow-wrap: anywhere; }
+.bill-report .j-results .c-val { display: block; font: 550 16px/1.3 Georgia,var(--ui-font); }
+.bill-report .ledger-more { display: block; width: 100%; min-height: 43px; color: var(--accent); border-top: 1px solid var(--hairline); background: transparent; }
 .bill-report .ledger-empty>.art-icon { width: 32px; height: 32px; }

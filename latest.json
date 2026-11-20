@@ -1,8 +1,8 @@
 {
-  "versionCode": 30500,
-  "versionName": "3.5",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.5/nianxiatian.apk",
-  "sha256": "282021f973bda81e24bb41d197923f394c3ca1ce5ac659b865615b713ebebb97",
-  "apkBlob": "e888a71509bbaad033a95b920680c4c700732639",
-  "note": "v3.5：首页移除近七天支出图，月收支下方直接显示四个常用入口。按日查账和补记仍可在账单日历中操作。"
+  "versionCode": 30600,
+  "versionName": "3.6",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.6/nianxiatian.apk",
+  "sha256": "c627bfe49ec3f1efec02094dfa3f298d3744cf11c2c7063aaa4fcf0fc1532657",
+  "apkBlob": "4b75876be6e8a8918038ad740f649ac346c79e42",
+  "note": "v3.6：首页突出月支出，长金额独占一行。资产总览和流水按日期重新排版，工时与时光日历腾出更多空间。记账可直接改日期，设置页按用途重新分组。"
 }

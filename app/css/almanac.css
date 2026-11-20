@@ -26,11 +26,6 @@ html[data-visual-style="ink"] { --home-portrait: 70% center; }
 }
 .folio-month { display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .08em; color: var(--text); }
 .folio-month::before { content: ''; width: 16px; height: 2px; background: var(--accent); }
-.folio-day { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
-.folio-day>b { font: 49px/.98 Georgia, var(--book-serif); font-variant-numeric: lining-nums tabular-nums; color: var(--accent); letter-spacing: -.055em; }
-.folio-day strong, .folio-day small { display: block; }
-.folio-day strong { font: 600 14px/1.6 var(--book-serif); color: var(--text); }
-.folio-day small { font: 11px/1.45 var(--ui-font); color: var(--text); }
 .scene-thumb {
   position: relative; border: 1px solid var(--hairline); border-radius: 2px;
   background: var(--scene-image, url('../images/summer-mist.webp')) var(--folio-crop, right center) / cover no-repeat;
@@ -42,7 +37,6 @@ html[data-visual-style="future"] { --folio-crop: center 96%; }
 html[data-visual-style="forest"] { --folio-crop: center 9%; }
 html[data-visual-style="sunset"] { --folio-crop: center 88%; }
 html[data-tone="dark"] .scene-thumb { filter: brightness(.82); }
-html[data-visual-style="future"] .folio-day>b { font-family: var(--ui-font); font-weight: 350; }
 .folio-ledger { padding: 2px 14px 12px; }
 .folio-ledger header { display: flex; align-items: center; gap: 7px; }
 .folio-ledger h2 { flex: none; font: 600 14px/1.4 var(--book-serif); }

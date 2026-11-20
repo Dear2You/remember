@@ -1,4 +1,4 @@
-# 主题与配色（v3.5）
+# 主题与配色（v3.6）
 
 在「我的 → 显示」使用「界面主题」和「主题配色」两个下拉框。平时只显示当前选项，点击才打开列表，不再排列主题预览图或色块。当前六套场景：水墨清夏、星空彼岸、碧海晴空、未来回响、松间晨雾、落日余温；每个场景独立保存原配／海蓝／青绿／雾紫／胭粉／暖杏。背景保持原画，界面表面和点缀随所选配色改变。
 
@@ -10,7 +10,7 @@ v2.39 按最新偏好改为窄留白：手机页面两侧8px、底栏两侧6px�
 
 - 首页月收支下方直接接四个常用入口，以细线分隔，两者的排版见 `daily-folio.css`。预算月报的进度环、分项流水与信用跳转见 `budget-page.css`，差旅流水与到账表单见 `trip-journal.css`。三处均使用当前主题的颜色和离线素材。
 - 首页全幅插画由 `#app::before` 单层绘制。`App.render` 在首页加上 `home-scene`，在其他路由移除。`almanac.css` 控制竖屏与横屏取景、日期后的渐变，以及预算等区域的透出程度。水墨竖屏使用 `summer-scroll.webp`，横屏使用 `summer-mist.webp`。设置页用 `.scene-thumb` 显示当前主题的局部预览。
-- 页标题通过 `UI.pageTitle` 使用主题图标，主视图页签由 `theme-details.css` 绘制选中标记。记账弹窗的金额行和账本下拉框见 `edge-layout.css`。
+- 页标题通过 `UI.pageTitle` 使用主题图标，主视图页签由 `theme-details.css` 绘制选中标记。导航和窄留白见 `edge-layout.css`。日历的视图切换、月份和议程在 `calendar-pages.css`，资产和流水分别在 `assets-page.css`、`ledger-search.css`，记一笔和设置在 `entry-settings.css`。
 - v3.0 恢复了 v2.39 的功能框和图表，移除 v2.40 的 `surfaces.css`。页面两侧8px、底栏两侧6px与底部4px由 `edge-layout.css` 维护。
 - 七张大 PNG 原图移到 `design/backgrounds/`，文件内容保持原样；APK 只带 `app/images/` 中的原分辨率 WebP。六张竖图仍为1024×1536，水墨横图为2172×724；已有 `summer-lake.webp` 保持不变。图片始终离线载入，不需要在线下载主题。
 - 使用 `node tools/compress-backgrounds.js` 从原图重新导出，`--check` 校验原图与成品哈希。编码参数与依赖安装说明见[原稿维护说明](../design/backgrounds/README.md)，各图片记录见[压缩清单](../design/backgrounds/compression.json)。编码器只用于维护，不进入 APK，也不是日常构建依赖。不要从有损 WebP 连续转码。

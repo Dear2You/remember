@@ -370,8 +370,8 @@ Views.settings = (() => {
   }
   function mount(root) {
     const wasOpen = !!root.querySelector('.settings-ai[open]');
-    const accountDescription = () => '资产账户 ' + Store.accounts(true).filter(a=>a.type !== 'liability').length +
-      ' · 负债账户 ' + Store.accounts(true).filter(a=>a.type === 'liability').length;
+    const accountDescription = () => '资产 ' + Store.accounts(true).filter(a=>a.type !== 'liability').length +
+      ' · 负债 ' + Store.accounts(true).filter(a=>a.type === 'liability').length;
     const dataWasOpen = !!root.querySelector('.settings-data[open]');
     const diagnosticsOpen = !!root.querySelector('.reminder-diagnostics[open]');
     const s = Store.settings;
@@ -381,27 +381,10 @@ Views.settings = (() => {
       '<div class="page settings-page">' +
       '  <div class="page-head chapter-head">' + UI.pageTitle('我的','person') + '</div>' +
 
-      '  <div class="settings-shortcuts">' +
-      '    <div class="settings-tools action-strip">' +
-      [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
-        '<button class="j-mod" data-r="' + route + '">' + UI.art(symbol) + label + '</button>').join('') +
-      '    </div>' +
-      '  </div>' +
-
-      '  <div class="card"><div class="section-title">账本与预算</div>' +
-      [
-        ['j-books','book','账本管理',Store.books().length + ' 个账本 · 当前：' + (book ? book.name : '全部账本')],
-        ['j-budget','sprout','预算与存钱','月消费上限、分类预算与存钱目标'],
-        ['j-accounts','wallet','账户管理',accountDescription()],
-        ['j-cats','shopping','分类管理','收入与支出分类']
-      ].map(([cls,icon,title,desc]) => `<button class="set-row settings-nav ${cls}">
-        <span class="settings-entry-icon">${UI.art(icon)}</span><span class="settings-entry-copy"><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
-      '  </div>' +
-
       '  <div class="card appearance-card"><div class="section-title">显示</div>' +
       '<label class="set-row appearance-select scene-choice"><span class="scene-thumb" aria-hidden="true"></span><span class="sr-lab">界面主题<small class="appearance-description" id="appearanceDescription">'+appearance.style.description+'</small></span><select class="j-visual-style" aria-label="界面主题" aria-describedby="appearanceDescription">'+Appearance.styles.map(({id,name})=>'<option value="'+id+'" '+(appearance.style.id===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
       '<label class="set-row appearance-select"><span class="sr-lab">主题配色</span><select class="j-palette">'+Appearance.palettes.map(({id,name})=>'<option value="'+id+'" '+(appearance.palette===id?'selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
-      '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。')+'</p>'+
+      '<p class="theme-note j-appearance-note" role="status">'+(appearance.style.night?'此主题使用夜色。':'')+'</p>'+
       '    <div class="set-row"><div class="sr-lab">隐藏金额</div><button class="j-hide" role="switch" aria-label="隐藏金额" aria-checked="' + s.hideAmount + '">' + (s.hideAmount ? '已隐藏' : '显示中') + '</button></div>' +
       '    <div class="set-row appearance-mode" '+(appearance.style.night?'hidden':'')+'><div class="sr-lab">明暗</div>' +
       '      <div class="seg" style="width:190px">' +
@@ -410,6 +393,23 @@ Views.settings = (() => {
       '        <button data-t="dark" class="' + (s.theme === 'dark' ? 'on' : '') + '">深色</button>' +
       '      </div></div>' +
       '  </div>' +
+
+      '  <div class="settings-shortcuts"><div class="section-title">常用工具</div>' +
+      '    <div class="settings-tools action-strip">' +
+      [['life', 'calendar', '时光'], ['worktime', 'worktime', '工时'], ['memo', 'memo', '备忘录'], ['habit', 'habit', '打卡']].map(([route, symbol, label]) =>
+        '<button class="j-mod" data-r="' + route + '">' + UI.art(symbol) + label + '</button>').join('') +
+      '    </div>' +
+      '  </div>' +
+
+      '  <div class="card settings-management"><div class="section-title">账本与预算</div><div class="settings-nav-grid">' +
+      [
+        ['j-books','book','账本管理',(book ? '当前 · ' + book.name : '全部 ' + Store.books().length + ' 个账本')],
+        ['j-budget','sprout','预算与存钱','消费上限与存钱目标'],
+        ['j-accounts','wallet','账户管理',accountDescription()],
+        ['j-cats','shopping','分类管理','收入与支出']
+      ].map(([cls,icon,title,desc]) => `<button class="set-row settings-nav ${cls}">
+        <span class="settings-entry-icon">${UI.art(icon)}</span><span class="settings-entry-copy"><span class="sr-lab">${title}</span><span class="sr-desc">${U.escapeHtml(desc)}</span></span><span aria-hidden="true">›</span></button>`).join('') +
+      '  </div></div>' +
 
       (Reminders.available() ? '<div class="card"><div class="section-title">手机提醒</div>' +
         '<div class="set-row"><div><div class="sr-lab">待办与备忘通知</div><div class="sr-desc j-notify-status"></div></div><button class="btn btn-ghost j-notify-access">通知设置</button></div>' +
@@ -421,7 +421,7 @@ Views.settings = (() => {
         '<div class="set-row"><div><div class="sr-lab">锁屏测试</div><div class="sr-desc j-test-alarm-status" role="status"></div></div><button class="btn btn-ghost j-test-alarm">一分钟测试</button></div>' +
         (window.AndroidBridge.setClockAlarm ? '<p class="j-delayed-hint" hidden>本次提交通知明显延迟。重要事项可以交给手机时钟或日历。</p><div class="set-row"><div><div class="sr-lab">手机时钟试响</div><div class="sr-desc">打开手机时钟，确认约两分钟后的闹钟，再返回桌面等响铃。</div></div><button class="btn btn-ghost j-test-clock">去时钟试响</button></div>' : '') +
         '</details>' : '') + '</div>' : '') +
-      '  <section class="card settings-more"><details class="settings-data"><summary>数据</summary><div class="settings-fold-body">' +
+      '  <section class="card settings-more"><div class="section-title">应用管理</div><details class="settings-data"><summary>数据</summary><div class="settings-fold-body">' +
       (Cloud.available() ? '<div class="set-row"><div><div class="sr-lab">坚果云自动备份</div><div class="sr-desc j-cloud-status"></div></div><button class="btn btn-ghost j-cloud">设置</button></div>' : '') +
       '    <div class="set-row"><div><div class="sr-lab">本地自动备份</div><div class="sr-desc j-local-status" role="status"></div></div></div>' +
       '    <div class="set-row"><div><div class="sr-lab">导出 CSV 账单</div><div class="sr-desc">可用 Excel 查看账本、分类和账户</div></div><button class="btn btn-ghost j-csv" aria-label="导出 CSV 账单">导出</button></div>' +
@@ -450,20 +450,14 @@ Views.settings = (() => {
       '    <div class="j-test-result" style="font-size:12.5px;margin-top:8px;color:var(--text-3)"></div>' +
       '  </div></details></section>' +
 
-      '  <div class="card"><div class="section-title">应用更新</div>' +
+      '  <div class="card settings-version"><div class="section-title">应用更新</div>' +
       '    <div class="set-row"><div><div class="sr-lab">当前版本</div><div class="sr-desc">v' + (window.__APP_VERSION || '1.15') + '</div></div>' +
       '    <button class="btn btn-primary j-check-update" style="min-width:110px">检查更新</button></div>' +
       '    <div class="j-update-status" role="status"></div>' +
       '    <button class="btn btn-grad btn-block j-download" style="display:none">下载并安装新版</button>' +
       '    <a class="btn btn-ghost btn-block j-update-browser" style="display:none;text-align:center;margin-top:8px;text-decoration:none">在浏览器打开发布页</a>' +
       '  </div>' +
-      '  <div class="card"><div class="section-title">关于</div>' +
-      '    <div style="font-size:13px;color:var(--text-2);line-height:1.9">' +
-      '      <div><b>那年夏天</b> · 个人生活管理 · v' + (window.__APP_VERSION || '1.15') + '</div>' +
-      '      <div>多账本记账（转账/还款） · 工时薪资 · 时光日程 · AI 助手</div>' +
-      '      <div style="color:var(--text-3)">数据保存在本机，可导出备份或开启坚果云自动备份。</div>' +
-      '    </div>' +
-      '  </div>' +
+      '<p class="settings-local-note">数据保存在本机，可在「数据」中导出备份或设置坚果云。</p>' +
       '</div>';
 
     const aiSettings = root.querySelector('.settings-ai');
@@ -566,7 +560,7 @@ Views.settings = (() => {
       root.querySelector('.j-palette').value=current.palette;
       root.querySelector('.appearance-description').textContent=current.style.description;
       root.querySelector('.appearance-mode').hidden=current.style.night;
-      root.querySelector('.j-appearance-note').textContent=current.style.night?'此主题固定夜色，切换其他主题时保留明暗偏好。':'选好即保存，配色按主题分别记住。';
+      root.querySelector('.j-appearance-note').textContent=current.style.night?'此主题使用夜色。':'';
       return true;
     };
     root.querySelector('.j-visual-style').onchange=e=>changeAppearance({visualStyle:e.target.value});

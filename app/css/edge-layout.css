@@ -8,6 +8,8 @@
 .work-range-nav button { min-height: 32px; padding: 0 7px; color: var(--accent); font-size: 12px; }
 .toast.toast-action { display: flex; align-items: center; gap: 8px; padding: 3px 5px 3px 13px; overflow-wrap: anywhere; }
 .toast-action button { pointer-events: auto; color: white; text-decoration: underline; min-height: 40px; padding: 0 10px; flex: none; }
+#app #fab { display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: auto; min-height: 40px; padding: 0 9px; border: 0; border-radius: 7px; color: var(--accent); font: 550 12px/1 var(--ui-font); }
+#app #fab svg { width: 18px; height: 18px; }
 @media (max-width: 919px) {
   #pageBody { padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right)); padding-top: 10px; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   #pageBody > .page { width: 100%; max-width: none; margin-inline: 0; }
@@ -38,6 +40,11 @@
     padding-top: 6px; padding-bottom: calc(5px + env(safe-area-inset-bottom));
     background: var(--tab-bg); box-shadow: none;
   }
+  #app #tabbar .tab { color: var(--text-2); font-size: 11px; gap: 2px; }
+  #app #tabbar .tab.on { color: var(--accent); background: transparent; box-shadow: none; font-weight: 650; }
+  #app #tabbar .tab.on::after { bottom: 0; width: 15px; height: 2px; box-shadow: none; opacity: 1; }
+  #app #tabbar .tab .art-icon { width: 26px; height: 26px; }
+  #app #tabbar .tab-plus .art-icon { width: 32px; height: 29px; box-shadow: none; border-radius: 9px; }
 }
 
 /* Busy days keep both counts inside their own date cell. */
