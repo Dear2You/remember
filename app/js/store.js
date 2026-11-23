@@ -1275,10 +1275,17 @@ const Store = {
     return JSON.stringify({ app: 'nianxiatian', version: this.data.version, exportedAt: new Date().toISOString(), data: this.backupData() }, null, 2);
   },
   exportCSV(tripId) {
-    const esc = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    return this.transactionsCSV(tripId ? this.data.transactions.filter(t => t.tripId === tripId) : this.data.transactions);
+  },
+  transactionsCSV(transactions) {
+    const esc = value => {
+      let text = String(value ?? '');
+      if (/^\s*[=+@-]|^[\t\r\n]/.test(text)) text = "'" + text;
+      return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
     const typeLabel = { out: '支出', in: '收入', transfer: '转账/还款', advance:'出差垫付', reimbursement:'报销到账' };
     const rows = [['日期', '账本', '类型', '一级分类', '二级分类', '账户', '金额(元)', '备注', '出差行程','支付渠道','工资归属月份','工资项目']];
-    this.data.transactions.filter(t=>!tripId||t.tripId===tripId).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
+    [...transactions].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt).forEach(t => {
       const cat = this.category(t.categoryId);
       const root = cat ? this.catRoot(t.categoryId) : null;
       let acc;

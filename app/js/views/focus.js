@@ -137,7 +137,7 @@ Views.focus = (() => {
     tickFn = paint;
     paint();
 
-    root.querySelector('.j-back').onclick = () => { if (running && !paused) { UI.toast('先结束或暂停专注再离开哦'); return; } App.go('life'); };
+    root.querySelector('.j-back').onclick = () => { if (running && !paused) { UI.toast('先结束或暂停专注再离开哦'); return; } App.go(App.previousRoute==='home'?'home':'life'); };
     root.querySelectorAll('.j-mode button').forEach(b => b.onclick = () => {
       if (running) { UI.toast('计时中不能切换模式', 'err'); return; }
       mode = b.dataset.m; App.refresh(true);

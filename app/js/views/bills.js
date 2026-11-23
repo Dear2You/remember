@@ -11,7 +11,8 @@ Views.bills = (() => {
   let statKind = '';
   let chartType = 'line';
   const batchSize = 60;
-  let detailAllDates = false;
+  let detailScope = 'period';
+  let customRange = null;
   let detailLimit = batchSize;
   let detailQuery = '';
 
@@ -37,6 +38,57 @@ Views.bills = (() => {
     if (st.kind === 'week') st.anchor = U.addDays(st.anchor, 7 * dir);
     else if (st.kind === 'year') st.anchor = (parseInt(st.anchor.slice(0, 4), 10) + dir) + '-01-01';
     else st.anchor = U.ymShift(st.anchor.slice(0, 7), dir) + '-01';
+  }
+
+  function openRangeSheet(period) {
+    const initial = customRange || period;
+    const today = U.todayStr();
+    const previousMonth = U.ymShift(today.slice(0,7), -1);
+    const choices = [
+      {name:'近 30 天', start:U.addDays(today,-29), end:today},
+      {name:'上个自然月', ...WorkCalendar.period(previousMonth)},
+      ...Store.salaryPlansOn(today).filter(plan => plan.cycleConfirmed).map(plan => ({
+        name:plan.project + ' · 本工资期', ...Store.salaryRange(plan)
+      }))
+    ];
+    UI.sheet({title:'流水日期范围', content(body, close) {
+      body.innerHTML = `<form class="ledger-range-form">
+        <div class="range-days"><label>开始日期<input type="date" name="start" required value="${initial.start}"></label>
+        <label>结束日期<input type="date" name="end" required value="${initial.end}"></label></div>
+        <div class="range-choices">${choices.map((c,i) => `<button type="button" class="chip" data-index="${i}">${U.escapeHtml(c.name)}</button>`).join('')}</div>
+        <p class="range-feedback" aria-live="polite"></p><button class="btn btn-primary btn-block">查看这段流水</button></form>`;
+      const form = body.querySelector('form');
+      const {start,end} = form.elements;
+      const feedback = form.querySelector('.range-feedback');
+      function sync() {
+        const valid = start.validity.valid && end.validity.valid && /^\d{4}-\d{2}-\d{2}$/.test(start.value) && /^\d{4}-\d{2}-\d{2}$/.test(end.value);
+        const ordered = valid && start.value <= end.value;
+        feedback.textContent = ordered ? '含首尾，共 ' + U.daysBetween(start.value,end.value) + ' 天' :
+          valid ? '结束日期不能早于开始日期' : '请选择完整的起止日期';
+        feedback.classList.toggle('invalid', !ordered);
+        form.querySelectorAll('[data-index]').forEach(button => {
+          const c = choices[Number(button.dataset.index)];
+          button.setAttribute('aria-pressed', String(c.start === start.value && c.end === end.value));
+        });
+        return ordered;
+      }
+      form.oninput = sync;
+      form.querySelectorAll('[data-index]').forEach(button => button.onclick = () => {
+        const c = choices[Number(button.dataset.index)];
+        start.value = c.start;
+        end.value = c.end;
+        sync();
+      });
+      form.onsubmit = event => {
+        event.preventDefault();
+        if (!sync()) return;
+        customRange = {start:start.value, end:end.value};
+        detailScope = 'custom';
+        close();
+        App.refresh(true);
+      };
+      sync();
+    }});
   }
 
   /* ---------- 周期选择弹层（不平铺，点击弹出） ---------- */
@@ -116,7 +168,7 @@ Views.bills = (() => {
     return `<div class="report-tabs page-tabs j-top" role="group" aria-label="账单视图">${names.map(([key,title]) =>
       `<button data-t="${key}" aria-pressed="${selected===key}">${title}</button>`).join('')}</div>
       <div class="swipe-panel">
-      <div class="report-period"${selected==='detail' && detailAllDates ? ' hidden' : ''}><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
+      <div class="report-period"${selected==='detail' && detailScope !== 'period' ? ' hidden' : ''}><strong>${p.short}</strong><button class="chip j-period">${KIND_LABEL[p.kind]} ▾</button>
         <button class="mn-btn j-prev" aria-label="上一周期">‹</button><button class="mn-btn j-next" aria-label="下一周期">›</button></div>`;
   }
   function bindHeader(root, mode) {
@@ -135,9 +187,10 @@ Views.bills = (() => {
     const p = periodOf(mode);
     const bookId = E.curBook();
     const books = Store.books();
-    const allDates = selected === 'detail' && detailAllDates;
+    const allDates = selected === 'detail' && detailScope === 'all';
+    const range = selected === 'detail' && detailScope === 'custom' ? customRange : p;
     const bookList = Store.txOfBook(bookId);
-    const inScope = allDates ? bookList : bookList.filter(t => t.date >= p.start && t.date <= p.end);
+    const inScope = allDates ? bookList : bookList.filter(t => t.date >= range.start && t.date <= range.end);
     const F = { ...E.filter, kw: E.filter.kw.trim() };
     const filtered = E.applyFilter(inScope);
     const amountFiltered = F.minMinor != null || F.maxMinor != null;
@@ -232,7 +285,7 @@ Views.bills = (() => {
 
     /* ================= 账单报表 ================= */
     if (selected === 'detail') {
-      const query = JSON.stringify([bookId, allDates ? 'all' : p.start, allDates ? '' : p.end, F]);
+      const query = JSON.stringify([bookId, allDates ? 'all' : range.start, allDates ? '' : range.end, F]);
       if (!preview && query !== detailQuery) {
         detailLimit = batchSize;
         detailQuery = query;
@@ -243,8 +296,24 @@ Views.bills = (() => {
       const values = otherLabel
         ? [[otherLabel, filtered.reduce((s,t)=>s+t.amountMinor,0), '']]
         : [['支出',fOut,'money-out'],['收入',fInc,'money-in'],['结余',fInc-fOut,'']];
-      const totals = `<section class="ledger-totals" aria-label="流水合计"><header><span>${hasFilter?'匹配结果':allDates?'全部日期':'本期流水'}</span><span>${filtered.length} 笔</span></header>
+      const title = hasFilter ? '匹配结果' : allDates ? '全部流水' : detailScope === 'custom' ? '区间流水' : '本期流水';
+      const bounds = allDates ? '全部日期' : range.start + ' 至 ' + range.end;
+      const rangeLine = detailScope === 'custom' ? `<button class="ledger-dates j-edit-range" aria-label="修改流水起止日期">${bounds} ${UI.icon('calendar')}</button>` : '';
+      const totals = `<section class="ledger-totals" aria-label="流水合计"><header><div class="ledger-caption">${UI.art('book')}<strong>${title}</strong><small>${filtered.length} 笔</small></div>
+        ${filtered.length && !hidden ? '<button class="text-action j-export-range">导出流水</button>' : ''}</header>${rangeLine}
         <dl>${values.map(([label,n,cls])=>`<div><dt>${label}</dt><dd class="${cls}">${number(n)}</dd></div>`).join('')}</dl></section>`;
+      function bindTotals() {
+        const edit = root.querySelector('.j-edit-range');
+        if (edit) edit.onclick = () => openRangeSheet(p);
+        const save = root.querySelector('.j-export-range');
+        if (save) save.onclick = async () => {
+          const bookName = Store.book(bookId)?.name || '全部账本';
+          const agreed = await UI.confirm({title:'导出这 ' + filtered.length + ' 笔流水？',
+            msg:bookName + ' · ' + bounds + '。CSV 将包含符合当前筛选的全部流水、金额和备注。', okText:'保存 CSV'});
+          if (agreed) UI.saveDocument('那年夏天流水_' + (allDates ? '全部日期' : range.start + '_' + range.end) + '.csv',
+            Store.transactionsCSV(filtered),'text/csv;charset=utf-8');
+        };
+      }
       const byDay = Object.create(null);
       filtered.forEach(t => { (byDay[t.date] = byDay[t.date] || []).push(t); });
       const days = Object.keys(byDay).sort().reverse();
@@ -284,16 +353,27 @@ Views.bills = (() => {
         root.querySelector('.j-filters').innerHTML = filterBar;
         root.querySelector('.ledger-totals').outerHTML = totals;
         root.querySelector('.j-results').innerHTML = listHtml;
+        bindTotals();
         return;
       }
       root.innerHTML = pageHead + totals +
         `<div class="report-search ledger-search"><input class="j-search" type="search" aria-label="搜索备注、分类或账户" placeholder="搜索备注、分类或账户" value="${U.escapeHtml(E.filter.kw)}">
-        <select aria-label="流水日期范围" class="j-detail-scope"><option value="period">本期</option><option value="all"${allDates?' selected':''}>全部日期</option></select></div>
+        <select aria-label="流水日期范围" class="j-detail-scope"><option value="period">本期</option><option value="all"${allDates?' selected':''}>全部日期</option>
+        <option value="custom"${detailScope==='custom'?' selected':''}>自定日期</option></select></div>
         <div class="j-results">${listHtml}</div></div></div>`;
       if (preview) return;
       bindCommon();
+      bindTotals();
       const search = root.querySelector('.j-search');
-      root.querySelector('.j-detail-scope').onchange = e => { detailAllDates = e.target.value === 'all'; App.refresh(true); };
+      root.querySelector('.j-detail-scope').onchange = e => {
+        if (e.target.value === 'custom') {
+          e.target.value = detailScope;
+          openRangeSheet(p);
+        } else {
+          detailScope = e.target.value;
+          App.refresh(true);
+        }
+      };
       const applySearch = () => {
         if (E.filter.kw === search.value) return;
         E.filter.kw = search.value;
@@ -302,7 +382,7 @@ Views.bills = (() => {
       search.addEventListener('compositionend', applySearch);
       search.oninput = e => { if (!e.isComposing) applySearch(); };
       root.querySelector('.j-results').onclick = e => {
-        if (e.target.closest('.j-expand-dates')) { detailAllDates = true; App.refresh(true); return; }
+        if (e.target.closest('.j-expand-dates')) { detailScope = 'all'; App.refresh(true); return; }
         if (e.target.closest('.j-more-results')) {
           const previous = detailLimit;
           detailLimit += batchSize;
@@ -334,14 +414,14 @@ Views.bills = (() => {
       root.querySelector('.j-empty-action').onclick=()=>{
         if (hidden) root.querySelector('.j-eye').click();
         else if (hasFilter) root.querySelector('.j-clearall').click();
-        else if (filtered.length) { detailAllDates=false; topMode='detail'; App.refresh(true); }
+        else if (filtered.length) { detailScope='period'; topMode='detail'; App.refresh(true); }
         else E.openEntrySheet(null, 'out', U.todayStr() >= p.start && U.todayStr() <= p.end ? U.todayStr() : p.start);
       };
       return;
     }
     FinanceReport.trend(root.querySelector('.j-trend'),rows,p,chartType,type=>{chartType=type;},bucket=>{
       if (p.kind==='year') {
-        periods.report.kind='month'; periods.report.anchor=bucket.key+'-01'; detailAllDates=false; topMode='detail'; App.refresh(true);
+        periods.report.kind='month'; periods.report.anchor=bucket.key+'-01'; detailScope='period'; topMode='detail'; App.refresh(true);
       } else openDaySheet(bucket.key,filtered.filter(t=>t.date===bucket.key));
     });
     const area = root.querySelector('.j-categories');
@@ -363,7 +443,7 @@ Views.bills = (() => {
         E.filter.type=kind;
         if (E.filter.categoryId!==b.dataset.id) E.filter.subId='';
         E.filter.categoryId=b.dataset.id;
-        detailAllDates=false; topMode='detail'; App.refresh(true);
+        detailScope='period'; topMode='detail'; App.refresh(true);
       });
       area.querySelectorAll('.j-category-kind').forEach(b=>b.onclick=()=>{statKind=b.dataset.value;renderCategory();});
     }
@@ -371,9 +451,9 @@ Views.bills = (() => {
   }
 
   function openMonth() {
-    topMode='report'; detailAllDates=false; periods.report.kind='month'; periods.report.anchor=U.todayStr();
+    topMode='report'; detailScope='period'; periods.report.kind='month'; periods.report.anchor=U.todayStr();
     Views.expense.clearFilter(); statKind=''; App.go('bills');
   }
-  function openDetails(date=U.todayStr()){topMode='detail';detailAllDates=false;periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
+  function openDetails(date=U.todayStr()){topMode='detail';detailScope='period';periods.report.kind='month';periods.report.anchor=date;Views.expense.clearFilter();App.go('bills');}
   return {mount,openMonth,openDetails};
 })();

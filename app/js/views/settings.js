@@ -357,20 +357,6 @@ Views.settings = (() => {
     });
   }
 
-  /* ---------- 下载工具 ---------- */
-  function download(name, content, mime) {
-    if (window.AndroidBridge && window.AndroidBridge.saveDocument) {
-      window.AndroidBridge.saveDocument(name, content, mime.startsWith('text/csv'));
-      return;
-    }
-    const blob = new Blob([content], { type: mime || 'application/octet-stream' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  }
-
   /* ---------- 页面 ---------- */
   let showAI = false;
   function openAI() { showAI = true; App.go('settings'); }
@@ -588,7 +574,7 @@ Views.settings = (() => {
             '<button class="btn btn-primary btn-block j-dl" style="margin-bottom:12px">下载 CSV 文件</button>' +
             '<textarea class="j-csvtext" rows="9" readonly style="font-size:11px;font-family:monospace">' + U.escapeHtml(csv) + '</textarea>';
           body.querySelector('.j-csvtext').onclick = e => e.target.select();
-          body.querySelector('.j-dl').onclick = () => download('那年夏天账单_' + U.todayStr() + '.csv', csv, 'text/csv;charset=utf-8');
+          body.querySelector('.j-dl').onclick = () => UI.saveDocument('那年夏天账单_' + U.todayStr() + '.csv', csv, 'text/csv;charset=utf-8');
         }
       });
     };
@@ -604,7 +590,7 @@ Views.settings = (() => {
             '<div class="section-title">复制备份内容（不含 API Key）</div>' +
             '<textarea class="j-json" rows="8" readonly style="font-size:11px;font-family:monospace">' + U.escapeHtml(json) + '</textarea>';
           body.querySelector('.j-json').onclick = e => e.target.select();
-          body.querySelector('.j-dl').onclick = () => download(fname, json, 'application/json');
+          body.querySelector('.j-dl').onclick = () => UI.saveDocument(fname, json, 'application/json');
         }
       });
     };

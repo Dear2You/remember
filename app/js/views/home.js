@@ -2,6 +2,72 @@
 
 Views.home = (() => {
   let toolsOpen=false, agendaExpanded=false;
+  const tools = [
+    ['record-work','worktime','记工时'], ['add-task','check','记待办'],
+    ['memo','memo','备忘录'], ['trips','trip','出差报销'],
+    ['money','sprout','预算与存钱'], ['transactions','book','流水明细'],
+    ['life','calendar','时光日历'], ['habit','habit','习惯打卡'],
+    ['focus','focus','番茄专注'], ['countdown','countdown','倒数日'],
+    ['subs','subs','会员订阅'], ['ai','chat','AI 助手']
+  ];
+  const byRoute = new Map(tools.map(tool=>[tool[0],tool]));
+  const defaults = tools.slice(0,4).map(([route])=>route);
+  function shortcuts() {
+    const saved = Store.settings.homeShortcuts;
+    const valid = Array.isArray(saved) ? saved.filter(route=>byRoute.has(route)) : [];
+    return [...new Set([...valid,...defaults])].slice(0,4);
+  }
+  function editShortcuts() {
+    let draft = shortcuts(), slot = 0;
+    UI.sheet({title:'编辑常用操作',content(body,close) {
+      body.classList.add('shortcut-editor');
+      body.innerHTML = `<div class="shortcut-editor-scroll">
+        <div class="shortcut-editor-head"><h3>首页位置</h3><button type="button" class="text-action j-reset">恢复默认</button></div>
+        <div class="shortcut-slots" role="group" aria-label="选择首页位置"></div>
+        <h3>选择工具</h3><p>先点上方要换的位置，再选工具。已放在首页的工具会交换位置。</p>
+        <div class="shortcut-options" role="group" aria-label="可选工具"></div></div>
+        <footer><button type="button" class="btn btn-primary btn-block j-save">保存常用操作</button></footer>`;
+      const positions=body.querySelector('.shortcut-slots'), choices=body.querySelector('.shortcut-options');
+      function render() {
+        positions.innerHTML=draft.map((route,i)=>{
+          const [,icon,label]=byRoute.get(route);
+          return `<button type="button" data-slot="${i}" aria-label="位置 ${i+1}，${label}" aria-pressed="${i===slot}">${UI.art(icon)}<span>${label}</span></button>`;
+        }).join('');
+        choices.innerHTML=tools.map(([route,icon,label])=>{
+          const index=draft.indexOf(route);
+          return `<button type="button" data-tool="${route}" aria-pressed="${index===slot}" aria-label="${label}${index<0?'':'，当前位置 '+(index+1)}">${UI.art(icon)}<span>${label}</span>${index<0?'':`<small aria-hidden="true">${index+1}</small>`}</button>`;
+        }).join('');
+      }
+      positions.onclick=e=>{
+        const btn=e.target.closest('[data-slot]');
+        if(!btn)return;
+        slot=Number(btn.dataset.slot);
+        render(); positions.children[slot].focus({preventScroll:true});
+      };
+      choices.onclick=e=>{
+        const btn=e.target.closest('[data-tool]');
+        if(!btn)return;
+        const route=btn.dataset.tool,index=draft.indexOf(route);
+        if(index>=0)draft[index]=draft[slot];
+        draft[slot]=route;
+        render(); choices.querySelector('[data-tool="'+route+'"]').focus({preventScroll:true});
+      };
+      body.querySelector('.j-reset').onclick=()=>{draft=[...defaults];slot=0;render();};
+      body.querySelector('.j-save').onclick=()=>{
+        try { Store.mutate(d=>{d.settings.homeShortcuts=[...draft];});close(); }
+        catch(err){ UI.toast(err.message,'err'); }
+      };
+      render();
+    }});
+  }
+  function weekStrip(today) {
+    const first=U.weekStart(today);
+    return Array.from('一二三四五六日',(weekday,i)=>{
+      const date=U.addDays(first,i), events=Store.eventsOn(date).length, tasks=Store.tasksDueOn(date).length;
+      const label=[U.fmtFull(date),events?events+'项日程':'',tasks?tasks+'项待办':'','查看当天安排'].filter(Boolean).join('，');
+      return `<button data-dest="week-day" data-item="${date}" aria-label="${U.escapeHtml(label)}" ${date===today?'aria-current="date"':''}><small>周${weekday}</small><b>${Number(date.slice(8))}</b><i class="week-dots" aria-hidden="true">${events?'<i class="event"></i>':''}${tasks?'<i class="task"></i>':''}</i></button>`;
+    }).join('');
+  }
   function agendaRow(item) {
     const title=U.escapeHtml(item.title), id=U.escapeHtml(item.id || '');
     const row='<button class="overview-row" data-dest="'+item.route+'" data-item="'+id+'">'+
@@ -24,12 +90,15 @@ Views.home = (() => {
     const taskRows=tasks.map(t=>({route:'task',id:t.id,title:t.title,meta:t.dueTime || (t.dueDate || t.repeat && t.repeat!=='none'?'今天':'未定日期')}));
     const followups=taskRows.slice(0,2);
     if(digest.tasksOverdue)followups.push({route:'overdue',icon:'check',title:digest.tasksOverdue+' 项待办已逾期',meta:'待处理'});
-    if(event&&event.date<=U.addDays(today,7))followups.push({route:'event',id:event.date,icon:'calendar',title:event.ev.title,meta:U.fmtDay(event.date)+' '+Store.eventTimeLabel(event.ev,event.date)});
+    if(event&&event.date<=U.addDays(today,7)){
+      const day=event.date===today?'今天':event.date===U.addDays(today,1)?'明天':shortDate(event.date);
+      followups.push({route:'event',id:event.date,icon:'calendar',title:event.ev.title,meta:day+' '+Store.eventTimeLabel(event.ev,event.date)});
+    }
     for(const s of due)followups.push({route:'subs',icon:'subs',title:s.name,meta:shortDate(s.nextDue)+(s.nextDue<today?' 待核对扣款':' 续费')});
     for(const t of Store.data.transactions.filter(t=>t.type==='in'&&t.wageNeedsReview))followups.push({route:'review-wage',id:t.id,icon:'worktime',title:t.wageNeedsReview+' · 工资到账待核对',meta:shortDate(t.date)+' 到账'});
     followups.push(...taskRows.slice(2));
-    const quick=[['record-work','worktime','记工时'],['add-task','check','记待办'],['memo','memo','备忘录'],['trips','trip','出差报销']];
-    const more=[['life','calendar','时光日历'],['habit','habit','习惯打卡'],['focus','focus','番茄专注'],['countdown','countdown','倒数日'],['subs','subs','会员订阅'],['ai','chat','AI 助手']];
+    const quick=shortcuts();
+    const more=tools.filter(([route])=>!quick.includes(route));
     const month = Number(today.slice(5, 7));
     const festival = calendar.festival || calendar.term;
     const metrics = [
@@ -40,18 +109,19 @@ Views.home = (() => {
     const longAmounts = metrics.some(([, value]) => value.length > 10);
     root.innerHTML=`<div class="page overview-page handpage home-refined">
       <section class="home-spread">
-        <button class="folio-cover" data-dest="calendar-today" aria-label="今天 ${esc(U.fmtFull(today))}，打开日历">
+        <div class="folio-almanac"><button class="folio-cover" data-dest="calendar-today" aria-label="今天 ${esc(U.fmtFull(today))}，打开日历">
           <time class="folio-date" datetime="${today}"><b class="folio-date-number">${today.slice(8)}</b>
             <span class="folio-date-lines"><span class="folio-month">${today.slice(0,4)} 年 ${month} 月</span><strong>星期${'日一二三四五六'[U.parseDate(today).getDay()]}<small>${esc(calendar.lunarFull.replace(/^.*年 /,''))}${festival?' · '+esc(festival):''}</small></strong></span>
           </time>
-        </button>
+        </button><nav class="folio-week" aria-label="本周日程">${weekStrip(today)}</nav></div>
         <section class="folio-ledger"><header>
           <h2>${month}月收支</h2><label class="folio-book-filter"><select aria-label="首页收支账本"><option value="">全部账本</option>${Store.books().map(b=>`<option value="${esc(b.id)}"${bookId===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select></label>
           <button class="visibility-toggle" aria-label="${hidden?'显示金额':'隐藏金额'}">${UI.icon(hidden?'off':'eye')}</button>
           <button class="text-action" data-dest="month">账单 ›</button>
         </header>
         <button class="folio-metrics${longAmounts?' long-amounts':''}" data-dest="month">${metrics.map(([label,value,color])=>`<span><small>${label}</small><b class="${color}">${value}</b></span>`).join('')}</button></section>
-        <nav class="folio-tools" aria-label="常用操作">${quick.map(([route,icon,label])=>`<button data-dest="${route}"><span class="folio-tool-art" aria-hidden="true">${UI.art(icon)}</span><span>${label}</span></button>`).join('')}</nav>
+        <div class="folio-shortcut-bar"><nav class="folio-tools" aria-label="常用操作">${quick.map(route=>{const [,icon,label]=byRoute.get(route);return `<button data-dest="${route}"><span class="folio-tool-art" aria-hidden="true">${UI.art(icon)}</span><span>${label}</span></button>`;}).join('')}</nav>
+        <button class="shortcut-edit" aria-label="编辑常用操作" title="编辑常用操作">${UI.art('edit')}</button></div>
       </section>
       <div class="home-sections">
       <section class="home-notebook overview-section home-agenda"><header><h2>${UI.art('check')}待处理</h2><button class="text-action" data-dest="today">日程与待办 ›</button></header><div class="overview-agenda">
@@ -63,7 +133,8 @@ Views.home = (() => {
         <footer><button data-dest="payday">${payday.days===0?'今天发薪':'距发薪 '+payday.days+' 天'}<span> · 每月 ${payday.day} 日</span></button>${plan&&!plan.cycleConfirmed?'<button class="period-pending" data-dest="plan">计薪区间待确认 ›</button>':`<button data-dest="${tripPending?'trips':plan?'wages':'worktime'}">${tripPending?'待报销 '+amount(tripPending):plan?'核对工资到账':'自然月汇总'} ›</button>`}</footer></section>
       <section class="home-notebook overview-section"><header><h2>${UI.art('book')}最近账单</h2><button class="text-action" data-dest="transactions">全部 ›</button></header><div class="overview-transactions">
         ${recent.map(t=>{const x=Views.expense.tSummary(t);return `<button class="overview-transaction" data-transaction="${esc(t.id)}"><span class="overview-tx-icon">${UI.entryIcon(t)}</span><span class="overview-tx-label"><b>${esc(t.note || x.title)}</b><small>${esc(shortDate(t.date)+' · '+Store.accountName(t.accountId || t.fromId)+(t.type==='transfer'?' → '+Store.accountName(t.toId):''))}</small></span><span class="overview-tx-amount">${Views.expense.tAmountHtml(t)}</span></button>`;}).join('')||'<button class="overview-empty" data-dest="add-entry">还没有账单，记下第一笔 <span>＋</span></button>'}</div></section></div>
-      <details class="overview-tools home-tools" ${toolsOpen?'open':''}><summary>更多工具<span>订阅、打卡、专注等</span></summary><div>${more.map(([route,icon,label])=>`<button data-dest="${route}">${UI.art(icon)}${label}</button>`).join('')}</div></details></div>`;
+      <details class="overview-tools home-tools" ${toolsOpen?'open':''}><summary>更多工具<span>${more.length} 项</span></summary><div>${more.map(([route,icon,label])=>`<button data-dest="${route}">${UI.art(icon)}${label}</button>`).join('')}</div></details></div>`;
+    root.querySelector('.shortcut-edit').onclick=editShortcuts;
     root.querySelector('.overview-tools').ontoggle=e=>{toolsOpen=e.target.open;};
     root.querySelectorAll('[data-dest]').forEach(button=>button.onclick=()=>{
       const dest=button.dataset.dest;
@@ -80,6 +151,7 @@ Views.home = (() => {
       else if(dest==='today')Views.life.go('today');
       else if(dest==='life')Views.life.go('cal');
       else if(dest==='calendar-today')Views.lifecal.openDate(today);
+      else if(dest==='week-day')Views.lifecal.openDate(button.dataset.item);
       else if(dest==='subs')Views.subs.open('home');
       else if(dest==='money')Views.money.open('home');
       else if(dest==='monthly-plan')Views.money.planSheet(U.ymNow());

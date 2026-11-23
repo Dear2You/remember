@@ -73,7 +73,7 @@ Views.countdown = (() => {
       (past.length ? '<div class="section-title" style="padding:0 2px">已经过去</div><div class="cell-list" style="margin-bottom:14px">' + past.map(card).join('') + '</div>' : '') +
       '<button class="btn btn-primary btn-block j-add">＋ 新建倒数日</button>' +
       '</div>';
-    root.querySelector('.j-back').onclick = () => App.go('life');
+    root.querySelector('.j-back').onclick = () => App.go(App.previousRoute==='home'?'home':'life');
     root.querySelector('.j-add').onclick = () => openSheet();
     root.querySelectorAll('.j-item').forEach(el => el.onclick = () => {
       const c = Store.data.countdowns.find(x => x.id === el.dataset.id);

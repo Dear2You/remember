@@ -1,5 +1,26 @@
 /* A dated ledger and a continuous ruled sheet share the current theme illustration. */
-.home-refined .folio-cover { min-height: 99px; }
+.home-refined .folio-cover { min-height: 81px; }
+.folio-almanac { min-width: 0; }
+.folio-week {
+  display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); margin: 0 10px 4px; padding: 3px 0;
+  border-radius: 8px; background: var(--home-paper); border-block: 1px solid var(--hairline);
+}
+.folio-week button {
+  display: grid; grid-template-rows: 14px 19px 4px; align-content: center; justify-items: center; gap: 1px;
+  min-height: 44px; margin-inline: 2px; padding: 3px 1px; color: var(--text); border-radius: 5px;
+}
+.folio-week small { color: var(--text-2); font: 10px/14px var(--ui-font); }
+.folio-week b { font: 600 16px/19px Georgia,var(--ui-font); font-variant-numeric: tabular-nums; }
+.folio-week button[aria-current="date"] { background: var(--solid,var(--accent)); color: #fff; }
+.folio-week button[aria-current="date"] small { color: inherit; }
+.week-dots { display: flex; align-items: center; gap: 3px; height: 4px; }
+.week-dots i { width: 4px; height: 4px; background: var(--info); border-radius: 50%; }
+.week-dots .task { background: var(--accent); border-radius: 1px; }
+.folio-week [aria-current="date"] .week-dots i { background: currentColor; }
+html[data-visual-style="future"] .folio-week b { font-family: var(--ui-font); }
+html[data-visual-style="future"] .folio-week button[aria-current] { border-radius: 1px; }
+html[data-visual-style="starry"] .folio-week button[aria-current] { border-radius: 16px; }
+html[data-visual-style="coast"] .folio-week button[aria-current] { border-radius: 12px; }
 .folio-date { display: flex; align-items: center; gap: 12px; padding: 9px 13px; }
 .folio-date-number { font: 500 clamp(43px,12vw,54px)/1 Georgia,var(--book-serif); color: var(--accent); letter-spacing: -.055em; font-variant-numeric: lining-nums tabular-nums; }
 .folio-date-lines { border-left: 1px solid var(--accent); padding-left: 11px; }
@@ -9,7 +30,11 @@
 .folio-date-lines small { font: 12px/1.5 var(--ui-font); color: var(--text); }
 html[data-visual-style="future"] .folio-date-number { font-family: var(--ui-font); font-weight: 350; }
 
-.home-refined .folio-ledger { padding: 0 14px 4px; }
+.home-refined .folio-ledger { padding: 0 14px 3px; min-width: 0; }
+.folio-ledger h2 { display: flex; align-items: center; gap: 6px; }
+.folio-ledger h2::before {
+  content: ''; height: 10px; width: 4px; background: var(--accent); border-radius: 1px 1px 3px 3px;
+}
 .folio-ledger header { border-bottom: 1px solid var(--hairline); }
 .folio-ledger .folio-metrics {
   display: grid; grid-template-columns: minmax(0,1.12fr) minmax(0,1fr);
@@ -25,12 +50,33 @@ html[data-visual-style="future"] .folio-date-number { font-family: var(--ui-font
 .folio-ledger .long-amounts>span { display: flex; flex-wrap: wrap; grid-row: auto; }
 .folio-ledger .long-amounts b { margin-left: auto; }
 .folio-ledger .long-amounts>span:first-child b { margin-top: 0; font-size: clamp(19px,5vw,24px); }
-.home-spread .folio-tools { border-top: 1px solid var(--hairline); gap: 3px; padding: 3px 5px 4px; }
+.folio-shortcut-bar { display: flex; align-items: center; grid-column: 1 / -1; border-block: 1px solid var(--hairline); padding-inline: 4px; background: linear-gradient(105deg,transparent,var(--accent-weak)); border-radius: 0 0 8px 8px; }
+.home-spread .folio-tools { flex: 1; min-width: 0; border: none; gap: 3px; padding: 3px 2px 4px; }
+.shortcut-edit { display: grid; place-items: center; min-width: 36px; min-height: 42px; color: var(--text-2); position: relative; }
+.shortcut-edit::before { content: ''; position: absolute; left: 0; height: 21px; border-left: 1px solid var(--hairline); }
+.shortcut-edit svg { width: 18px; height: 18px; }
 .home-spread .folio-tools button { flex-direction: column; gap: 1px; padding: 3px 1px; min-height: 47px; font-size: 12px; }
 .home-spread .folio-tools button::before { content: none; }
 .folio-tool-art { display: grid; place-items: center; height: 25px; }
 .folio-tool-art .art-icon { width: 25px; height: 25px; }
-.folio-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.folio-tools button:focus-visible, .folio-week button:focus-visible, .shortcut-edit:focus-visible, .shortcut-editor button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.sheet-body.shortcut-editor { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.shortcut-editor-scroll { overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 2px 16px 12px; }
+.shortcut-editor footer { flex: none; padding: 9px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hairline); }
+.shortcut-editor h3 { margin: 0; font: 600 15px/1.6 var(--book-serif); }
+.shortcut-editor-head { display: flex; align-items: center; justify-content: space-between; }
+.shortcut-editor-head button { min-height: 36px; }
+.shortcut-editor p { font-size: 12px; line-height: 1.6; color: var(--text-2); margin: 2px 0 8px; }
+.shortcut-slots { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 3px; margin: 2px 0 15px; }
+.shortcut-slots button { display: grid; place-items: center; gap: 2px; border-bottom: 2px solid var(--hairline); padding: 8px 1px; min-width: 0; color: var(--text); font-size: 12px; }
+.shortcut-slots svg { width: 27px; height: 27px; }
+.shortcut-slots [aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); border-radius: 5px 5px 0 0; }
+.shortcut-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 8px; }
+.shortcut-options button { display: flex; gap: 7px; align-items: center; padding: 6px 8px; text-align: left; color: var(--text); font-size: 13px; min-height: 42px; border: 1px solid var(--hairline); border-radius: 6px; }
+.shortcut-options [aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); }
+.shortcut-options svg { width: 21px; height: 21px; flex: none; }
+.shortcut-options small { margin-left: auto; color: var(--accent); font: 600 12px var(--ui-font); }
 
 .home-refined .home-sections { background: var(--home-paper); border-radius: 10px; padding: 0 14px; gap: 0; }
 #app.home-scene .home-sections>section { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 7px 0 8px; }
@@ -56,8 +102,9 @@ html[data-visual-style="future"] .folio-date-number { font-family: var(--ui-font
 .repay-tip .j-fill-debt { min-height: 36px; margin-left: 4px; text-decoration: underline; text-underline-offset: 3px; }
 .repay-tip .j-debt-after { color: var(--text); font-variant-numeric: tabular-nums; }
 @media (min-width:680px) {
-  .home-refined .folio-cover { align-items: end; }
-  .home-refined .folio-date { padding-bottom: 20px; }
+  .home-refined .folio-cover { align-items: center; }
+  .home-refined .folio-date { padding-bottom: 9px; }
+  .folio-week { margin-bottom: 8px; }
   .home-spread .folio-tools button { flex-direction: row; gap: 7px; min-height: 44px; }
   .home-refined .home-sections { background: transparent; padding: 0; gap: 10px; align-items: stretch; }
   #app.home-scene .home-sections>section { padding: 8px 14px; background: var(--home-paper); border-radius: 10px; }

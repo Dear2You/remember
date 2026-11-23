@@ -3,7 +3,8 @@
 window.Views = window.Views || {};
 
 const App = {
-  route: 'home',
+  route: null,
+  previousRoute: null,
   routes: {},
 
   init() {
@@ -77,7 +78,9 @@ const App = {
     // 旧路由重定向（报表/明细已合并为账单）
     const redirect = { stats: 'bills', expense: 'bills' }[route];
     if (redirect) { location.hash = '#/' + redirect; return; }
-    this.route = this.routes[route] ? route : 'home';
+    const next = this.routes[route] ? route : 'home';
+    if (next !== this.route) this.previousRoute = this.route;
+    this.route = next;
     document.getElementById('app').classList.toggle('home-scene', this.route === 'home');
     this.renewSalaryPeriods();
     // 子页高亮映射：时光子页→时光，订阅→资产，旧报表/明细→账单

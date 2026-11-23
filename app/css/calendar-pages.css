@@ -145,3 +145,110 @@
 .salary-batch-preview span { display: inline-block; margin-right: 5px; }
 .salary-batch-conflicts { margin-top: 13px; border-top: 1px solid var(--hairline); }
 .salary-batch-conflicts summary, .salary-batch-conflicts button { padding: 8px 4px; font-size: 13px; }
+
+.work-panel .worktime-summary {
+  grid-template-columns: minmax(0,1.48fr) minmax(0,.88fr) minmax(0,.8fr) minmax(0,1fr);
+  align-items: center;
+  padding-block: 5px 7px;
+}
+.worktime-summary .work-wage-total {
+  display: grid; align-content: center; justify-items: start; min-height: 44px; min-width: 0;
+  padding: 0 5px 0 0; background: transparent; text-align: start; color: var(--accent);
+}
+.worktime-summary .work-wage-total .lab { color: var(--accent); }
+.worktime-summary .work-wage-total .val { font: 600 clamp(17px,4.6vw,23px)/1.14 Georgia,var(--book-serif); }
+.worktime-summary .val { max-width: 100%; overflow-wrap: anywhere; }
+.worktime-summary .work-wage-total + div { border-left: 1px solid var(--hairline); padding-left: 6px; }
+.work-calendar .work-grid thead th { color: var(--text-2); font-size: 11px; }
+.work-calendar .work-grid thead th:nth-last-child(-n+2) { color: var(--accent); }
+.work-wage-total:focus-visible, .salary-pair button:focus-visible,
+.pay-statement button:focus-visible, .work-breakdown :is(button,summary):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+.salary-pair,.pay-statement-totals {
+  display: grid; grid-template-columns: minmax(0,1.12fr) minmax(0,1fr); gap: 10px;
+  align-items: center; padding: 10px 0; color: var(--text);
+}
+.salary-pair :is(button,div),.pay-statement-totals > :is(button,div) {
+  display: grid; min-width: 0; justify-items: start; gap: 3px; background: transparent; text-align: start;
+}
+.salary-pair button { padding: 0; min-height: 44px; color: var(--accent); }
+.salary-pair > div,.pay-statement-totals > button { padding-inline-start: 12px; border-inline-start: 1px solid var(--hairline); }
+.salary-pair span,.pay-statement-totals span { font: 500 12px/1.4 var(--ui-font); }
+.salary-pair :is(strong,b), .pay-statement-totals :is(strong,b), .work-breakdown-head strong {
+  max-width: 100%; overflow-wrap: anywhere; font: 600 clamp(20px,5.4vw,26px)/1.15 Georgia,var(--book-serif);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.salary-pair b,.pay-statement-totals b { font-size: clamp(17px,4.8vw,22px); }
+.salary-pair small { font-size: 10px; color: var(--text-2); }
+.salary-project .salary-stats { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; border-top: 1px solid var(--hairline); padding: 8px 0; }
+.salary-project .salary-stats b { font-size: 14px; overflow-wrap: anywhere; }
+
+.pay-statement,.work-breakdown { color: var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pay-statement-head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--hairline); }
+.pay-statement-art { display: grid; place-items: center; flex: none; width: 36px; height: 36px; color: var(--accent); background: var(--tint-surface); border-radius: 8px; }
+.pay-statement-art svg { width: 25px; height: 25px; }
+.pay-statement-head h2 { margin: 0; font: 650 17px/1.4 var(--book-serif); }
+.pay-statement-head p,.statement-other,.pay-statement-basis { margin: 3px 0 0; color: var(--text-2); font: 12px/1.5 var(--ui-font); }
+.pay-statement-totals { padding-block: 12px 8px; }
+.pay-statement-totals strong { font-size: clamp(24px,6.4vw,30px); }
+.pay-statement-totals button { min-height: 44px; color: var(--accent); }
+.pay-statement-basis { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; column-gap: 8px; }
+.statement-ribbon { display: flex; gap: 2px; margin: 7px 0 11px; }
+.statement-ribbon i { flex: 1; height: 5px; min-width: 0; border-radius: 1px; }
+.pay-statement .state-full { background: var(--accent); }
+.pay-statement .state-half { background: linear-gradient(90deg,var(--accent) 50%,transparent 50%); border: 1px solid var(--accent); }
+.pay-statement .state-absent { background: var(--danger); }
+.pay-statement .state-pending { background: var(--gold-wash); border: 1px dashed var(--text-2); }
+.pay-statement .state-future { background: var(--hairline); }
+.statement-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hairline); }
+.statement-tabs button { flex: 1; background: transparent; color: var(--text-2); min-height: 38px; border-bottom: 2px solid transparent; font-size: 12px; }
+.statement-tabs button[aria-pressed="true"] { color: var(--accent); border-bottom-color: currentColor; font-weight: 650; }
+.statement-tabs b { font: inherit; font-variant-numeric: tabular-nums; }
+.statement-list h3 { margin: 0; padding: 9px 0 4px; color: var(--text-2); font: 650 12px/1.5 var(--book-serif); }
+.statement-row { display: grid; grid-template-columns: auto minmax(0,1fr) minmax(0,auto) 7px; gap: 9px; align-items: center;
+  width: 100%; min-height: 44px; padding: 5px 1px; text-align: start; background: transparent; color: var(--text); border-bottom: 1px solid var(--hairline); }
+.statement-date { display: inline-flex; gap: 6px; align-items: baseline; }
+.statement-date b { font: 600 18px/1.2 Georgia,var(--book-serif); }
+.statement-date small,.statement-state small { font-size: 11px; color: var(--text-2); }
+.statement-state { font-size: 12px; }
+.statement-state small { display: block; }
+.statement-state i { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 2px; }
+.statement-wage,.work-breakdown-line b,.work-breakdown-project summary b { font: 600 14px/1.35 var(--ui-font); }
+.statement-chevron { color: var(--accent); font: 18px/1 Georgia,serif; }
+.statement-empty { padding: 10px 0; margin: 0; font-size: 13px; color: var(--text-2); }
+.work-breakdown-head { display: grid; gap: 3px; padding: 0 0 12px; border-bottom: 2px solid var(--accent); }
+.work-breakdown-head :is(small,span) { font-size: 12px; color: var(--text-2); }
+.work-breakdown-head strong { color: var(--accent); }
+.work-breakdown-project { border-bottom: 1px solid var(--hairline); }
+.work-breakdown-project > summary,.work-breakdown-line,.work-breakdown-period {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  min-height: 44px; padding: 6px 0; color: var(--text); text-align: start; background: transparent;
+}
+.work-breakdown-project summary { list-style: none; cursor: pointer; }
+.work-breakdown-project summary::-webkit-details-marker { display: none; }
+.work-breakdown-project summary > span { flex: 1; font: 650 14px/1.5 var(--book-serif); }
+.work-breakdown-project summary small,.work-breakdown-line small { color: var(--text-2); font: 11px/1.5 var(--ui-font); }
+.work-breakdown-project summary small { margin-left: 6px; white-space: nowrap; }
+.work-breakdown-project summary::after { content: ''; width: 6px; height: 6px; margin-inline: 1px 4px; flex: none; border: solid var(--accent); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.work-breakdown-project[open] summary::after { transform: rotate(225deg); }
+.work-breakdown-period { padding-inline: 7px; font-size: 12px; color: var(--accent); background: var(--tint-surface); }
+.work-breakdown-period b { font-weight: 500; }
+.work-breakdown-line { border-top: 1px solid var(--hairline); font-size: 13px; }
+.work-breakdown-line small { display: block; margin-top: 2px; }
+.work-breakdown-line b,.work-breakdown-project summary b,.work-breakdown-period b { max-width: 62%; text-align: end; }
+
+.work-scene-strip { position: relative; isolation: isolate; }
+.work-scene-strip::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--scene-image,url('../images/summer-mist.webp')) var(--folio-crop,center 58%) / cover no-repeat;
+  opacity: .26;
+  -webkit-mask-image: linear-gradient(105deg,transparent 2%,rgba(0,0,0,.22) 32%,#000 100%);
+  mask-image: linear-gradient(105deg,transparent 2%,rgba(0,0,0,.22) 32%,#000 100%);
+}
+.work-calendar-heading { border-bottom: 1px solid var(--hairline); }
+.work-calendar-heading .worktime-summary { border-bottom: 0; }
+.statement-cover { padding: 7px 9px 0; margin-bottom: 8px; border-block: 1px solid var(--hairline); }
+.statement-cover .pay-statement-head { border: 0; padding-bottom: 0; }
+.work-breakdown-head.work-scene-strip { padding: 8px 9px; }
+html[data-tone="dark"] .work-scene-strip::before { opacity: .36; }

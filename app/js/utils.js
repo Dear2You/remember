@@ -127,6 +127,20 @@ const iconPaths = {
     off: '<path d="m3 3 18 18M9 5.5c5-2 10 2 13 6.5a20 20 0 0 1-4 4.5M6 7.5A20 20 0 0 0 2 12s4 7 10 7c1 0 2.5-.3 4-1"/>'
   };
 const UI = {
+  saveDocument(name, content, mime) {
+    if (window.AndroidBridge?.saveDocument) {
+      window.AndroidBridge.saveDocument(name, content, mime.startsWith('text/csv'));
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([content], {type:mime}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  },
   amount(minor, grouped = false) {
     if (Store.settings.hideAmount) return '••••';
     return grouped ? Store.fmtMinorThousand(minor) : Store.fmtMinor(minor);

@@ -56,3 +56,30 @@
 .bill-report .j-results .c-val { display: block; font: 550 16px/1.3 Georgia,var(--ui-font); }
 .bill-report .ledger-more { display: block; width: 100%; min-height: 43px; color: var(--accent); border-top: 1px solid var(--hairline); background: transparent; }
 .bill-report .ledger-empty>.art-icon { width: 32px; height: 32px; }
+
+.bill-report .ledger-totals {
+  position: relative; overflow: hidden; padding: 6px 13px 12px;
+  background: var(--paper-glass);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 7%, transparent),transparent 68%),var(--paper-glass);
+}
+.ledger-totals header { align-items: center; border-bottom: 1px solid var(--hairline); min-height: 37px; padding-bottom: 3px; }
+.ledger-caption { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ledger-caption .art-icon { width: 22px; height: 22px; }
+.ledger-caption strong { font: 600 15px/1.4 var(--book-serif); color: var(--text); }
+.ledger-caption small { font-size: 12px; font-variant-numeric: tabular-nums; }
+.ledger-totals .text-action { flex: none; min-height: 35px; padding-inline: 5px; font-size: 12px; }
+.ledger-totals dl { gap: 8px 14px; margin-top: 9px; }
+.ledger-totals dl>div + div { border-inline-start: 1px solid var(--hairline); padding-inline-start: 10px; }
+.ledger-totals dt { line-height: 1.5; }
+.ledger-totals dd { margin-top: 3px; }
+.ledger-dates { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 0; min-height: 36px; color: var(--accent); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ledger-dates svg { width: 15px; height: 15px; }
+.ledger-dates + dl { margin-top: 1px; }
+.range-days { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.range-days label { min-width: 0; color: var(--text-2); font-size: 13px; }
+.range-days input { width: 100%; min-width: 0; box-sizing: border-box; margin-top: 5px; }
+.range-choices { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.range-choices .chip { min-height: 36px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.range-choices [aria-pressed="true"] { color: var(--text); outline: 1px solid var(--accent); }
+.range-feedback { margin: 9px 0 16px; color: var(--text-2); font-size: 13px; }
+.range-feedback.invalid { color: var(--danger); }

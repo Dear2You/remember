@@ -2,7 +2,7 @@
 
 Views.money = (() => {
   const esc=U.escapeHtml, money=n=>Store.settings.hideAmount?'••••':'¥'+Store.fmtMinorThousand(n);
-  let month=U.ymNow(), back='home';
+  let month=U.ymNow(), back='home', inspectedDate='', paceSequence=0;
   const bar=(value,over=false)=>`<div class="saving-track ${over?'over':''}" aria-hidden="true"><i style="width:${Store.settings.hideAmount?0:Math.max(0,Math.min(1,value))*100}%"></i></div>`;
   function goalPace(plan) {
     if (!plan) return '';
@@ -10,7 +10,7 @@ Views.money = (() => {
     if (!plan.count) return '目标日在下次发薪前，可按现有余额安排。';
     return '按每月 '+plan.day+' 日发薪，到目标日还可分 '+plan.count+' 次存，每次约 '+money(plan.perPayday)+'。'+(plan.startsToday?'含今天。':'');
   }
-  function open(from='home') {month=U.ymNow();back=from;App.go('money');}
+  function open(from='home') {month=U.ymNow();back=from;inspectedDate='';App.go('money');}
   function homeCard() {
     const s=Store.moneySummary(),credit=Store.creditSummary();
     const hasSavings = s.savingTarget || Store.savingAccountIds().size;
@@ -127,6 +127,100 @@ Views.money = (() => {
         ${s.limit?bar(s.spent/s.limit,s.remaining<0):''}<small>${s.limit?(s.remaining<0?'已超 '+money(-s.remaining):'可用 '+money(s.remaining)):'未设专项额度'}</small></span>
         <strong>${money(s.spent)}</strong><i aria-hidden="true">›</i></button>`).join('')}</div></section>`;
   }
+  function mountPace(section,model) {
+    section.innerHTML=`<header><h2>${UI.art('chart')}消费节奏</h2>
+      <div class="pace-legend"><span>累计支出</span>${model.limit?'<span>按日均摊</span>':''}</div></header>`;
+    if (Store.settings.hideAmount || !model.points.length) {
+      section.insertAdjacentHTML('beforeend','<p class="pace-empty">'+(Store.settings.hideAmount?'金额已隐藏':'这个月尚未开始，开始后可逐日查看支出。')+'</p>');
+      return;
+    }
+    const last=model.points[model.points.length-1];
+    if (!model.limit && !last.cumulative) {
+      section.insertAdjacentHTML('beforeend','<p class="pace-empty">这个月还没有个人支出。<button class="text-action j-plan">设置消费上限 ›</button></p>');
+      return;
+    }
+    const ceiling=Math.max(1,last.cumulative,model.limit);
+    const x=day=>Math.round(day/model.days*36000)/100;
+    const y=amount=>Math.round((86-amount/ceiling*78)*100)/100;
+    const path='M0 86'+model.points.map(p=>' H'+x(p.day)+' V'+y(p.cumulative)).join('');
+    const id='pace-ink-'+(++paceSequence);
+    const marker={
+      seal:'<rect x="-3.5" y="-3.5" width="7" height="7" rx=".7"/>',
+      star:'<path d="M0-5.5 1.6-1.6 5.5 0 1.6 1.6 0 5.5-1.6 1.6-5.5 0-1.6-1.6Z"/>',
+      bubble:'<circle r="4.2"/><circle class="pace-inset" r="1.5"/>',
+      diamond:'<path d="m0-5 5 5-5 5-5-5Z"/>',
+      leaf:'<path d="M-4 3Q-4-4 4-3Q5 4-4 3Z"/>',
+      sun:'<circle r="4"/><path class="pace-sunrise" d="M-6 4h12"/>'
+    }[Charts.skin().marker];
+    const axisAmount=ceiling>=1000000 ? +(ceiling/1000000).toFixed(2)+'万' : Store.fmtMinorThousand(ceiling);
+    section.insertAdjacentHTML('beforeend',`<div class="pace-heading">
+        <div><span>累计已花</span><strong class="j-pace-total"></strong></div>
+        <div class="pace-date"><button data-step="-1" aria-label="查看前一天">‹</button><span class="j-pace-date"></span><button data-step="1" aria-label="查看后一天">›</button></div>
+      </div>
+      <div class="pace-frame"><div class="pace-axis" aria-hidden="true"><span>${axisAmount}</span><span>0 元</span></div>
+        <div class="pace-plot" tabindex="0" role="slider" aria-label="选择支出日期" title="点击或横滑图表选日" aria-valuemin="1" aria-valuemax="${last.day}">
+          <svg aria-hidden="true" viewBox="0 0 360 94" preserveAspectRatio="none">
+            <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--calendar-expense)" stop-opacity=".22"/><stop offset="1" stop-color="var(--calendar-expense)" stop-opacity=".035"/></linearGradient></defs>
+            ${last.day<model.days?`<rect class="pace-later" x="${x(last.day)}" y="4" width="${360-x(last.day)}" height="82"/>`:''}
+            <path class="pace-grid" d="M0 8H360 M0 47H360 M0 86H360"/>
+            <path d="${path} V86 Z" fill="url(#${id})"/>
+            ${model.limit?`<path class="pace-reference" d="M0 86 L360 ${y(model.limit)}"/>`:''}
+            <path class="pace-actual" d="${path}"/><path class="pace-cursor"/><g class="pace-marker">${marker}</g>
+          </svg>
+        </div><div class="pace-ticks" aria-hidden="true"><span>月初</span><span>月中</span><span>${model.days}日</span></div></div>
+      <div class="pace-detail"><div class="pace-reading" aria-live="polite"></div><button class="text-action j-pace-rows"></button></div>`);
+    const plot=section.querySelector('.pace-plot'), reading=section.querySelector('.pace-reading');
+    const dayButton=section.querySelector('.j-pace-rows');
+    let selected=model.points.find(p=>p.date===inspectedDate) || last;
+    function selectDay(day) {
+      selected=model.points[Math.max(1,Math.min(last.day,day))-1];
+      inspectedDate=selected.date;
+      const date=Number(month.slice(5))+'月'+selected.day+'日';
+      const diff=selected.cumulative-selected.reference;
+      section.querySelector('.j-pace-date').textContent=date;
+      section.querySelector('.j-pace-total').textContent=money(selected.cumulative);
+      section.querySelector('[data-step="-1"]').disabled=selected.day===1;
+      section.querySelector('[data-step="1"]').disabled=selected.day===last.day;
+      plot.setAttribute('aria-valuenow',selected.day);
+      plot.setAttribute('aria-valuetext',date+'，累计已花 '+money(selected.cumulative));
+      const px=x(selected.day), py=y(selected.cumulative);
+      plot.querySelector('.pace-cursor').setAttribute('d','M'+px+' 4 V86');
+      plot.querySelector('.pace-marker').setAttribute('transform','translate('+px+' '+py+')');
+      const comparison=diff?(diff>0?'多花 ':'少花 ')+money(Math.abs(diff)):'持平';
+      reading.innerHTML=`<span>当天支出 <b>${money(selected.spent)}</b></span>${model.limit?`<small>均摊至当日 ${money(selected.reference)} · ${comparison}</small>`:''}`;
+      dayButton.textContent=selected.rows.length ? selected.rows.length+' 笔明细 ›' : '当天无支出';
+      dayButton.disabled=!selected.rows.length;
+    }
+    function selectAt(clientX) {
+      const box=plot.getBoundingClientRect();
+      if (!box.width) return;
+      const day=Math.max(1,Math.min(last.day,Math.round((clientX-box.left)/box.width*model.days)));
+      if (selected.day!==day) selectDay(day);
+    }
+    plot.onclick=e=>selectAt(e.clientX);
+    let pointer=null;
+    plot.onpointerdown=e=>{
+      if (e.isPrimary && e.button===0) pointer={id:e.pointerId,x:e.clientX,y:e.clientY};
+    };
+    plot.onpointermove=e=>{
+      if (!pointer || pointer.id!==e.pointerId || !e.buttons) return;
+      if (!pointer.dragging) {
+        const dx=Math.abs(e.clientX-pointer.x), dy=Math.abs(e.clientY-pointer.y);
+        if (dx<5 || dx<dy) return;
+        pointer.dragging=true;
+        plot.setPointerCapture(e.pointerId);
+      }
+      selectAt(e.clientX);
+    };
+    plot.onpointercancel=plot.onpointerup=()=>{pointer=null;};
+    plot.onkeydown=e=>{
+      const target={ArrowLeft:selected.day-1,ArrowDown:selected.day-1,ArrowRight:selected.day+1,ArrowUp:selected.day+1,Home:1,End:last.day}[e.key];
+      if (target!=null) { e.preventDefault(); selectDay(target); }
+    };
+    section.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>selectDay(selected.day+Number(b.dataset.step)));
+    dayButton.onclick=()=>rowsSheet(selected.date+' · 个人支出',selected.rows,'当天 '+selected.rows.length+' 笔 · 合计 '+money(selected.spent));
+    selectDay(selected.day);
+  }
   function creditCard(c) {
     return `<section id="budget-credit" tabindex="-1" aria-labelledby="budget-credit-title" class="credit-watch"><header><h2 id="budget-credit-title">${UI.art('card')}白条与信用消费</h2><button class="text-action j-credit-setup">＋ 添加</button></header>
       <div class="credit-overview"><span>当前全部待还<b>${money(c.debt)}</b></span><span>所选月信用消费<b>${money(c.spent)}</b></span></div>
@@ -137,25 +231,29 @@ Views.money = (() => {
   }
   function mount(root) {
     const s=Store.moneySummary(month), hidden=Store.settings.hideAmount, preferred=Store.preferredSavingAccount();
+    const pace=Store.budgetPace(month);
+    const spendLabel=pace.futureCount?'全月已记支出':'本月已花';
     const credit=Store.creditSummary(month), current=month===U.ymNow(), over=s.limit && s.remaining<0;
     const usage=s.limit?Math.round(s.spent*100/s.limit):0;
     root.innerHTML=`<div class="page decorated-page money-page"><button class="back-btn j-back">‹ 返回</button><header class="page-head chapter-head">${UI.pageTitle('预算与存钱','sprout')}<span class="page-sub">全部账本</span></header>
       <section class="budget-sheet" aria-label="月度消费预算"><div class="money-month"><button class="j-prev" aria-label="上个月">‹</button><label class="budget-month-pick"><span aria-hidden="true">${U.ymLabel(month)}</span><input type="month" class="j-month" aria-label="预算月份" value="${month}"></label><button class="j-next" aria-label="下个月">›</button><button class="text-action j-plan">${s.plan?'调整计划':'设置计划'} ›</button></div>
-      <div class="budget-balance"><div class="budget-number"><span>${s.limit?(over?'已超出预算':current?'本月还能花':s.leftDays?'可用预算':'月末剩余额度'):'本月已花'}</span><strong class="${over?'money-out':''}">${money(s.limit?Math.abs(s.remaining):s.spent)}</strong>
+      <div class="budget-balance"><div class="budget-number"><span>${s.limit?(over?'已超出预算':current?'本月还能花':s.leftDays?'可用预算':'月末剩余额度'):spendLabel}</span><strong class="${over?'money-out':''}">${money(s.limit?Math.abs(s.remaining):s.spent)}</strong>
         <small>${s.limit?'消费上限 '+money(s.limit):'尚未设置消费上限'}</small></div>
       <div class="money-ring ${over?'over':''}" style="--progress:${hidden?0:s.ratio*100}%" role="img" aria-label="${hidden?'预算用量已隐藏':s.limit?'额度已用 '+usage+'%':'未设置月消费上限'}"><div aria-hidden="true"><strong>${hidden?'••••':!s.limit?'—':usage>999?'已超额':usage+'%'}</strong><small>额度已用</small></div></div></div>
-      <div class="budget-facts"><span>${s.limit?'本月已花':'本月收入'}<b>${money(s.limit?s.spent:s.income)}</b></span><span>每天可花<b>${s.limit && s.leftDays?money(s.daily):'—'}</b></span><span>本月结余<b>${money(s.net)}</b></span></div>
+      <div class="budget-facts"><span>${s.limit?spendLabel:'本月收入'}<b>${money(s.limit?s.spent:s.income)}</b></span><span>每天可花<b>${s.limit && s.leftDays?money(s.daily):'—'}</b></span><span>本月结余<b>${money(s.net)}</b></span></div>
+      ${pace.futureCount && !hidden?`<p class="budget-forward-note">月度汇总含 ${pace.futureCount} 笔未来日期支出，消费曲线只统计到今天。</p>`:''}
       <details class="budget-note"><summary><span class="budget-period-note">${current?'含今天还剩 '+s.leftDays+' 天':s.leftDays?'全月 '+s.leftDays+' 天':'该月已结束'}${s.plan?.inherited?' · 沿用 '+esc(s.plan.month)+' 计划':''}</span><span>统计口径</span></summary>
         <p>按自然月合计全部账本的个人支出，含白条消费和转账手续费。转账本金、还款本金、出差垫付和报销到账单独统计。购物、外卖和饮品的专项额度包含在月上限内。</p></details></section>
       <nav class="budget-shortcuts" aria-label="本页账户和存钱"><button data-budget-jump="budget-credit" aria-controls="budget-credit">${UI.art('card')}<span><small>当前信用待还</small><b>${money(credit.debt)}</b></span><i aria-hidden="true">›</i></button>
       <button data-budget-jump="budget-saving" aria-controls="budget-saving">${UI.art('sprout')}<span><small>本月存下</small><b>${money(s.saved)}</b></span><i aria-hidden="true">›</i></button></nav>
-      ${focusCard()}${creditCard(credit)}
+      <section class="budget-pace" aria-label="消费节奏"></section>${focusCard()}${creditCard(credit)}
       <section class="monthly-saving" id="budget-saving" tabindex="-1" aria-labelledby="budget-saving-title"><header><h2 id="budget-saving-title">${UI.art('coin')}这个月存下多少</h2><button class="text-action j-plan">设置 ›</button></header><div><strong>${money(s.saved)}</strong><span> / ${s.savingTarget?money(s.savingTarget):'未设月目标'}</span></div>${bar(s.savingTarget?s.saved/s.savingTarget:0)}<p>${s.savingTarget?(s.saved>=s.savingTarget?'本月存钱目标已达到':'距离目标还差 '+money(s.savingRemaining)):'设一个月存钱金额，从第一笔开始'}<small>指定存钱账户和目标账户本月余额的净增加，取出和消费会扣回；期初余额不计入。</small></p>
         <label class="saving-account-choice">主要存钱账户<select class="j-saving-account"><option value="">不单独指定</option>${Store.accounts().filter(a=>a.type!=='liability').map(a=>`<option value="${esc(a.id)}" ${a.id===preferred?.id?'selected':''}>${esc(a.name)}${a.archived?'（已停用）':''}</option>`).join('')}</select></label>
         ${preferred?`<div class="saving-account-balance"><span>账户余额 <b>${money(Store.accountBalance(preferred.id))}</b></span><button class="text-action j-account-save">存入一笔 ›</button><button class="text-action j-account-rows">流水 ›</button></div>`:''}</section>
       <section class="saving-goals"><header><h2>我的存钱目标</h2><button class="text-action j-add-goal">＋ 新目标</button></header>
         ${Store.data.savingGoals.map(g=>{const p=Store.savingGoalSummary(g);return `<article class="saving-goal"><header>${UI.art('sprout')}<div><h3>${esc(g.name)}</h3><small>${esc(Store.accountName(g.accountId))}${g.deadline?' · 目标日 '+esc(g.deadline):''}</small></div><button class="text-action" data-edit-goal="${esc(g.id)}">编辑</button></header><div class="goal-amount"><b>${money(p.balance)}</b><span> / ${money(g.targetMinor)}</span></div>${bar(p.ratio)}<p>${p.complete?'目标已达成':'还差 '+money(p.remaining)}${p.pace?'<small class="goal-pace">'+goalPace(p.pace)+'</small>':''}</p><footer><button class="btn btn-primary" data-save-goal="${esc(g.id)}">存入一笔</button><button class="btn btn-ghost" data-withdraw-goal="${esc(g.id)}">取出</button><button class="text-action" data-goal-rows="${esc(g.id)}">流水 ›</button></footer></article>`;}).join('') || `<button class="saving-empty j-add-goal">${UI.art('sprout')}<span><b>先攒一份备用金</b><small>例如毕业备用金、旅行基金</small></span><i>＋</i></button>`}</section>
       <button class="money-book-budget j-book-budget">${UI.art('book')}账本与分类预算<span>分别安排餐饮、交通等 ›</span></button></div>`;
+    mountPace(root.querySelector('.budget-pace'),pace);
     root.querySelector('.j-back').onclick=()=>App.go(back);
     root.querySelectorAll('[data-budget-jump]').forEach(button=>button.onclick=()=>{
       const section=root.querySelector('#'+button.dataset.budgetJump);

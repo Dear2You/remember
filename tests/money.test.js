@@ -7,6 +7,46 @@ function fixture(){
   const s=ctx.window.Store;ctx.window.UI.toast=()=>{};s.init();return {s,storage};
 }
 
+test('助手回答消费节奏时使用同一条均摊线，尊重上月和金额隐藏',()=>{
+  const {s}=fixture();
+  const now=new Date();
+  const previous=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const month=previous.getFullYear()+'-'+String(previous.getMonth()+1).padStart(2,'0');
+  s.addTransaction({type:'out',date:month+'-01',accountId:'acc-credit',amountMinor:12345});
+  assert.match(s.moneyAnswer('上个月消费节奏怎么样？'),/123\.45.*没设置消费上限/);
+  s.saveMoneyPlan({month,limitMinor:10000,saveMinor:0,repeat:false});
+  assert.match(s.moneyAnswer('我上个月花钱太快了吗？'),/预算均摊额为 ¥100，实际多花 ¥23\.45/);
+  s.settings.hideAmount=true;
+  assert.doesNotMatch(s.moneyAnswer('我这个月花得快吗？'),/¥|\d/);
+});
+
+test('消费节奏按自然日累计全部账本的个人支出并按分均摊，截止今天',()=>{
+  const {s}=fixture();
+  s.saveMoneyPlan({month:'2028-01',limitMinor:10001,saveMinor:0,repeat:true});
+  const other=s.addBook({name:'样例账本'});
+  s.addTransaction({type:'out',date:'2028-02-01',accountId:'acc-wx',amountMinor:1200});
+  s.addTransaction({type:'out',date:'2028-02-13',bookId:other.id,accountId:'acc-credit',amountMinor:305});
+  s.addTransaction({type:'transfer',date:'2028-02-13',fromId:'acc-wx',toId:'acc-credit',amountMinor:305,feeMinor:2,feeMode:'extra'});
+  s.addTransaction({type:'in',date:'2028-02-13',accountId:'acc-bank',amountMinor:90000});
+  s.addTransaction({type:'out',date:'2028-02-29',accountId:'acc-wx',amountMinor:199});
+  const result=s.budgetPace('2028-02','2028-02-13');
+  assert.equal(result.days,29);
+  assert.equal(result.points.length,13);
+  assert.equal(result.points[0].spent,1200);
+  assert.equal(result.points[1].cumulative,1200);
+  const day=result.points[12];
+  assert.equal(day.date,'2028-02-13');
+  assert.equal(day.reference,Math.round(10001*13/29));
+  assert.equal(day.cumulative,1507);
+  assert.equal(day.spent,307);
+  assert.equal(day.rows.length,2);
+  const complete=s.budgetPace('2028-02','2028-03-01').points[28];
+  assert.equal(complete.reference,10001);
+  assert.equal(complete.cumulative,s.moneySummary('2028-02').spent);
+  assert.equal(s.budgetPace('2028-03','2028-02-13').points.length,0);
+  assert.equal(s.budgetPace('2027-12','2028-02-13').limit,0);
+});
+
 test('到期存钱参考按设定的发薪日均分剩余金额，覆盖短月、当日及已过目标日',()=>{
   const {s}=fixture();
   s.mutate(d=>{d.settings.salaryPayDay=31;});

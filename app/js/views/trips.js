@@ -139,8 +139,7 @@ Views.trips = (() => {
       body.querySelector('.j-submit').onclick=()=>{Store.mutate(()=>{trip.submittedAt=trip.submittedAt?'':today();});refresh();};
       body.querySelector('.j-export-trip').onclick=()=>{
         const csv=Store.exportCSV(trip.id),name='出差报销_'+today()+'.csv';
-        if(window.AndroidBridge?.saveDocument)window.AndroidBridge.saveDocument(name,csv,true);
-        else{const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+        UI.saveDocument(name,csv,'text/csv;charset=utf-8');
       };
       body.querySelector('.j-ticket').onchange=async e=>{
         const file=e.target.files[0];if(!file)return;

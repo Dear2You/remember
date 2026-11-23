@@ -15,6 +15,10 @@ Views.ai = (() => {
     }
     if (guideSections.has(text)) return guideSections.get(text);
     if (/怎么|如何|在哪|哪里|找不到|能不能|可以.*吗/.test(text)) {
+      if (/快捷入口|常用操作|首页位置|首页.*(?:快捷|工具)|周历/.test(text)) return guideSections.get('首页周历与快捷入口');
+      if (/消费节奏|预算曲线|均摊|花钱速度/.test(text)) return guideSections.get('逐日查看消费节奏');
+      if (/工资明细|工资构成|已计工资/.test(text)) return guideSections.get('逐日核对工资');
+      if (/自定日期|导出.*(?:筛选|流水)|(?:按工资期|按计薪周期).*查.*(?:账|流水)/.test(text)) return guideSections.get('按日期区间查账和导出');
       if ((/余额|欠款|白条|信用卡|银行/.test(text) && /核对|对账|截止|截至|差额/.test(text)) || /核对账户/.test(text)) return guideSections.get('按账单日期核对账户');
       if (/按金额|金额范围|每笔金额|筛选.*金额|金额.*筛选/.test(text)) return guideSections.get('跨月查流水');
       if (/批量补记|选到昨天|实际工时|本期到账/.test(text)) return guideSections.get('工时与薪资');

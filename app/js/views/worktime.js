@@ -237,6 +237,27 @@ Views.worktime = (() => {
     });
   }
 
+  function openWageBreakdown(range) {
+    const ws=Store.rangeWorkSummary(range.start,range.end), plans=Store.salaryPlansBetween(range.start,range.end);
+    const names=[...new Set([...Object.keys(ws.byProject),...plans.map(p=>p.project)])];
+    names.sort((a,b)=>a.localeCompare(b,'zh-CN'));
+    UI.sheet({title:'已计工资构成',content(body){
+      body.innerHTML=`<section class="work-breakdown"><div class="work-breakdown-head work-scene-strip"><span>${range.start} 至 ${range.end}</span><strong>¥${UI.amount(ws.pay,true)}</strong><small>${ws.list.length} 笔工时记录</small></div>
+        ${names.map(name=>{
+          const rows=ws.list.filter(w=>w.project===name).sort((a,b)=>b.date.localeCompare(a.date));
+          const periods=plans.filter(p=>p.project===name).sort((a,b)=>a.month.localeCompare(b.month));
+          return `<details class="work-breakdown-project" ${names.length===1?'open':''}><summary><span>${U.escapeHtml(name)}<small>${rows.length} 笔</small></span><b>¥${UI.amount(ws.byProjectPay[name]||0,true)}</b></summary>
+            ${periods.map(p=>`<button class="work-breakdown-period" data-full-period="${U.escapeHtml(p.id)}"><span>整期工资明细</span><b>${U.escapeHtml(Store.salaryRangeLabel(p))} ›</b></button>`).join('')}
+            ${rows.map(w=>`<button class="work-breakdown-line" data-work-date="${w.date}"><span>${U.fmtDay(w.date)}<small>${U.escapeHtml(rateText(w))} · ${entryUnits(w)}</small></span><b>${entryPayText(w)} ›</b></button>`).join('')}
+            ${rows.length?'':'<p class="statement-empty">这个项目在所选区间还没有工时记录。</p>'}
+          </details>`;
+        }).join('') || '<p class="statement-empty">本区间还没有工资方案或工时记录。</p>'}
+        </section>`;
+      body.querySelectorAll('[data-full-period]').forEach(b=>b.onclick=()=>Views.payroll.statement(b.dataset.fullPeriod));
+      body.querySelectorAll('[data-work-date]').forEach(b=>b.onclick=()=>openDaySheet(b.dataset.workDate));
+    }});
+  }
+
   /* ---------- 页面 ---------- */
   function mount(root) {
     const primary=Store.primarySalaryPlan() || [...Store.data.salaryMonths].sort((a,b)=>b.month.localeCompare(a.month))[0];
@@ -340,17 +361,17 @@ Views.worktime = (() => {
 
       '  <section class="card work-panel' + (mode === 'cal' ? ' work-calendar' : '') + '">' +
       scopeSwitch +
-      '    <header class="work-monthbar"><label class="work-month-pick calendar-month-picker"><span><small>' + month.y + '年</small> ' + (month.m+1) + '月</span><input aria-label="选择工时月份" type="month" value="'+ym+'" min="1000-03" max="9999-11"></label>' +
+      '    <div class="work-scene-strip work-calendar-heading"><header class="work-monthbar"><label class="work-month-pick calendar-month-picker"><span><small>' + month.y + '年</small> ' + (month.m+1) + '月</span><input aria-label="选择工时月份" type="month" value="'+ym+'" min="1000-03" max="9999-11"></label>' +
       (primary?'':viewSwitch) + '<div class="work-month">' +
       '      <button class="j-prev" aria-label="上个月" '+(ym<='1000-03'?'disabled':'')+'>‹</button>' +
       '      <button class="j-next" aria-label="下个月" '+(ym>='9999-11'?'disabled':'')+'>›</button></div></header>' +
       (scope==='period'||ym!==currentMonth?'<div class="work-range work-range-nav"><span>'+range.start+' 至 '+range.end+(scope==='period'&&primary&&!primary.cycleConfirmed?' · 计薪区间待确认':'')+'</span>'+(ym!==currentMonth?'<button class="j-current-range">'+(scope==='period'?'回本期':'回本月')+'</button>':'')+'</div>':'')+
       '  <div class="stat-grid worktime-summary">' +
+      '    <button class="work-wage-total" aria-label="查看已计工资构成"><span class="lab">已计工资 ›</span><strong class="val num">¥' + UI.amount(ws.pay, true) + '</strong></button>' +
       '    <div><div class="lab">已记工时</div><div class="val num">' + U.fmtHours(ws.total) + '</div></div>' +
-      '    <div><div class="lab">已计工资</div><div class="val num">¥' + UI.amount(ws.pay, true) + '</div></div>' +
-      '    <div><div class="lab">区间日均工资</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
       '    <div><div class="lab">出勤天数</div><div class="val num">' + ws.days + ' 天</div></div>' +
-      '  </div>' + calendar + listHtml +
+      '    <div><div class="lab">日历日均</div><div class="val num">¥' + UI.amount(ws.avgPay) + '</div></div>' +
+      '  </div></div>' + calendar + listHtml +
 
       '</section><div class="work-pay-actions"><button class="btn btn-ghost j-salary-plan">＋ 月薪方案</button><button class="btn btn-primary j-receipts">工资到账</button></div>' + Views.payroll.cards(ym,salaryPlans) +
 
@@ -365,6 +386,7 @@ Views.worktime = (() => {
       '</div>';
 
     root.querySelector('.j-wage').onclick = openWageSheet;
+    root.querySelector('.work-wage-total').onclick=()=>openWageBreakdown(range);
     root.querySelector('.j-salary-plan').onclick=()=>Views.payroll.planSheet(ym);
     root.querySelector('.j-receipts').onclick=()=>Views.payroll.receipts(ym);
     root.querySelectorAll('[data-distribution]').forEach(b=>b.onclick=()=>{distribution=b.dataset.distribution;App.refresh(true);});

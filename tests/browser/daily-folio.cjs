@@ -47,7 +47,7 @@ test('首页月收支与常用入口、日历补记、出差期间个人信用�
   const metrics = page.locator('.folio-metrics b');
   assert.equal(await metrics.first().innerText(),'¥1');
   assert.equal(await page.getByRole('region',{name:'近七天支出'}).count(),0);
-  assert.deepEqual(await page.locator('.folio-ledger + .folio-tools button').allInnerTexts(),
+  assert.deepEqual(await page.getByRole('navigation',{name:'常用操作'}).getByRole('button').allInnerTexts(),
     ['记工时','记待办','备忘录','出差报销']);
   await page.getByRole('button',{name:'隐藏金额'}).click();
   assert.deepEqual(await metrics.allInnerTexts(),['••••','••••','••••']);

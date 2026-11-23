@@ -24,12 +24,17 @@ test('六套首页插画铺满视口，日期与收支可分别点选', async t 
     await cover.waitFor();
     for (const viewport of [{width:390,height:844}, {width:844,height:390}]) {
       await page.setViewportSize(viewport);
+      const expected = id === 'ink' && viewport.width > viewport.height ? 'summer-mist' : image;
+      await page.waitForFunction(({expected,width,height})=>{
+        const css=getComputedStyle(document.getElementById('app'),'::before');
+        return css.backgroundImage.endsWith('/'+expected+'.webp")') &&
+          parseFloat(css.width)===width && parseFloat(css.height)===height;
+      },{expected,...viewport},{timeout:5000});
       const scene = await page.locator('#app').evaluate(el => {
         const css = getComputedStyle(el, '::before');
         return {file:css.backgroundImage, width:parseFloat(css.width), height:parseFloat(css.height),
           size:css.backgroundSize, repeat:css.backgroundRepeat, pointer:css.pointerEvents};
       });
-      const expected = id === 'ink' && viewport.width > viewport.height ? 'summer-mist' : image;
       assert.ok(scene.file.endsWith('/'+expected+'.webp")'), scene.file);
       assert.deepEqual([scene.width, scene.height, scene.size, scene.repeat, scene.pointer],
         [viewport.width, viewport.height, 'cover', 'no-repeat', 'none']);

@@ -89,7 +89,7 @@ Views.payroll = (() => {
       body.querySelector('form').onsubmit=e=>{e.preventDefault();Store.mutate(d=>{d.settings.salaryPayDay=Number(body.querySelector('.j-pay-day').value);});close();UI.toast('已保存发薪安排');};
     }});
   }
-  function attendance(date, id) {
+  function attendance(date, id, afterSave) {
     const plan=Store.salaryPlan(id), current=Store.data.worktimes.find(w=>w.salaryMonthId===id&&w.date===date);
     if (!plan) return;
     UI.sheet({title:U.fmtFull(date)+' · '+plan.project,content(body,close) {
@@ -120,11 +120,11 @@ Views.payroll = (() => {
         e.preventDefault();
         try {
           Store.setSalaryAttendance(id,[date],units,'',{hours:units===0?null:hours.value.trim()});
-          close();UI.toast('已保存'+label(units));
+          close();if(afterSave)afterSave();UI.toast('已保存'+label(units));
         } catch(err) { UI.toast(err.message,'err'); }
       };
       const clear=body.querySelector('.j-clear');
-      if(clear)clear.onclick=async()=>{if(await UI.confirm({title:'撤销当天出勤确认？',msg:'这一天会恢复待确认状态，已到账账单保留。',okText:'撤销确认'})){try{Store.removeWork(current.id);close();}catch(err){UI.toast(err.message,'err');}}};
+      if(clear)clear.onclick=async()=>{if(await UI.confirm({title:'撤销当天出勤确认？',msg:'这一天会恢复待确认状态，已到账账单保留。',okText:'撤销确认'})){try{Store.removeWork(current.id);close();if(afterSave)afterSave();}catch(err){UI.toast(err.message,'err');}}};
     }});
   }
   function batch(plan) {
@@ -210,6 +210,64 @@ Views.payroll = (() => {
       body.querySelector('.j-renew-switch').onclick=()=>{try{Store.setSalaryRenewal(project,!state.enabled);close();UI.toast(state.enabled?'已暂停自动续期':'已开启自动续期');}catch(e){UI.toast(e.message,'err');}};
     }});
   }
+  function statement(id,filter='all') {
+    const plan=Store.salaryPlan(id);
+    if(!plan)return;
+    const today=U.todayStr(), summary=Store.salarySummary(plan,today), wage=Store.wageSummary(plan.project,plan.month);
+    const records=new Map(summary.entries.map(w=>[w.date,w]));
+    const others=new Set(Store.data.worktimes.filter(w=>w.project===plan.project&&w.salaryMonthId!==id).map(w=>w.date));
+    const confirmedStates={0:'absent',0.5:'half',1:'full'};
+    const days=plan.dates.filter(date=>!plan.employmentStart||date>=plan.employmentStart).sort().map(date=>{
+      const record=records.get(date);
+      const state=record?confirmedStates[record.paidDays]:date<=today?'pending':'future';
+      return {date,record,state};
+    });
+    const labels={full:'整天',half:'半天',absent:'缺勤',pending:'待确认',future:'待上班'};
+    const tabs=[['all','全部',days.length],['confirmed','已确认',summary.entries.length],['pending','待确认',summary.unconfirmed]];
+    UI.sheet({title:'工资明细',content(body){
+      body.innerHTML=`<section class="pay-statement"><div class="work-scene-strip statement-cover">
+        <header class="pay-statement-head"><span class="pay-statement-art" aria-hidden="true">${UI.art('worktime')}</span><div><h2>${esc(plan.project)}</h2><p>${esc(Store.salaryRangeLabel(plan))}${plan.cycleConfirmed?'':' · 区间待确认'}</p></div></header>
+        <div class="pay-statement-totals"><div><span>月薪已计</span><strong>${money(summary.earned)}</strong></div><button class="statement-received"><span>已关联到账 ›</span><b>${money(wage.received)}</b></button></div></div>
+        <p class="pay-statement-basis">整期月薪 ${money(plan.baseMinor)} ÷ ${plan.dates.length} 个工作日<span>已计 ${summary.paidDays} 天</span></p>
+        ${wage.earned!==summary.earned?`<p class="statement-other">本期同项目另记工资 ${money(wage.earned-summary.earned)}，一并核对到账。</p>`:''}
+        <div class="statement-ribbon" aria-hidden="true">${days.map(d=>`<i class="state-${d.state}"></i>`).join('')}</div>
+        <div class="statement-tabs" role="group" aria-label="筛选应出勤日期">${tabs.map(([value,name,count])=>`<button data-day-filter="${value}">${name} <b>${count}</b></button>`).join('')}</div>
+        <div class="statement-list"></div>
+      </section>`;
+      const list=body.querySelector('.statement-list');
+      function paint(){
+        body.querySelectorAll('[data-day-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dayFilter===filter)));
+        const visible=days.filter(d=>filter==='all'||(filter==='confirmed'?!!d.record:d.state==='pending'));
+        if(!visible.length){list.innerHTML=`<p class="statement-empty">${{all:'本期没有入职后的应出勤日期。',confirmed:'还没有已确认的出勤。',pending:'截至今天，没有待确认的工作日。'}[filter]}</p>`;return;}
+        list.innerHTML=visible.map(({date,record,state},index)=>{
+          const month=date.slice(0,7), monthHead=visible[index-1]?.date.slice(0,7)!==month?`<h3>${U.ymLabel(month)}</h3>`:'';
+          const conflict=state==='pending'&&others.has(date);
+          const day=U.parseDate(date), info=record?.hours!=null?' · '+U.fmtHours(record.hours):'';
+          const workLabel=labels[state]+info;
+          const text=record?money(Store.salaryEntryPay(record,plan)):conflict?'核对工时':state==='pending'?'记出勤':'—';
+          const tag=state==='future'?'div':'button';
+          return monthHead+`<${tag} class="statement-row" ${tag==='button'?`data-attend-day="${date}"`:''}>
+            <span class="statement-date"><b>${date.slice(8)}</b><small>周${U.weekdayCN(day.getDay())}</small></span>
+            <span class="statement-state"><i class="state-${state}" aria-hidden="true"></i>${workLabel}${conflict?'<small>已有同项目工时</small>':''}</span>
+            <span class="statement-wage">${text}</span>${tag==='button'?'<span class="statement-chevron" aria-hidden="true">›</span>':''}
+          </${tag}>`;
+        }).join('');
+      }
+      body.querySelector('.statement-received').onclick=()=>receipts(plan.month,plan.project);
+      body.querySelector('.statement-tabs').onclick=e=>{
+        const b=e.target.closest('[data-day-filter]');
+        if(b){filter=b.dataset.dayFilter;paint();}
+      };
+      list.onclick=e=>{
+        const b=e.target.closest('[data-attend-day]');
+        if(!b)return;
+        const date=b.dataset.attendDay;
+        if(!records.has(date)&&others.has(date))Views.worktime.openDaySheet(date);
+        else attendance(date,id,()=>statement(id,filter));
+      };
+      paint();
+    }});
+  }
   function cards(month,plans=Store.salaryPlans(month)) {
     const groups=new Map();plans.forEach(p=>{if(!groups.has(p.project))groups.set(p.project,[]);groups.get(p.project).push(p);});
     return [...groups].map(([project,items])=>{
@@ -219,12 +277,14 @@ Views.payroll = (() => {
       return `<section class="card salary-card salary-project" data-cycle-key="${esc(key)}"><header><h2>${UI.art('worktime')}${esc(project)}</h2><small>月薪折算</small></header>
       ${items.length>1?`<label class="salary-cycle-picker">查看计薪区间<select class="j-salary-cycle" aria-label="${esc(project)}计薪区间">${items.map(p=>`<option value="${p.id}" ${p.id===selected.id?'selected':''}>${esc(Store.salaryRangeLabel(p))}</option>`).join('')}</select></label><p class="salary-cycle-note">这个自然月跨越 ${items.length} 个计薪区间，切换查看。日历只汇总所选范围内的出勤。</p>`:''}
       ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>${p.autoGenerated?'本期方案 · 自动生成':'本期方案'}</span><div class="salary-panel-actions"><button class="text-action" data-period-receipts="${p.id}">本期到账 ›</button><button class="chip" data-plan="${p.id}">计薪设置</button></div></div>
-      <p class="payroll-help">${esc(Store.salaryRangeLabel(p))}${p.cycleConfirmed?'':' · 计薪区间待确认'}</p><div class="salary-main"><span>本期预计工资</span><strong>${money(s.expected)}</strong><small>未确认及未来工作日按正常出勤估算</small></div>
-      <div class="salary-stats"><span>已计工资<b>${money(s.earned)}</b></span><span>缺勤扣薪<b class="money-out">${money(s.deducted)}</b></span><span>应出勤<b>${s.eligibleDays} 天</b></span><span>已确认出勤<b>${s.paidDays} 天</b></span></div>
+      <p class="payroll-help">${esc(Store.salaryRangeLabel(p))}${p.cycleConfirmed?'':' · 计薪区间待确认'}</p>
+      <div class="salary-pair"><button data-statement="${esc(p.id)}" aria-label="查看${esc(p.project)}工资明细"><span>已计工资 ›</span><strong>${money(s.earned)}</strong></button><div><span>本期预计</span><b>${money(s.expected)}</b><small>剩余排班按全勤估算</small></div></div>
+      <div class="salary-stats"><span>缺勤扣薪<b class="money-out">${money(s.deducted)}</b></span><span>应出勤<b>${s.eligibleDays} 天</b></span><span>已确认出勤<b>${s.paidDays} 天</b></span></div>
       <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></div>`;}).join('')}<button class="salary-renew-row" data-renew-project="${esc(project)}"><span><b>${renewal.enabled?'自动续期已开启':'自动续期未开启'}</b><small>${esc(renewal.enabled?(renewal.issue || (renewal.next?'已准备 '+Store.salaryRangeLabel(renewal.next):renewal.skipped?'下一期已手动删除，不会重建':'按法定工作日准备下一期')):'沿用月薪与周期，免去每月新建')}</small></span><i>管理 ›</i></button></section>`;
     }).join('');
   }
   function bind(root,month) {
+    root.querySelectorAll('[data-statement]').forEach(b=>b.onclick=()=>statement(b.dataset.statement));
     root.querySelectorAll('[data-renew-project]').forEach(b=>b.onclick=()=>renewalSheet(b.dataset.renewProject));
     root.querySelectorAll('.j-salary-cycle').forEach(select=>select.onchange=()=>{const card=select.closest('.salary-project');selectedCycles.set(card.dataset.cycleKey,select.value);card.querySelectorAll('[data-salary-panel]').forEach(p=>{p.hidden=p.dataset.salaryPanel!==select.value;});});
     root.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>planSheet(Store.salaryPlan(b.dataset.plan).month,Store.salaryPlan(b.dataset.plan)));
@@ -311,5 +371,5 @@ Views.payroll = (() => {
       };
     }});
   }
-  return {planSheet,paydaySheet,attendance,batch,cards,bind,dayButtons,receipts,reviewReceipt};
+  return {planSheet,paydaySheet,attendance,batch,statement,cards,bind,dayButtons,receipts,reviewReceipt};
 })();

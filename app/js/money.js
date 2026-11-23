@@ -80,6 +80,32 @@
         daily:limit && leftDays ? Math.floor(Math.max(0,remaining)/leftDays) : 0,
         ratio:limit ? Math.min(1,stat.out/limit) : 0, saved, savingTarget, savingRemaining:Math.max(0,savingTarget-saved)};
     },
+    budgetPace(month = U.ymNow(), today = U.todayStr()) {
+      const {y,m} = U.ymParts(month);
+      const days = U.daysInMonth(y,m);
+      const currentMonth = today.slice(0,7);
+      const elapsed = month < currentMonth ? days : month === currentMonth ? Number(today.slice(8)) : 0;
+      const limit = this.moneyPlan(month)?.limitMinor || 0;
+      const points = Array.from({length:elapsed}, (_, index) => {
+        const day = index + 1;
+        return {day, date:month+'-'+U.pad(day), rows:[], spent:0, cumulative:0, reference:Math.round(limit*day/days)};
+      });
+      let futureCount=0;
+      for (const t of this.monthTransactions('',month)) {
+        if (t.type !== 'out') continue;
+        if (t.date > today) { futureCount++; continue; }
+        const point = points[Number(t.date.slice(8))-1];
+        if (!point) continue;
+        point.spent += t.amountMinor;
+        point.rows.push(t);
+      }
+      let total = 0;
+      for (const point of points) {
+        total += point.spent;
+        point.cumulative = total;
+      }
+      return {days, limit, points, futureCount};
+    },
     budgetImpact(draft, skipId) {
       const skipIds=new Set(skipId?[skipId,...this.data.transactions.filter(t=>t.transferFeeFor===skipId).map(t=>t.id)]:[]);
       if(draft.type==='transfer'){
@@ -152,11 +178,25 @@
       }
     },
     moneyAnswer(text) {
-      if(/怎么|如何|在哪|哪里|设置|添加|创建|修改|删除|帮我存|帮我转/.test(text))return '';
-      if(!/预算|还能花|还可以花|存了多少|攒了多少|存钱进度/.test(text))return '';
-      const ym=/上月|上个月/.test(text)?U.ymShift(U.ymNow(),-1):U.ymNow(),s=this.moneySummary(ym);
+      const question=text.trim().replace(/^(?:帮我看看)?我?(?:本月|这个月|这月|上个月|上月)?我?/,'').replace(/(?:吗|么)?[？?。!！]*$/,'');
+      const paceQuery=/^(?:花钱|花[得的])(?:是不是|有没有|会不会)?(?:太|有点)?快了?$/.test(question) ||
+        /^(?:消费节奏(?:怎么样)?|(?:消费|支出)(?:进度)?比预算快)$/.test(question);
+      if (!paceQuery && (/怎么|如何|在哪|哪里|设置|添加|创建|修改|删除|帮我存|帮我转/.test(text) ||
+        !/预算|还能花|还可以花|存了多少|攒了多少|存钱进度/.test(text))) return '';
+      const ym=/上月|上个月/.test(text)?U.ymShift(U.ymNow(),-1):U.ymNow();
       if(this.settings.hideAmount)return '金额已隐藏，可在首页点眼睛图标后查看预算与存钱进度。';
       const fmt=n=>'¥'+this.fmtMinorThousand(n);
+      if (paceQuery) {
+        const pace = this.budgetPace(ym);
+        const last = pace.points[pace.points.length - 1];
+        const difference = last.cumulative - last.reference;
+        const comparison = !pace.limit ? '这个月还没设置消费上限。' :
+          '同日预算均摊额为 ' + fmt(last.reference) + '，' + (difference === 0 ? '与实际支出持平。' :
+            '实际' + (difference > 0 ? '多花 ' : '少花 ') + fmt(Math.abs(difference)) + '。');
+        return '截至 ' + last.date + '，所有账本当月累计支出 ' + fmt(last.cumulative) + '。' + comparison +
+          '\n点「预算与存钱 → 消费节奏」可逐日查看原账单。';
+      }
+      const s=this.moneySummary(ym);
       return U.ymLabel(ym)+' · 全部账本\n'+(s.limit?'消费上限 '+fmt(s.limit)+'，已用 '+fmt(s.spent)+'，'+(s.remaining<0?'已超出 ':'还可花 ')+fmt(Math.abs(s.remaining))+(s.leftDays?'。含今天，平均每天可花 '+fmt(s.daily):'')+'。':'尚未设置月消费上限。')+'\n本月存钱账户净增加 '+fmt(s.saved)+(s.savingTarget?'，月存钱目标 '+fmt(s.savingTarget):'')+'。这与本月结余 '+fmt(s.net)+' 分开统计。\n在「首页 → 预算与存钱」调整计划或登记存入。';
     }
   });
