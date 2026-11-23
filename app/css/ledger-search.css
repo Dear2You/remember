@@ -1,4 +1,13 @@
 /* The period totals lead into one chronological register. */
+.ledger-amount-filter { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 5px 8px; min-width: 0; padding: 0; border: 0; margin: 0 0 16px; }
+.ledger-amount-filter legend { padding: 0 0 6px; font-size: 13px; color: var(--text-2); }
+.ledger-amount-filter select, .ledger-amount-filter input { min-width: 0; width: 100%; margin: 0; min-height: 39px; }
+.amount-bounds { display: flex; align-items: center; gap: 5px; }
+.amount-bounds span { color: var(--text-2); font-size: 12px; }
+.ledger-amount-filter .amount-error { grid-column: 1 / -1; margin: 0; color: var(--danger); font-size: 12px; }
+.ledger-amount-filter .amount-error:empty { display: none; }
+.sheet-body.ledger-filter-sheet { padding-bottom: 0; }
+.ledger-filter-actions { position: sticky; bottom: 0; background: var(--card); border-top: 1px solid var(--hairline); padding: 8px 0 max(12px,env(safe-area-inset-bottom)); }
 .bill-report .report-period[hidden] { display: none; }
 .bill-report .ledger-totals {
   background: var(--paper-glass); border: 1px solid var(--hairline); border-radius: 10px;

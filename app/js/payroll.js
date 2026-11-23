@@ -132,19 +132,25 @@ Object.assign(Store, {
     });
     return this.salaryPlan(p.id);
   },
-  setSalaryAttendance(id,dates,units, note = '') {
+  setSalaryAttendance(id,dates,units, note = '', {hours, missingOnly = false} = {}) {
     const p = this.salaryPlan(id);
     if (!p || !Array.isArray(dates) || !dates.length) throw new Error('请选择出勤日期');
-    const drafts = [...new Set(dates)].map(date=>({date,project:p.project,salaryMonthId:id,paidDays:units,hours:null}));
+    const days = [...new Set(dates)];
+    if (hours !== undefined && days.length !== 1) throw new Error('请在单日出勤中填写实际工时');
+    if (units===0 && hours!=null && hours!=='') throw new Error('缺勤日期不能填写实际工时');
+    const drafts = days.map(date=>({date,project:p.project,salaryMonthId:id,paidDays:units,hours}));
     drafts.forEach(w=>{
-      this.salaryTerms(w);
+      Object.assign(w,this.salaryTerms(w,p));
       if (w.date > U.todayStr()) throw new Error('未来日期保留为预计，到当天再确认出勤');
       if (this.data.worktimes.some(x=>x.date===w.date&&x.project===p.project&&x.salaryMonthId!==id)) throw new Error('该日已有同项目记录，请先转换或核对，避免重复计薪');
+      if (missingOnly && this.data.worktimes.some(x=>x.date===w.date&&x.salaryMonthId===id)) throw new Error('所选日期已有出勤确认，请重新核对');
     });
     this.mutate(d=>drafts.forEach(w=>{
       const old=d.worktimes.find(x=>x.salaryMonthId===id&&x.date===w.date);
-      if (old) Object.assign(old,{paidDays:units,note:note || old.note});
-      else d.worktimes.push({...w,...this.salaryTerms(w),id:U.id(),note,createdAt:Date.now()});
+      if (old) {
+        Object.assign(old,{paidDays:units,note:note || old.note});
+        if (hours !== undefined || units===0) old.hours=w.hours;
+      } else d.worktimes.push({...w,id:U.id(),note,createdAt:Date.now()});
     }));
   },
   removeSalaryPlan(id) {

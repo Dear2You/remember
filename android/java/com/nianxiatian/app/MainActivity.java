@@ -25,7 +25,8 @@ public class MainActivity extends Activity {
     private android.webkit.ValueCallback<Uri[]> filePicker;
     private String pendingExport;
     private String pendingReminder = "";
-    private final java.util.concurrent.ExecutorService backupWriter = java.util.concurrent.Executors.newSingleThreadExecutor();
+    // A recreated Activity must enqueue behind the previous Activity's unfinished writes.
+    private static final java.util.concurrent.ExecutorService BACKUP_WRITER = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -268,9 +269,10 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void queueCloudBackup(String data) {
+        public String queueCloudBackup(String data) {
             CloudBackup cloud = CloudBackup.get(MainActivity.this);
-            try { cloud.enqueue(data); } catch (Exception e) { cloud.recordError(e); }
+            try { cloud.enqueue(data); return ""; }
+            catch (Exception e) { cloud.recordError(e); return CloudBackup.errorText(e); }
         }
 
         @JavascriptInterface
@@ -362,51 +364,27 @@ public class MainActivity extends Activity {
         }
 
         /**
-         * 自动备份：把完整数据 JSON 写到 公共下载目录/那年夏天备份/nianxiatian-backup.json
-         * （MediaStore 方式，API 29+ 免权限；同名覆盖更新。卸载 App 该文件仍在。）
+         * 自动备份使用下载目录中的两个文件轮换，校验成功后才发布给文件选择器。
          */
         @JavascriptInterface
         public void writeBackup(final String json) {
             if (android.os.Build.VERSION.SDK_INT < 29) {
                 runOnUiThread(new Runnable() { @Override public void run() {
-                    webView.loadUrl("javascript:window.__backupDone && window.__backupDone('skip','系统版本过低，请手动导出备份')");
+                    if (!isDestroyed()) webView.evaluateJavascript("window.__backupDone && window.__backupDone('skip','系统版本过低，请手动导出备份')", null);
                 }});
                 return;
             }
-            backupWriter.execute(new Runnable() {
+            BACKUP_WRITER.execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        android.content.ContentResolver cr = getContentResolver();
-                        final String fname = "nianxiatian-backup.json";
-                        android.net.Uri collection = android.provider.MediaStore.Downloads.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY);
-                        // 查同名文件 → 覆盖；没有 → 新建
-                        android.net.Uri existing = null;
-                        android.database.Cursor c = cr.query(collection, new String[]{android.provider.MediaStore.MediaColumns._ID},
-                                android.provider.MediaStore.MediaColumns.RELATIVE_PATH + "=? AND " + android.provider.MediaStore.MediaColumns.DISPLAY_NAME + "=?",
-                                new String[]{"Download/那年夏天备份/" , fname}, null);
-                        if (c != null) { if (c.moveToFirst()) existing = android.content.ContentUris.withAppendedId(collection, c.getLong(0)); c.close(); }
-                        byte[] bytes = json.getBytes("UTF-8");
-                        if (existing != null) {
-                            // 清空后重写（保留原 uri）
-                            java.io.OutputStream os = cr.openOutputStream(existing, "wt");
-                            os.write(bytes); os.flush(); os.close();
-                        } else {
-                            android.content.ContentValues cv = new android.content.ContentValues();
-                            cv.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fname);
-                            cv.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/json");
-                            cv.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Download/那年夏天备份/");
-                            android.net.Uri uri = cr.insert(collection, cv);
-                            java.io.OutputStream os = cr.openOutputStream(uri);
-                            os.write(bytes); os.flush(); os.close();
-                        }
+                        final String name = org.json.JSONObject.quote(new DownloadsBackup(getApplicationContext()).save(json));
                         runOnUiThread(new Runnable() { @Override public void run() {
-                            webView.loadUrl("javascript:window.__backupDone && window.__backupDone('ok','')");
+                            if (!isDestroyed()) webView.evaluateJavascript("window.__backupDone && window.__backupDone('ok'," + name + ")", null);
                         }});
                     } catch (final Exception e) {
-                        final String msg = org.json.JSONObject.quote(e.toString());
                         runOnUiThread(new Runnable() { @Override public void run() {
-                            webView.loadUrl("javascript:window.__backupDone && window.__backupDone('error'," + msg + ")");
+                            if (!isDestroyed()) webView.evaluateJavascript("window.__backupDone && window.__backupDone('error','请检查下载目录和剩余空间')", null);
                         }});
                     }
                 }
@@ -475,7 +453,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        backupWriter.shutdown();
         if (filePicker != null) filePicker.onReceiveValue(null);
         if (webView != null) webView.destroy();
         super.onDestroy();

@@ -5,8 +5,16 @@ const Cloud = (() => {
   const requests = new Map();
   let sequence = 0;
   let busy = false;
+  let queueError = '';
   const available = () => !!(window.AndroidBridge && AndroidBridge.cloudRequest);
-  function status() { return available() ? JSON.parse(AndroidBridge.cloudStatus()) : {}; }
+  function status() {
+    if (!available()) return {};
+    try {
+      const s = JSON.parse(AndroidBridge.cloudStatus());
+      if (s && typeof s.enabled === 'boolean') return s;
+    } catch (_) { /* The local store remains usable while the bridge is unavailable. */ }
+    return {unavailable:true, error:'暂时无法读取云备份状态，请稍后重试'};
+  }
   function request(action, args = {}) {
     return new Promise((resolve, reject) => {
       const id = ++sequence;
@@ -26,14 +34,22 @@ const Cloud = (() => {
     } catch (e) { pending.reject(e); }
   }
   function queue() {
-    if (available() && status().enabled) AndroidBridge.queueCloudBackup(JSON.stringify(Store.backupData()));
+    queueError = '';
+    if (!available()) return;
+    const s = status();
+    if (!s.enabled) { queueError = s.error || ''; return; }
+    try {
+      const error = AndroidBridge.queueCloudBackup(JSON.stringify(Store.backupData()));
+      if (typeof error === 'string') queueError = error;
+    } catch (_) { queueError = '本机已保存，暂未加入云端队列，请点「立即备份」重试'; }
   }
   function pause() { if (available()) AndroidBridge.pauseCloudBackup(); }
   function detail(s) {
+    if (s.unavailable) return s.error;
     if (!s.email) return '连接坚果云，在换机后恢复记录';
     if (!s.enabled) return '已连接，自动备份未开启';
     const last = s.last ? '上次上传 ' + new Date(s.last).toLocaleString('zh-CN', {hour12:false}) : '';
-    return [s.error || (s.pending ? '等待上传' : '自动备份已开启'), last].filter(Boolean).join(' · ');
+    return [queueError || s.error || (s.pending ? '等待上传' : '自动备份已开启'), last].filter(Boolean).join(' · ');
   }
   function updateStatus() {
     const targets = [...document.querySelectorAll('.j-cloud-status')].filter(el => !el.closest('details:not([open])'));
@@ -42,10 +58,17 @@ const Cloud = (() => {
     targets.forEach(el => { if (el.textContent !== text) el.textContent = text; });
   }
   async function enable() {
-    Store.save(false);
+    if (!Store.save(false)) throw new Error('本地存储失败，请检查设备剩余空间');
     await request('enable');
+    const enabled = status();
+    if (!enabled.enabled) throw new Error(enabled.error || '自动备份尚未开启，请重试');
     queue();
+    if (queueError) throw new Error(queueError);
     await request('upload');
+    const s = status();
+    if (s.error) throw new Error(s.error);
+    if (!s.enabled || !s.last) throw new Error('暂未确认上传成功，请查看云端副本或稍后再试');
+    return s.pending ? '已上传，另有新改动等待备份' : '本机数据已备份到坚果云';
   }
 
   function open() {
@@ -62,15 +85,32 @@ const Cloud = (() => {
           body.querySelectorAll('button').forEach(b => { b.disabled = true; });
           const message = body.querySelector('.j-cloud-message');
           message.textContent = '正在处理…';
-          try { await operation(); if (body.isConnected) render(); }
+          try {
+            const result = await operation();
+            if (body.isConnected) {
+              render();
+              if (result) body.querySelector('.j-cloud-message').textContent = result;
+            }
+          }
           catch (err) {
-            message.textContent = err.message || '连接失败，请重试';
-            body.querySelectorAll('button').forEach(b => { b.disabled = false; });
+            if (body.isConnected) {
+              // Preserve the login form on authentication failure. Once connected,
+              // show the stored connection even if its first upload failed.
+              if (!body.querySelector('#cloudEmail') || status().email) render();
+              body.querySelector('.j-cloud-message').textContent = err.message || '连接失败，请重试';
+              body.querySelectorAll('button').forEach(b => { b.disabled = false; });
+            }
           } finally { busy = false; updateStatus(); }
         };
       }
       function render() {
         const s = status();
+        if (s.unavailable) {
+          body.innerHTML = '<p class="cloud-note j-cloud-status"></p><button class="btn btn-ghost j-retry">重新读取状态</button><p role="status" class="cloud-note j-cloud-message"></p>';
+          updateStatus();
+          action('.j-retry', () => {});
+          return;
+        }
         if (!s.email) {
           body.innerHTML = '<p class="cloud-note">在坚果云「账户信息 → 安全选项 → 第三方应用管理」生成应用密码。首次连接会先检查已有备份。</p>' +
             '<div class="field"><label for="cloudEmail">坚果云邮箱</label><input id="cloudEmail" type="email" autocomplete="username"></div>' +
@@ -83,7 +123,7 @@ const Cloud = (() => {
             if (!email || !password) throw new Error('请填写坚果云邮箱和应用密码');
             files = (await request('connect', {email, password})).files;
             body.querySelector('#cloudPassword').value = '';
-            if (!files.length) { await enable(); files = null; }
+            if (!files.length) { files = null; return enable(); }
           });
           return;
         }
@@ -103,7 +143,7 @@ const Cloud = (() => {
           '<button class="chip j-disconnect">断开连接</button><p role="status" class="cloud-note j-cloud-message"></p>';
         updateStatus();
         action('.j-list', async () => { files = (await request('list')).files; });
-        action('.j-now', async () => { await enable(); files = null; });
+        action('.j-now', async () => { const result = await enable(); files = null; return result; });
         action('.j-restore', async () => {
           const file = body.querySelector('#cloudVersions').value;
           const result = await request('get', {name:file});
@@ -111,12 +151,19 @@ const Cloud = (() => {
           const preview = Store.inspectBackup(result.backup);
           if (!preview.ok) throw new Error(preview.msg);
           if (preview.app !== 'nianxiatian') throw new Error('文件不是有效的那年夏天备份');
-          const confirmed = await UI.confirm({title:'恢复云端备份？',msg:preview.summary + '\n\n恢复将替换本机数据和设置，并开启自动备份。',okText:'恢复并开启备份'});
-          if (!confirmed) return;
+          const confirmed = await UI.confirm({title:'恢复云端备份？',msg:preview.summary + '\n\n恢复将替换本机记录和设置，保留本机已配置的 AI 连接，并开启自动备份。',danger:true,okText:'恢复并开启备份'});
+          if (!confirmed || !body.isConnected) return;
           const restored = Store.importData(result.backup);
           if (!restored.ok) throw new Error(restored.msg);
-          await enable();
-          UI.toast('云端数据已恢复');
+          // Local replacement has committed. A network failure can be retried
+          // separately and must not ask the user to apply the same restore again.
+          files = null;
+          try {
+            await enable();
+            return '云端数据已恢复到本机，自动备份已开启';
+          } catch (err) {
+            return '已恢复到本机。云备份未完成：' + err.message;
+          }
         });
         action('.j-disconnect', async () => {
           if (await UI.confirm({title:'断开云备份？',msg:'本机将停止上传，已上传的副本仍保存在坚果云。',okText:'断开'})) {

@@ -140,18 +140,28 @@ Views.bills = (() => {
     const inScope = allDates ? bookList : bookList.filter(t => t.date >= p.start && t.date <= p.end);
     const F = { ...E.filter, kw: E.filter.kw.trim() };
     const filtered = E.applyFilter(inScope);
-    const hasFilter = F.type || F.accountId || F.categoryId || F.subId || F.kw;
+    const amountFiltered = F.minMinor != null || F.maxMinor != null;
+    const hasFilter = F.type || F.accountId || F.categoryId || F.subId || F.kw || amountFiltered;
     const fOut = filtered.filter(t => t.type === 'out').reduce((s, t) => s + t.amountMinor, 0);
     const fInc = filtered.filter(t => t.type === 'in').reduce((s, t) => s + t.amountMinor, 0);
     const hidden = Store.settings.hideAmount;
+    let amountLabel = '';
+    if (amountFiltered) {
+      const yuan = n => '¥' + Store.fmtMinorThousand(n);
+      if (hidden) amountLabel = '已筛选金额';
+      else if (F.minMinor === F.maxMinor) amountLabel = '每笔 ' + yuan(F.minMinor);
+      else if (F.minMinor == null) amountLabel = '至多 ' + yuan(F.maxMinor);
+      else if (F.maxMinor == null) amountLabel = '至少 ' + yuan(F.minMinor);
+      else amountLabel = yuan(F.minMinor) + ' 至 ' + yuan(F.maxMinor);
+    }
     const rows = selected === 'detail' ? [] : FinanceReport.buckets(p, filtered);
     const filterLabels = [
       ({out:'支出', in:'收入', transfer:'转账/还款', advance:'出差垫付', reimbursement:'报销到账'})[F.type],
       F.accountId && Store.accountName(F.accountId),
-      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, selected !== 'detail' && F.kw
+      F.categoryId && (Store.category(F.subId || F.categoryId) || {}).name, amountLabel, selected !== 'detail' && F.kw
     ].filter(Boolean).map(U.escapeHtml);
     const filterCount = selected === 'detail' ? '' : ` · ${filtered.length}/${inScope.length} 笔`;
-    const showFilters = hasFilter && (selected !== 'detail' || F.type || F.accountId || F.categoryId);
+    const showFilters = hasFilter && (selected !== 'detail' || F.type || F.accountId || F.categoryId || amountFiltered);
     const filterBar = showFilters ? `<div class="report-filter"><span>${filterLabels.join(' · ') || '已筛选'}${filterCount}</span><button class="j-clearall">清除筛选</button></div>` : '';
     const pageHead = `<div class="page bill-report"><div class="page-head chapter-head">${UI.pageTitle('账单','book')}
       <div class="report-actions"><select class="j-book-select" aria-label="选择账本">

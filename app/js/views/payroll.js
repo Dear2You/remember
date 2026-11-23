@@ -91,32 +91,110 @@ Views.payroll = (() => {
   }
   function attendance(date, id) {
     const plan=Store.salaryPlan(id), current=Store.data.worktimes.find(w=>w.salaryMonthId===id&&w.date===date);
+    if (!plan) return;
     UI.sheet({title:U.fmtFull(date)+' · '+plan.project,content(body,close) {
-      body.innerHTML=`<p class="payroll-help">${esc(Store.salaryRangeLabel(plan))} · 整期 ${plan.dates.length} 个工作日，完整一期工资 ${money(plan.baseMinor)}。</p>
-        <div class="salary-attendance">${[1,.5,0].map(u=>`<button class="btn ${current?.paidDays===u?'btn-primary':'btn-ghost'}" data-units="${u}">${label(u)}<small>${money(Store.salaryEntryPay({date,paidDays:u},plan))}</small></button>`).join('')}</div>
-        <p class="payroll-help">选择后保存出勤。缺勤一天扣当天工资，半天扣半天。</p>
+      if (date>U.todayStr()) {
+        body.innerHTML='<p class="payroll-help">这天还未到，预计出勤一天 '+money(Store.salaryEntryPay({date,paidDays:1},plan))+'。可在当天记录实际出勤。</p>';
+        return;
+      }
+      let units=current?.paidDays ?? 1;
+      body.innerHTML=`<p class="payroll-help">${esc(Store.salaryRangeLabel(plan))} · 本期 ${plan.dates.length} 个工作日</p>
+        <div class="salary-attendance" role="group" aria-label="当天出勤">${[1,.5,0].map(u=>`<button class="btn btn-ghost" data-units="${u}">${label(u)}<small>${money(Store.salaryEntryPay({date,paidDays:u},plan))}</small></button>`).join('')}</div>
+        <form class="salary-day-form"><label class="field salary-hours">实际工时（选填）<input class="j-hours" aria-label="实际工时（小时）" inputmode="decimal" value="${esc(current?.hours ?? '')}" placeholder="小时"></label>
+        <p class="payroll-help j-hours-help"></p><button class="btn btn-primary btn-block">保存出勤</button></form>
         ${current?'<button class="btn btn-danger btn-block j-clear">撤销当天确认</button>':''}`;
-      body.querySelectorAll('[data-units]').forEach(b=>b.onclick=()=>{try{Store.setSalaryAttendance(id,[date],Number(b.dataset.units));close();UI.toast('已确认'+label(Number(b.dataset.units)));}catch(e){UI.toast(e.message,'err');}});
+      const hours=body.querySelector('.j-hours');
+      function paintUnits() {
+        body.querySelectorAll('[data-units]').forEach(button=>{
+          const selected=Number(button.dataset.units)===units;
+          button.setAttribute('aria-pressed',String(selected));
+          button.classList.toggle('btn-primary',selected);
+          button.classList.toggle('btn-ghost',!selected);
+        });
+        body.querySelector('.salary-hours').hidden=units===0;
+        body.querySelector('.j-hours-help').textContent=units===0?'缺勤按零工资、零工时登记。':'工资按所选出勤折算，小时数计入工时统计。';
+      }
+      body.querySelectorAll('[data-units]').forEach(b=>b.onclick=()=>{units=Number(b.dataset.units);paintUnits();});
+      paintUnits();
+      body.querySelector('form').onsubmit=e=>{
+        e.preventDefault();
+        try {
+          Store.setSalaryAttendance(id,[date],units,'',{hours:units===0?null:hours.value.trim()});
+          close();UI.toast('已保存'+label(units));
+        } catch(err) { UI.toast(err.message,'err'); }
+      };
       const clear=body.querySelector('.j-clear');
-      if(clear)clear.onclick=async()=>{if(await UI.confirm({title:'撤销当天出勤确认？',msg:'这一天会恢复待确认状态，已到账账单保留。',okText:'撤销确认'})){Store.removeWork(current.id);close();}};
+      if(clear)clear.onclick=async()=>{if(await UI.confirm({title:'撤销当天出勤确认？',msg:'这一天会恢复待确认状态，已到账账单保留。',okText:'撤销确认'})){try{Store.removeWork(current.id);close();}catch(err){UI.toast(err.message,'err');}}};
     }});
   }
   function batch(plan) {
-    const existing=new Set(Store.data.worktimes.filter(w=>w.project===plan.project).map(w=>w.date));
-    const choices=plan.dates.filter(d=>d<=U.todayStr()&&(!plan.employmentStart||d>=plan.employmentStart)&&!existing.has(d));
-    const selected=new Set(choices);
+    if(!plan)return;
     UI.sheet({title:'补记出勤 · '+plan.project,content(body,close) {
-      body.innerHTML=`<p class="payroll-help">仅列出截至今天、尚未记录的应出勤日。取消不需要补记的日期。</p>
-        <div class="salary-batch-dates">${choices.map(d=>`<label><input type="checkbox" value="${d}" checked>${U.fmtDay(d)}</label>`).join('') || '<p>没有待补记的工作日。</p>'}</div>
-        <label class="field">这批日期的出勤<select class="j-units"><option value="1">出勤一天</option><option value="0.5">出勤半天</option><option value="0">缺勤一天</option></select></label>
-        <button class="btn btn-primary btn-block j-save" ${choices.length?'':'disabled'}>核对并保存</button>`;
-      body.querySelectorAll('[type=checkbox]').forEach(b=>b.onchange=()=>b.checked?selected.add(b.value):selected.delete(b.value));
-      body.querySelector('.j-save').onclick=async()=>{
-        if(!selected.size){UI.toast('请选择日期','err');return;}
-        const units=Number(body.querySelector('.j-units').value), paid=Store.salarySummary(plan).paidDays;
-        const total=Math.round(plan.baseMinor*(paid+selected.size*units)/plan.dates.length)-Math.round(plan.baseMinor*paid/plan.dates.length);
-        if(!await UI.confirm({title:'确认批量出勤',msg:`${selected.size} 个日期均记为${label(units)}，合计工资 ${money(total)}。`,okText:'保存出勤'}))return;
-        try{Store.setSalaryAttendance(plan.id,[...selected],units);close();UI.toast('已补记出勤');}catch(e){UI.toast(e.message,'err');}
+      const id=plan.id, today=U.todayStr(), selected=new Set();
+      const existing=new Map(Store.data.worktimes.filter(w=>w.project===plan.project).map(w=>[w.date,w]));
+      const eligible=plan.dates.filter(d=>d<=today&&(!plan.employmentStart||d>=plan.employmentStart)).sort();
+      const choices=eligible.filter(d=>!existing.has(d));
+      const conflicts=eligible.filter(d=>existing.has(d)&&existing.get(d).salaryMonthId!==id);
+      const months=[...new Set(choices.map(d=>d.slice(0,7)))];
+      const monthGrid=month=>`<fieldset class="salary-batch-group"><legend>${U.ymLabel(month)}</legend><div class="salary-batch-dates">${choices.filter(d=>d.startsWith(month)).map(d=>
+        `<label><input type="checkbox" value="${d}" aria-label="${U.fmtFull(d)}"><span>${Number(d.slice(8))}日<small>${d===today?'今天':'周'+U.weekdayCN(U.parseDate(d).getDay())}</small></span></label>`).join('')}</div></fieldset>`;
+      body.innerHTML=`<div class="salary-batch"><p class="payroll-help">${esc(Store.salaryRangeLabel(plan))}</p>
+        ${choices.length?`<div class="salary-batch-tools"><b>${choices.length} 天可补记</b>
+        ${choices.includes(today)&&choices.length>1?'<button class="text-action" data-pick="past">选到昨天</button>':''}
+        <button class="text-action" data-pick="all">全选</button><button class="text-action" data-pick="none">清空</button></div>
+        ${months.map(monthGrid).join('')}
+        <label class="field">所选日期统一记为<select class="j-units"><option value="1">出勤一天</option><option value="0.5">出勤半天</option><option value="0">缺勤一天</option></select></label>
+        <p class="salary-batch-preview" role="status"></p><button class="btn btn-primary btn-block j-save">核对并保存</button>`:'<p class="payroll-help">截至今天没有可批量补记的工作日。</p>'}
+        ${conflicts.length?`<details class="salary-batch-conflicts"><summary>已有同项目工时 · ${conflicts.length} 天</summary><p class="payroll-help">点日期核对原记录。固定日薪可在计薪设置中预览转换。</p>${conflicts.map(d=>`<button class="text-action" data-review-date="${d}">${U.fmtDay(d)} ›</button>`).join('')}</details>`:''}</div>`;
+      body.querySelectorAll('[data-review-date]').forEach(b=>b.onclick=()=>Views.worktime.openDaySheet(b.dataset.reviewDate));
+      if (!choices.length) return;
+      const save=body.querySelector('.j-save'), picker=body.querySelector('.j-units');
+      const boxes=body.querySelectorAll('.salary-batch-dates input');
+      function preview(p) {
+        const count=selected.size, units=Number(picker.value), s=Store.salarySummary(p);
+        const after=Math.round(p.baseMinor*(s.paidDays+count*units)/p.dates.length);
+        const expected=Math.round(p.baseMinor*(s.eligibleDays-s.absentDays-count*(1-units))/p.dates.length);
+        return {gain:after-s.earned, deduction:s.expected-expected};
+      }
+      const figures=p=>['新增已计工资 '+money(p.gain),...(p.deduction?['预计工资减少 '+money(p.deduction)]:[])];
+      function paint() {
+        const count=selected.size;
+        save.disabled=!count;
+        body.querySelector('[data-pick="all"]').disabled=count===choices.length;
+        body.querySelector('[data-pick="none"]').disabled=!count;
+        const parts=count?['已选 '+count+' 天',...figures(preview(plan))]:['请选择需要补记的日期'];
+        body.querySelector('.salary-batch-preview').innerHTML=parts.map(part=>'<span>'+esc(part)+'</span>').join(' ');
+      }
+      boxes.forEach(box=>box.onchange=()=>{if(box.checked)selected.add(box.value);else selected.delete(box.value);paint();});
+      body.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+        selected.clear();
+        for(const box of boxes) {
+          box.checked=b.dataset.pick==='all'||(b.dataset.pick==='past'&&box.value<today);
+          if(box.checked)selected.add(box.value);
+        }
+        paint();
+      });
+      picker.onchange=paint;
+      paint();
+      save.onclick=async()=>{
+        if(save.disabled)return;
+        save.disabled=true;
+        const units=Number(picker.value), chosen=[...selected], before=preview(plan);
+        if(!await UI.confirm({title:'确认批量出勤',msg:`${chosen.length} 个日期均记为${label(units)}。${figures(before).join('，')}。`,okText:'保存出勤'})){save.disabled=false;return;}
+        const live=Store.salaryPlan(id);
+        if(!live){close();UI.toast('本期方案已移除','err');return;}
+        const now=preview(live);
+        if(now.gain!==before.gain||now.deduction!==before.deduction){
+          batch(live);UI.toast('工资估算已变化，请重新选择日期','err');return;
+        }
+        try {
+          Store.setSalaryAttendance(id,chosen,units,'',{missingOnly:true});
+          close();UI.toast('已补记 '+chosen.length+' 天');
+        } catch(err) {
+          if(chosen.some(d=>Store.data.worktimes.some(w=>w.date===d&&w.project===live.project)||!live.dates.includes(d)||(live.employmentStart&&d<live.employmentStart)))batch(live);
+          else save.disabled=false;
+          UI.toast(err.message,'err');
+        }
       };
     }});
   }
@@ -140,7 +218,7 @@ Views.payroll = (() => {
       const selected=items.find(p=>p.id===selectedCycles.get(key)) || items.find(p=>{const r=Store.salaryRange(p);return today>=r.start&&today<=r.end;}) || items.find(p=>p.month===month) || items[0];
       return `<section class="card salary-card salary-project" data-cycle-key="${esc(key)}"><header><h2>${UI.art('worktime')}${esc(project)}</h2><small>月薪折算</small></header>
       ${items.length>1?`<label class="salary-cycle-picker">查看计薪区间<select class="j-salary-cycle" aria-label="${esc(project)}计薪区间">${items.map(p=>`<option value="${p.id}" ${p.id===selected.id?'selected':''}>${esc(Store.salaryRangeLabel(p))}</option>`).join('')}</select></label><p class="salary-cycle-note">这个自然月跨越 ${items.length} 个计薪区间，切换查看。日历只汇总所选范围内的出勤。</p>`:''}
-      ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>${p.autoGenerated?'本期方案 · 自动生成':'本期方案'}</span><button class="chip" data-plan="${p.id}">计薪设置</button></div>
+      ${items.map(p=>{const s=Store.salarySummary(p);return `<div data-salary-panel="${p.id}" ${p.id===selected.id?'':'hidden'}><div class="salary-panel-heading"><span>${p.autoGenerated?'本期方案 · 自动生成':'本期方案'}</span><div class="salary-panel-actions"><button class="text-action" data-period-receipts="${p.id}">本期到账 ›</button><button class="chip" data-plan="${p.id}">计薪设置</button></div></div>
       <p class="payroll-help">${esc(Store.salaryRangeLabel(p))}${p.cycleConfirmed?'':' · 计薪区间待确认'}</p><div class="salary-main"><span>本期预计工资</span><strong>${money(s.expected)}</strong><small>未确认及未来工作日按正常出勤估算</small></div>
       <div class="salary-stats"><span>已计工资<b>${money(s.earned)}</b></span><span>缺勤扣薪<b class="money-out">${money(s.deducted)}</b></span><span>应出勤<b>${s.eligibleDays} 天</b></span><span>已确认出勤<b>${s.paidDays} 天</b></span></div>
       <div class="salary-footer"><small>${s.unconfirmed} 天待确认 · ${s.upcoming} 天待上班</small><button class="text-action" data-batch="${p.id}">批量补记 ›</button></div></div>`;}).join('')}<button class="salary-renew-row" data-renew-project="${esc(project)}"><span><b>${renewal.enabled?'自动续期已开启':'自动续期未开启'}</b><small>${esc(renewal.enabled?(renewal.issue || (renewal.next?'已准备 '+Store.salaryRangeLabel(renewal.next):renewal.skipped?'下一期已手动删除，不会重建':'按法定工作日准备下一期')):'沿用月薪与周期，免去每月新建')}</small></span><i>管理 ›</i></button></section>`;
@@ -150,6 +228,10 @@ Views.payroll = (() => {
     root.querySelectorAll('[data-renew-project]').forEach(b=>b.onclick=()=>renewalSheet(b.dataset.renewProject));
     root.querySelectorAll('.j-salary-cycle').forEach(select=>select.onchange=()=>{const card=select.closest('.salary-project');selectedCycles.set(card.dataset.cycleKey,select.value);card.querySelectorAll('[data-salary-panel]').forEach(p=>{p.hidden=p.dataset.salaryPanel!==select.value;});});
     root.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>planSheet(Store.salaryPlan(b.dataset.plan).month,Store.salaryPlan(b.dataset.plan)));
+    root.querySelectorAll('[data-period-receipts]').forEach(b=>b.onclick=()=>{
+      const p=Store.salaryPlan(b.dataset.periodReceipts);
+      if(p)receipts(p.month,p.project);
+    });
     root.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batch(Store.salaryPlan(b.dataset.batch)));
   }
   function dayButtons(date) {

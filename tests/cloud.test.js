@@ -19,7 +19,7 @@ function fixture() {
     AndroidBridge: {
       cloudRequest() {},
       cloudStatus: () => JSON.stringify({ enabled }),
-      queueCloudBackup: data => snapshots.push(JSON.parse(data)),
+      queueCloudBackup: data => { snapshots.push(JSON.parse(data)); return ''; },
       pauseCloudBackup: () => { enabled = false; }
     }
   });
@@ -28,7 +28,7 @@ function fixture() {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/js', file + '.js'), 'utf8'), context);
   }
   context.Store.init();
-  return { store: context.Store, enable: () => { enabled = true; }, snapshots };
+  return { store: context.Store, bridge: context.AndroidBridge, enable: () => { enabled = true; }, snapshots };
 }
 
 test('主动开启后，资料变更自动进入云备份队列，密钥不进入快照', () => {
@@ -57,4 +57,22 @@ test('清空数据先暂停云备份，云端快照可在全新安装中恢复',
   assert(fresh.store.importData(backup).ok);
   assert.equal(fresh.store.data.memos[0].title, '换机恢复');
   assert.equal(fresh.snapshots.length, 0);
+});
+
+test('云备份读取状态或排队失败不会回滚已保存记录，下一次提交会补齐全部记录', () => {
+  const {store, bridge, enable, snapshots} = fixture();
+  enable();
+  const status = bridge.cloudStatus, enqueue = bridge.queueCloudBackup;
+  bridge.cloudStatus = () => { throw new Error('模拟连接中断'); };
+  store.addMemo({title:'草稿一'});
+  bridge.cloudStatus = status;
+  bridge.queueCloudBackup = () => { throw new Error('模拟无法排队'); };
+  store.addMemo({title:'草稿二'});
+  assert.equal(store.data.memos.length,2);
+  store.init();
+  assert.equal(store.data.memos.length,2);
+  bridge.queueCloudBackup = enqueue;
+  store.addMemo({title:'草稿三'});
+  assert.equal(snapshots.length,1);
+  assert.equal(snapshots[0].memos.length,3);
 });

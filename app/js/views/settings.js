@@ -184,12 +184,11 @@ Views.settings = (() => {
             '<div class="cell-list" style="margin-bottom:14px">' + (debts.length ? debts.map(row).join('') : '<div class="empty" style="padding:10px 0"><div class="tip">暂无负债账户</div></div>') + '</div>' +
             '<div class="section-title">' + (it ? '编辑账户' : '新增账户') + '</div>' +
             '<div class="field"><div class="seg j-type2">' +
-            '  <button data-t="asset" class="' + (!it || it.type !== 'liability' ? 'on' : '') + '">资产</button>' +
-            '  <button data-t="liability" class="' + (it && it.type === 'liability' ? 'on' : '') + '">负债</button>' +
+            ['asset','liability'].map(type => '<button data-t="' + type + '" aria-pressed="' + (newType === type) + '" class="' + (newType === type ? 'on' : '') + '"' + (it ? ' disabled' : '') + '>' + (type === 'asset' ? '资产' : '负债') + '</button>').join('') +
             '</div></div>' +
             '<div class="field field-row">' +
             '  <input class="j-name" placeholder="账户名称" maxlength="12" style="flex:1" value="' + U.escapeHtml(it ? it.name : '') + '">' +
-            '  <input class="j-open num" inputmode="decimal" placeholder="' + (newType === 'liability' ? '期初欠款' : '期初余额') + '" style="flex:0 0 110px;text-align:center" value="' + (it ? (it.opening ? (it.opening / 100) : '') : '') + '">' +
+            '  <input class="j-open num" type="' + (Store.settings.hideAmount ? 'password' : 'text') + '" inputmode="decimal" placeholder="' + (newType === 'liability' ? '期初欠款' : '期初余额') + '" style="flex:0 0 110px;text-align:center" value="' + (it?.opening ? Store.fmtMinor(it.opening) : '') + '">' +
             '</div>' +
             '<div class="field"><div class="chips-wrap">' +
             ACC_ICONS.map(ic => '<button class="chip j-ico ' + ((it ? it.icon : ACC_ICONS[0]) === ic ? 'on' : '') + '" data-ic="' + ic + '" aria-label="' + UI.accountIconLabel(ic) + '">' + UI.accountIcon({icon:ic}) + '</button>').join('') +
@@ -209,8 +208,13 @@ Views.settings = (() => {
           let icon = it ? it.icon : ACC_ICONS[0];
           body.querySelector('.j-type2').onclick = e => {
             const b = e.target.closest('button[data-t]');
-            if (!b) return;
-            newType = b.dataset.t; render();
+            if (!b || editing) return;
+            newType = b.dataset.t;
+            body.querySelectorAll('.j-type2 button').forEach(btn => {
+              btn.classList.toggle('on', btn === b);
+              btn.setAttribute('aria-pressed', String(btn === b));
+            });
+            openEl.placeholder = newType === 'liability' ? '期初欠款' : '期初余额';
           };
           body.querySelectorAll('.j-ico').forEach(b => b.onclick = () => {
             icon = b.dataset.ic;
@@ -220,24 +224,32 @@ Views.settings = (() => {
           body.querySelector('.j-ok').onclick = () => {
             const name = nameEl.value.trim();
             if (!name) { UI.toast('请输入账户名称', 'err'); return; }
-            const openMinor = Store.parseAmount(openEl.value || '0') || 0;
-            if (editing) { Store.updateAccount(editing, { name, icon, opening: openMinor }); UI.toast('已保存'); }
-            else { Store.addAccount({ name, icon, type: newType, opening: openMinor / 100 }); UI.toast('已添加'); }
-            editing = null; render();
+            const opening = Store.parseBalance(openEl.value.trim() || '0');
+            if (opening == null || (newType === 'liability' && opening < 0 && opening !== it?.opening)) {
+              UI.toast(newType === 'liability' ? '期初欠款请填非负金额，最多两位小数' : '期初余额格式有误，最多两位小数', 'err');
+              openEl.focus(); return;
+            }
+            try {
+              if (editing) Store.updateAccount(editing, { name, icon, opening });
+              else Store.addAccount({ name, icon, type:newType, openingMinor:opening });
+              UI.toast(editing ? '已保存' : '已添加');
+              editing = null; newType = 'asset'; render();
+            } catch (err) { UI.toast(err.message, 'err'); }
           };
           const c = body.querySelector('.j-cancel');
-          if (c) c.onclick = () => { editing = null; render(); };
+          if (c) c.onclick = () => { editing = null; newType = 'asset'; render(); };
           const ar = body.querySelector('.j-archive');
           if (ar) ar.onclick = () => {
             const a = Store.account(editing);
-            Store.updateAccount(editing, { archived: !a.archived });
-            UI.toast(a.archived ? '已启用' : '已停用');
+            const archived = !a.archived;
+            try { Store.updateAccount(editing, { archived }); } catch(err) { UI.toast(err.message,'err'); return; }
+            UI.toast(archived ? '已停用' : '已启用');
             render();
           };
           const del = body.querySelector('.j-del');
           if (del) del.onclick = async () => {
             if (await UI.confirm({ title: '删除账户', msg: '确定删除「' + (Store.account(editing) || {}).name + '」吗？', danger: true, okText: '删除' })) {
-              if (Store.removeAccount(editing)) { UI.toast('已删除'); editing = null; render(); }
+              if (Store.removeAccount(editing)) { UI.toast('已删除'); editing = null; newType = 'asset'; render(); }
               else UI.toast('该账户已有账单引用，只能停用', 'err');
             }
           };
@@ -615,7 +627,7 @@ Views.settings = (() => {
         const preview = Store.inspectBackup(text);
         if (!preview.ok) { UI.toast(preview.msg,'err'); return; }
         const confirmed = await UI.confirm({title:'恢复这份备份？',msg:f.name + '\n' + preview.summary +
-          '\n\n恢复将替换本机全部记录和设置。',danger:true,okText:'覆盖恢复'});
+          '\n\n恢复将替换本机记录和设置，保留本机已配置的 AI 连接。',danger:true,okText:'覆盖恢复'});
         if (!confirmed || !file.isConnected) return;
         const r = Store.importData(text);
         UI.toast(r.msg, r.ok ? '' : 'err');

@@ -14,7 +14,7 @@ Views.assets = (() => {
     const book = Store.book(bookId);
     const books = Store.books();
     const stat = Store.monthStats(bookId, ym);
-    const accs = Store.accounts(true);
+    const accs = Store.accounts().filter(a => !a.archived || Store.accountBalance(a.id) !== 0);
     const assets = accs.filter(a => a.type !== 'liability');
     const debts = accs.filter(a => a.type === 'liability');
     const totalA = Store.totalAssets(), totalL = Store.totalLiabilities();
@@ -42,21 +42,21 @@ Views.assets = (() => {
     const accRow = a => {
       const {out,inc} = accountFlows.get(a.id) || {out:0,inc:0};
       const bal = Store.accountBalance(a.id);
-      return '<button class="cell asset-reconcile" data-account="'+a.id+'">' +
+      return '<button class="cell asset-reconcile" data-account="'+U.escapeHtml(a.id)+'">' +
         '  <div class="c-ico">' + UI.accountIcon(a) + '</div>' +
-        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (Store.savingAccountIds().has(a.id)?'<span class="account-purpose">存钱</span>':'') + '</div>' +
+        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (a.archived?' · 已停用':Store.savingAccountIds().has(a.id)?'<span class="account-purpose">存钱</span>':'') + '</div>' +
         '  <div class="c-sub">本月支出 ¥' + UI.amount(out) + (inc ? ' · 收入 ¥' + UI.amount(inc) : '') + '</div></div>' +
         '  <div class="c-right"><div class="c-val num">' + amt(bal) + '</div></div>' +
         '</button>';
     };
     const debtRow = a => {
       const bal = Store.accountBalance(a.id);
-      return '<div class="cell">' +
+      return '<button class="cell asset-reconcile" data-account="' + U.escapeHtml(a.id) + '">' +
         '  <div class="c-ico">' + UI.accountIcon(a) + '</div>' +
-        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + '</div>' +
-        '  <div class="c-sub">负债账户 · 刷卡增加 · 还款减少</div></div>' +
+        '  <div class="c-main"><div class="c-title">' + U.escapeHtml(a.name) + (a.archived?' · 已停用':'') + '</div>' +
+        '  <div class="c-sub">核对账面欠款与还款流水</div></div>' +
         '  <div class="c-right"><div class="c-val num" style="color:var(--danger)">欠 ' + amt(bal) + '</div></div>' +
-        '</div>';
+        '</button>';
     };
 
     root.innerHTML=`<div class="page assets-page">
@@ -99,21 +99,56 @@ Views.assets = (() => {
   }
 
   function reconcile(id) {
-    const a=Store.account(id), balance=Store.accountBalance(id);
-    const rows=Store.data.transactions.filter(t=>t.accountId===id||t.fromId===id||t.toId===id).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
-    UI.sheet({title:a.name+' · 余额核对',content(body){
-      body.innerHTML=`<section class="entry-review"><div>当前账面余额</div><strong>¥${UI.amount(balance,true)}</strong><small>期初 ¥${UI.amount(a.opening || 0)} ＋ 已记流水</small></section>
-        <label class="field">银行或支付 App 显示的实际余额（元）<input class="j-real" inputmode="decimal" placeholder="输入后比较差额"></label><p class="j-difference" aria-live="polite"></p>
-        <p class="payroll-help">核对期初余额、漏记流水和实际扣款账户。用支付宝扣银行卡时，账单应归入银行卡。点下面的流水可修改。</p>
-        <button class="btn btn-ghost btn-block j-accounts">查看账户及期初设置</button><h3 class="section-title">本账户最近 30 笔流水</h3>
-        ${rows.slice(0,30).map(t=>`<button class="cell asset-reconcile" data-review="${t.id}"><span class="c-main">${U.escapeHtml(Views.expense.tSummary(t).title)}<small class="c-sub">${U.escapeHtml(t.date+' · '+(t.note || ''))}</small></span>${Views.expense.tAmountHtml(t)}</button>`).join('')}`;
-      body.querySelector('.j-real').oninput=e=>{
-        const raw=e.target.value.trim(),minor=/^0(?:\.0{1,2})?$/.test(raw)?0:Store.parseAmount(raw),out=body.querySelector('.j-difference');
-        if(minor==null){out.textContent='';return;}
-        const diff=minor-balance;out.textContent=diff===0?'余额一致':`实际余额比账面${diff>0?'多':'少'} ¥${UI.amount(Math.abs(diff),true)}。核对后更正对应记录。`;
-      };
+    const account=Store.account(id);
+    if (!account) return;
+    const debt=account.type==='liability', label=debt?'欠款':'余额';
+    const rows=Store.data.transactions.filter(t=>t.accountId===id||t.fromId===id||t.toId===id)
+      .sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+    UI.sheet({title:account.name+' · '+label+'核对',content(body){
+      body.innerHTML=`<section class="entry-review"><div>账面${label}</div><strong class="reconcile-balance"></strong><small>期初${label} ¥${UI.amount(account.opening || 0,true)}</small></section>
+        <div class="reconcile-date"><label>核对截至日期<input class="j-cutoff" type="date" aria-label="核对截至日期"></label><button type="button" class="chip j-all">全部日期</button></div>
+        <label class="field">账单显示的实际${label}（元）<input class="j-real" type="${Store.settings.hideAmount?'password':'text'}" inputmode="decimal" placeholder="输入后比较差额"></label><p class="j-difference" role="status"></p>
+        <button class="text-action j-accounts">查看账户及期初设置 ›</button>
+        <h3 class="section-title reconcile-count"></h3><div class="reconcile-rows"></div><button type="button" class="text-action j-more">再看 30 笔</button>`;
+      const cutoff=body.querySelector('.j-cutoff'), actual=body.querySelector('.j-real');
+      const list=body.querySelector('.reconcile-rows'), more=body.querySelector('.j-more');
+      let balance, matching, shown;
+      function compare() {
+        const raw=actual.value.trim(), minor=Store.parseBalance(raw), out=body.querySelector('.j-difference');
+        if(!raw){out.textContent='';return;}
+        if(minor==null){out.textContent='请输入有效金额，最多两位小数';return;}
+        const diff=minor-balance;
+        out.textContent=diff===0 ? label+'一致' : `实际${label}比账面${diff>0?'多':'少'} ¥${UI.amount(Math.abs(diff),true)}`;
+      }
+      function appendRows() {
+        const batch=matching.slice(shown,shown+30);
+        list.insertAdjacentHTML('beforeend',batch.map(t=>{
+          const title=Views.expense.tSummary(t).title;
+          const direction=t.type==='transfer'?(t.fromId===id?'转出':debt?'还款':'转入'):title;
+          return `<button class="cell asset-reconcile" data-review="${U.escapeHtml(t.id)}"><span class="c-main">${U.escapeHtml(t.note || direction)}<small class="c-sub">${U.escapeHtml(t.date+(t.note || t.type==='transfer'?' · '+direction:''))}</small></span>${Views.expense.tAmountHtml(t)}</button>`;
+        }).join(''));
+        shown+=batch.length;
+        more.hidden=shown>=matching.length;
+        more.textContent='再看 '+Math.min(30,matching.length-shown)+' 笔';
+      }
+      function refresh() {
+        balance=Store.accountBalance(id,null,cutoff.value);
+        matching=cutoff.value ? rows.filter(t=>t.date<=cutoff.value) : rows;
+        body.querySelector('.reconcile-balance').textContent='¥'+UI.amount(balance,true);
+        body.querySelector('.reconcile-count').textContent=(cutoff.value?'截至 '+cutoff.value:'全部日期')+' · '+matching.length+' 笔流水';
+        body.querySelector('.j-all').disabled=!cutoff.value;
+        list.replaceChildren(); shown=0; appendRows(); compare();
+      }
+      cutoff.onchange=refresh;
+      body.querySelector('.j-all').onclick=()=>{cutoff.value='';refresh();};
+      actual.oninput=compare;
+      more.onclick=appendRows;
       body.querySelector('.j-accounts').onclick=()=>Views.settings.openAccountsSheet();
-      body.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>Views.expense.openEntrySheet(rows.find(t=>t.id===b.dataset.review)));
+      list.onclick=e=>{
+        const row=e.target.closest('[data-review]');
+        if(row) Views.expense.openEntrySheet(Store.data.transactions.find(t=>t.id===row.dataset.review));
+      };
+      refresh();
     }});
   }
   return { mount,reconcile };

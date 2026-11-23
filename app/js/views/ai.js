@@ -15,6 +15,9 @@ Views.ai = (() => {
     }
     if (guideSections.has(text)) return guideSections.get(text);
     if (/怎么|如何|在哪|哪里|找不到|能不能|可以.*吗/.test(text)) {
+      if ((/余额|欠款|白条|信用卡|银行/.test(text) && /核对|对账|截止|截至|差额/.test(text)) || /核对账户/.test(text)) return guideSections.get('按账单日期核对账户');
+      if (/按金额|金额范围|每笔金额|筛选.*金额|金额.*筛选/.test(text)) return guideSections.get('跨月查流水');
+      if (/批量补记|选到昨天|实际工时|本期到账/.test(text)) return guideSections.get('工时与薪资');
       if (/白条|信用.*还款|全部欠款|记还款/.test(text)) return guideSections.get('白条与信用消费');
       if (/订阅|免扣|本期未扣|续费/.test(text)) return guideSections.get('订阅扣款与提醒');
       if (/逾期.*待办|待办.*逾期|移到明天/.test(text)) return guideSections.get('时光、备忘与习惯');

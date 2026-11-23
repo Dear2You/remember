@@ -27,11 +27,12 @@ Views.worktime = (() => {
 
   function dayUnits(day) {
     if(day.monthlyCount===day.count && day.paidDays===0)return '缺勤';
-    if (day.missingHours === day.count) return day.paidDays + '天';
+    if (day.missingHours && !day.hours) return day.paidDays + '天';
     return U.fmtHours(day.hours) + (day.missingHours ? '+' : '');
   }
 
   function entryUnits(w) {
+    if (w.payMode === 'month' && w.paidDays === 0) return '缺勤';
     return w.hours == null ? w.paidDays + '天' : U.fmtHours(w.hours);
   }
 
@@ -129,7 +130,7 @@ Views.worktime = (() => {
                   '</div>';
               }).join('') + '</div>' +
                 '<div class="section-title work-day-total">当日合计 <b>' + dayUnits(day) + '</b> · <b>' + dayPayText(day) + '</b></div>' +
-                (day.missingHours ? '<p class="work-pay-note">有 ' + day.missingHours + ' 条日薪记录未填实际工时，工资已按天计入。</p>' : '') +
+                (day.missingHours ? '<p class="work-pay-note">有 ' + day.missingHours + ' 条记录未填实际工时，工资已按出勤天数计入。</p>' : '') +
                 (day.unpriced && day.unpriced < day.count && !Store.settings.hideAmount ? '<p class="work-pay-note">* 另有 ' + day.unpriced + ' 条记录待设时薪。</p>' : '')
               : '<div class="empty" style="padding:14px 0"><span class="emoji">🗓️</span><div class="tip">这一天还没有记录</div></div>');
           listBox.querySelectorAll('.j-item').forEach(el => {
@@ -274,7 +275,7 @@ Views.worktime = (() => {
         if(day.monthlyCount===day.count&&day.paidDays===0)classes.push('shift-absent');
         const wageLabel = Store.settings.hideAmount ? '工资已隐藏' : '工资 ' + pay.replace('*','，部分待设时薪');
         label += (day.hours ? '，已记工时 ' + day.hours + ' 小时' : '') +
-          (day.paidDays ? '，按日薪计 ' + day.paidDays + ' 天' : '') + (day.missingHours ? '，有工时未填' : '') + '，' + wageLabel;
+          (day.paidDays ? '，计薪天数 ' + day.paidDays + ' 天' : '') + (day.missingHours ? '，有工时未填' : '') + '，' + wageLabel;
         const amount = pay.length > 8 && pay.startsWith('¥')
           ? '¥' + UI.amount(day.pay,true).replace(/,/g,',<wbr>') + (day.unpriced ? '*' : '') : pay;
         details = `<span class="day-hours">${hours}</span><span class="day-pay${pay.length > 6 ? ' compact' : ''}">${amount}</span>`;
@@ -299,7 +300,7 @@ Views.worktime = (() => {
       <tbody>${rows.map(week => '<tr>'+week.map(tile).join('')+'</tr>').join('')}</tbody></table>
       <div class="work-key">${salaryPlans.length?'<span><i class="confirmed"></i>已确认</span><span><i class="absent"></i>缺勤</span><span><i class="scheduled"></i>待确认／预计</span>':'工时少 <span aria-hidden="true"><i class="shift-1"></i><i class="shift-2"></i><i class="shift-3"></i><i class="shift-4"></i></span> 多'}</div>
       ${partialPay ? '<p class="work-pay-note">* 当天有工时待设时薪，工资显示已计部分。</p>' : ''}
-      ${partialHours ? '<p class="work-pay-note">工时后的 + 表示另有日薪记录未填实际工时。</p>' : ''}` : '';
+      ${partialHours ? '<p class="work-pay-note">工时后的 + 表示当天还有按天计薪的记录未填实际工时。</p>' : ''}` : '';
 
     const listHtml = (() => {
       if (mode !== 'list') return '';

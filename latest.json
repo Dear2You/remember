@@ -1,8 +1,8 @@
 {
-  "versionCode": 30600,
-  "versionName": "3.6",
-  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.6/nianxiatian.apk",
-  "sha256": "c627bfe49ec3f1efec02094dfa3f298d3744cf11c2c7063aaa4fcf0fc1532657",
-  "apkBlob": "4b75876be6e8a8918038ad740f649ac346c79e42",
-  "note": "v3.6：首页突出月支出，长金额独占一行。资产总览和流水按日期重新排版，工时与时光日历腾出更多空间。记账可直接改日期，设置页按用途重新分组。"
+  "versionCode": 30700,
+  "versionName": "3.7",
+  "apkUrl": "https://github.com/Dear2You/remember/releases/download/v3.7/nianxiatian.apk",
+  "sha256": "ad6dda80f914f660e8e40f854e0196d9a87b5564d16a6d006d475caf93f2570d",
+  "apkBlob": "f8c0848916aef20d2779d380e616ecade2b05d10",
+  "note": "v3.7：流水可按金额筛选，资产与信用账户可按截止日对账。月薪出勤可填实际工时，批量补记可选到昨天。记账误关可继续填写。本地备份双份轮换，恢复前可比较记录数量，断网后可单独重试云备份。"
 }

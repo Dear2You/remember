@@ -251,19 +251,26 @@ const Store = {
   },
   _lastBackupStatus: null,
   noteBackupResult(status, msg) {
+    const previous = this._readBackupStatus();
     this._lastBackupStatus = { status, msg, ts: Date.now() };
+    if (status !== 'ok' && previous) this._lastBackupStatus.saved = previous.status === 'ok' ? previous : previous.saved;
     try { localStorage.setItem(this.KEY + '.localBackup', JSON.stringify(this._lastBackupStatus)); } catch (e) { /* Keep the in-memory result. */ }
     this.emit('localBackup');
   },
-  lastBackupText() {
+  _readBackupStatus() {
     if (!this._lastBackupStatus) {
       try { this._lastBackupStatus = JSON.parse(localStorage.getItem(this.KEY + '.localBackup')); } catch (e) { /* No saved result. */ }
     }
-    const s = this._lastBackupStatus;
+    return this._lastBackupStatus;
+  },
+  lastBackupText() {
+    const s = this._readBackupStatus();
     if (!s || !Number.isFinite(s.ts)) return null;
-    if (s.status === 'ok') return '上次保存于 ' + new Date(s.ts).toLocaleString('zh-CN',{hour12:false}) + ' · 下载/那年夏天备份/';
+    const saved = s.status === 'ok' ? s : s.saved;
+    const last = saved && '上次保存于 ' + new Date(saved.ts).toLocaleString('zh-CN',{hour12:false}) + ' · 下载/那年夏天备份/' + (saved.msg || 'nianxiatian-backup.json');
+    if (s.status === 'ok') return last;
     if (s.status === 'skip') return s.msg;
-    return '自动备份失败：' + s.msg;
+    return '自动备份失败：' + s.msg + (last ? '。' + last : '');
   },
   on(evt, fn) { (this._listeners[evt] = this._listeners[evt] || []).push(fn); },
   emit(evt) { (this._listeners[evt] || []).forEach(f => { try { f(); } catch (e) { console.error(e); } }); },
@@ -276,11 +283,17 @@ const Store = {
   get settings() { return this.data.settings; },
 
   /* ---------- 金额工具 ---------- */
+  parseBalance(str) {
+    const s = String(str ?? '').trim().replace(/^[￥¥]\s*/, '').replace(/，/g, ',').replace(/^−/, '-');
+    const parts = /^(-?)(\d+|\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/.exec(s);
+    if (!parts) return null;
+    const cents = Number(parts[2].replace(/,/g, '') + (parts[3] || '').padEnd(2, '0'));
+    if (!Number.isSafeInteger(cents)) return null;
+    return parts[1] && cents ? -cents : cents;
+  },
   parseAmount(str) {
-    const s = String(str == null ? '' : str).trim().replace(/[，,]/g, '').replace(/^[￥¥]\s*/, '');
-    if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
-    const v = Math.round(parseFloat(s) * 100);
-    return Number.isSafeInteger(v) && v > 0 ? v : null;
+    const cents = this.parseBalance(str);
+    return cents > 0 ? cents : null;
   },
   fmtMinor(minor) {
     const n = Math.round(Number(minor) || 0);
@@ -342,12 +355,13 @@ const Store = {
   accountName(id) { const a = this.account(id); return a ? a.name : '已删除账户'; },
   // 资产余额 = 期初 + 收入 - 支出 + 转入 - 转出
   // 负债余额 = 期初欠款 + 刷卡支出(该账户的 out) - 还款(转入该账户的 transfer)
-  accountBalance(id, skipId) {
+  accountBalance(id, skipId, throughDate) {
     const a = this.account(id);
     if (!a) return 0;
     let bal = a.opening || 0;
     this.data.transactions.forEach(t => {
       if (skipId && t.id === skipId) return;
+      if (throughDate && t.date > throughDate) return;
       if (a.type === 'liability') {
         if ((t.type === 'out' || t.type === 'advance') && t.accountId === id) bal += t.amountMinor;
         if (t.type === 'transfer' && t.toId === id) bal -= t.amountMinor;      // 还款 → 欠款减少
@@ -365,9 +379,11 @@ const Store = {
   totalLiabilities() { return this.accounts().filter(a => a.type === 'liability').reduce((s, a) => s + Math.max(this.accountBalance(a.id), 0), 0); },
   netWorth() { return this.totalAssets() - this.totalLiabilities(); },
   addAccount(o) {
+    const opening = o.openingMinor ?? Math.round((Number(o.opening) || 0) * 100);
+    if (!Number.isSafeInteger(opening)) throw new Error('期初金额无效');
     const item = {
       id: U.id(), name: (o.name || '').trim() || '新账户', type: o.type === 'liability' ? 'liability' : 'asset',
-      icon: o.icon || '💰', opening: Math.round((Number(o.opening) || 0) * 100), archived: false,
+      icon: o.icon || '💰', opening, archived: false,
       sortOrder: (this.data.accounts.length + 1) * 10, createdAt: Date.now()
     };
     this.mutate(d => d.accounts.push(item));
@@ -1343,11 +1359,25 @@ const Store = {
       (d.tasks || []).every(t => !t.doneDates || Array.isArray(t.doneDates)) &&
       (d.habits || []).every(h => !h.freq || h.freq.type !== 'weekly' || Array.isArray(h.freq.days));
     if (!validRecords) return { ok: false, msg: '备份内有日期或记录格式错误，已中止导入' };
-    const counts = [d.transactions.length + ' 笔账单', (d.worktimes || []).length + ' 条工时',
-      (d.tasks || []).length + ' 条待办', (d.memos || []).length + ' 条备忘'];
+    const fields = [
+      ['transactions',' 笔账单'], ['worktimes',' 条工时'], ['salaryMonths',' 个工资周期'],
+      ['tasks',' 条待办'], ['events',' 条日程'], ['memos',' 条备忘'], ['habits',' 项习惯'],
+      ['countdowns',' 个倒数日'], ['focusSessions',' 次专注'], ['trips',' 次出差'],
+      ['subscriptions',' 项订阅'], ['budgets',' 项账本预算'], ['moneyPlans',' 个月度计划'],
+      ['savingGoals',' 个存钱目标'], ['aiSessions',' 个对话'], ['books',' 个账本'], ['accounts',' 个账户']
+    ];
+    const counts = [], fewer = [];
+    for (const [key, unit] of fields) {
+      const incoming = (d[key] || []).length || (key === 'aiSessions' && d.chats?.length ? 1 : 0);
+      const local = (this.data[key] || []).length;
+      if (incoming || key === 'transactions') counts.push(incoming + unit);
+      if (local > incoming) fewer.push(local + unit + ' → ' + incoming);
+    }
     const ts = obj.exportedAt && new Date(obj.exportedAt);
     const when = ts && Number.isFinite(ts.getTime()) ? ts.toLocaleString('zh-CN',{hour12:false}) : '未记录';
-    return {ok:true, data:d, app:obj.app, summary:'备份时间：' + when + '\n' + counts.join(' · ')};
+    const summary = '备份时间：' + when + '\n副本内有 ' + counts.join(' · ') +
+      (fewer.length ? '\n\n数量会减少（本机 → 副本）\n' + fewer.join('，') : '');
+    return {ok:true, data:d, app:obj.app, summary};
   },
   importData(str) {
     const preview = this.inspectBackup(str);
@@ -1356,7 +1386,12 @@ const Store = {
     let next;
     try {
       next = this.normalizeData(d);
-      if (!d.settings || !Object.prototype.hasOwnProperty.call(d.settings, 'aiKey')) next.settings.aiKey = this.settings.aiKey || '';
+      // A backup must never associate this device's credential with a different service.
+      next.settings.aiKey = this.settings.aiKey || '';
+      if (next.settings.aiKey) {
+        next.settings.aiBase = this.settings.aiBase;
+        next.settings.aiModel = this.settings.aiModel;
+      }
       localStorage.setItem(this.KEY, JSON.stringify(next));
     } catch (e) {
       return { ok: false, msg: '无法恢复备份，请检查文件内容和设备剩余空间' };

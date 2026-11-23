@@ -262,19 +262,32 @@ const UI = {
     const { title = '提示', msg = '', okText = '确定', cancelText = '取消', danger = false } = opt || {};
     return new Promise(resolve => {
       const root = document.getElementById('dialogRoot');
+      if (root.classList.contains('show')) { resolve(false); return; }
+      const previousFocus = document.activeElement;
+      const background = ['app','sheetRoot'].map(id=>document.getElementById(id)).filter(el=>el && !el.inert);
       root.innerHTML =
         '<div class="dialog-mask"></div>' +
-        '<div class="dialog">' +
-        '  <h3>' + U.escapeHtml(title) + '</h3>' +
-        '  <p>' + U.escapeHtml(msg) + '</p>' +
+        '<div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogMessage">' +
+        '  <h3 id="dialogTitle">' + U.escapeHtml(title) + '</h3>' +
+        '  <p id="dialogMessage">' + U.escapeHtml(msg) + '</p>' +
         '  <div class="dialog-btns">' +
         '    <button class="btn btn-ghost j-cancel">' + U.escapeHtml(cancelText) + '</button>' +
         '    <button class="btn ' + (danger ? 'btn-danger' : 'btn-primary') + ' j-ok">' + U.escapeHtml(okText) + '</button>' +
         '  </div>' +
         '</div>';
       root.classList.add('show');
-      const done = v => { root.classList.remove('show'); root.innerHTML = ''; resolve(v); };
-      root.querySelector('.j-cancel').onclick = () => done(false);
+      background.forEach(el=>{el.inert=true;});
+      const cancel = root.querySelector('.j-cancel');
+      const done = v => {
+        if (!cancel.isConnected) return;
+        root.classList.remove('show');
+        root.innerHTML = '';
+        background.forEach(el=>{el.inert=false;});
+        if (previousFocus?.isConnected) previousFocus.focus({preventScroll:true});
+        resolve(v);
+      };
+      cancel.focus({preventScroll:true});
+      cancel.onclick = () => done(false);
       root.querySelector('.dialog-mask').onclick = () => done(false);
       root.querySelector('.j-ok').onclick = () => done(true);
     });
@@ -290,7 +303,7 @@ const UI = {
       '<div class="sheet-panel">' +
       '  <div class="sheet-head">' +
       '    <div class="sheet-title">' + U.escapeHtml(opt.title || '') + '</div>' +
-      '    <button class="sheet-close">✕</button>' +
+      '    <button class="sheet-close" aria-label="关闭">✕</button>' +
       '  </div>' +
       '  <div class="sheet-body"></div>' +
       '</div>';
@@ -299,8 +312,9 @@ const UI = {
     requestAnimationFrame(() => { if (mySeq === this._sheetSeq) root.classList.add('in'); });
     const panel = root.querySelector('.sheet-panel');
     const close = () => {
-      if (mySeq !== this._sheetSeq) return;   // 已被更新的弹层接管，本次 close 无效
+      if (mySeq !== this._sheetSeq || root.dataset.closing) return;
       root.dataset.closing = '1';
+      panel.inert = true;
       root.classList.remove('in');
       setTimeout(() => {
         if (mySeq !== this._sheetSeq) return; // 等待期间被新弹层接管则跳过清理
@@ -312,8 +326,13 @@ const UI = {
       // 弹层内发生的数据变更（change 事件在弹层打开时被跳过）在关闭后补一次刷新
       if (typeof App !== 'undefined' && App.pendingRefresh) { App.pendingRefresh = false; App.refresh(); }
     };
-    root.querySelector('.sheet-mask').onclick = close;
-    root.querySelector('.sheet-close').onclick = close;
+    const dismiss = async () => {
+      if (root.dataset.closing || mySeq !== this._sheetSeq || document.querySelector('#dialogRoot.show')) return;
+      if (opt.beforeDismiss && !await opt.beforeDismiss()) return;
+      close();
+    };
+    root.querySelector('.sheet-mask').onclick = dismiss;
+    root.querySelector('.sheet-close').onclick = dismiss;
     const body = root.querySelector('.sheet-body');
     panel.scrollTop = 0;
     opt.content(body, close);

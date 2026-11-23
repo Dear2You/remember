@@ -5,6 +5,34 @@ function fixture(){
   for(const file of ['utils','store','payroll'])vm.runInContext(fs.readFileSync('app/js/'+file+'.js','utf8'),ctx);
   const s=ctx.window.Store;s.init();return {s,c:ctx.window.WorkCalendar};
 }
+test('补记全批保护已确认的出勤，单日工时可留空或修改并随备份恢复',()=>{
+  const {s}=fixture(),id=s.saveSalaryPlan({project:'工时样例',month:'2026-10',baseMinor:100001,calendar:'custom',
+    dates:['2026-10-12','2026-10-13','2026-10-14']}).id;
+  const days=['2026-10-12','2026-10-13'], options={missingOnly:true};
+  s.setSalaryAttendance(id,[days[1]],.5,'原有备注',{hours:'3.75'});
+  const old=s.dayWorktimes(days[1])[0];
+  assert.throws(()=>s.setSalaryAttendance(id,days,1,'',options),/已有出勤/);
+  assert.equal(s.dayWorktimes(days[0]).length,0);
+  assert.equal(old.paidDays,.5);
+  s.setSalaryAttendance(id,[days[1]],1);
+  assert.equal(old.hours,3.75);
+  assert.equal(old.note,'原有备注');
+  const before=s.salarySummary(s.salaryPlan(id)).earned;
+  s.setSalaryAttendance(id,[days[1]],1,'',{hours:'7.25'});
+  assert.equal(s.salarySummary(s.salaryPlan(id)).earned,before);
+  assert.throws(()=>s.setSalaryAttendance(id,days,1,'',{hours:7}),/单日/);
+  assert.throws(()=>s.setSalaryAttendance(id,[days[1]],.5,'',{hours:'24.01'}),/工时/);
+  assert.equal(old.hours,7.25);
+  assert(s.importData(s.exportData()).ok);
+  assert.equal(s.dayWorktimes(days[1])[0].hours,7.25);
+  s.setSalaryAttendance(id,[days[1]],.5,'',{hours:''});
+  assert.equal(s.dayWorktimes(days[1])[0].hours,null);
+  s.setSalaryAttendance(id,[days[1]],1,'',{hours:8});
+  s.setSalaryAttendance(id,[days[1]],0);
+  assert.equal(s.dayWorktimes(days[1])[0].hours,null);
+  assert.equal(s.salarySummary(s.salaryPlan(id)).earned,0);
+});
+
 test('21日起算跨月无重叠，跨年与闰月日期完整',()=>{
   const {c}=fixture();
   assert.deepEqual(JSON.parse(JSON.stringify(c.period('2026-10',21))),{start:'2026-09-21',end:'2026-10-20'});

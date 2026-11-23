@@ -48,13 +48,16 @@ const App = {
         return true;
       }
       const sheet = document.getElementById('sheetRoot');
-      if (sheet.classList.contains('show') && !sheet.dataset.closing) {
+      if (sheet.classList.contains('show')) {
         const btn = sheet.querySelector('.sheet-close');
-        if (btn) btn.click();
+        if (btn && !sheet.dataset.closing) btn.click();
         return true;
       }
       return false;
     };
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !e.isComposing && !e.defaultPrevented && window.__tryCloseOverlays()) e.preventDefault();
+    });
     this.render(location.hash);
     Views.focus.restore();
     Reminders.init();

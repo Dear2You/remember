@@ -281,6 +281,33 @@ test('预览备份只读，能识别文件来源、旧版裸数据与记录数�
   assert.equal(store.data,current); assert.equal(storage.getItem(store.KEY),saved);
 });
 
+test('恢复前可比较减少的记录，恢复后使用本机的 AI 连接', () => {
+  const {store} = fixture();
+  store.addEvent({title:'样例日程',start:'2026-04-11 08:00',end:'2026-04-11 10:00'});
+  store.addMemo({title:'样例备忘'});
+  const backup = JSON.parse(store.exportData());
+  backup.data.memos = [];
+  backup.data.settings.aiBase = 'https://backup.example';
+  backup.data.settings.aiModel = 'backup-model';
+  backup.data.settings.aiKey = 'unused-file-value';
+  const text = JSON.stringify(backup);
+  const preview = store.inspectBackup(text);
+  assert.match(preview.summary,/1 条日程/);
+  assert.match(preview.summary,/1 条备忘 → 0/);
+  assert.equal(store.data.memos.length,1);
+  const localAI = {aiBase:'https://local.example',aiModel:'local-model',aiKey:'local-only-value'};
+  Object.assign(store.settings,localAI);
+  assert.equal(store.importData(text).ok,true);
+  for (const [key,value] of Object.entries(localAI)) assert.equal(store.settings[key],value);
+  assert.equal(store.data.memos.length,0);
+  assert.equal(store.data.events.length,1);
+  const fresh = fixture().store;
+  assert.equal(fresh.importData(text).ok,true);
+  assert.equal(fresh.settings.aiKey,'');
+  assert.equal(fresh.settings.aiBase,'https://backup.example');
+  assert.equal(fresh.settings.aiModel,'backup-model');
+});
+
 test('清空取消待执行的本地备份，保留已成功的副本', () => {
   let task = null;
   const writes = [];
@@ -298,8 +325,10 @@ test('本地备份结果独立于导出数据，可在重启后读取', () => {
   store.noteBackupResult('error','磁盘写入失败');
   assert.match(store.lastBackupText(),/磁盘写入失败/);
   assert.doesNotMatch(store.exportData(),/磁盘写入失败/);
-  store.noteBackupResult('ok','');store._lastBackupStatus=null;
+  store.noteBackupResult('ok','nianxiatian-backup-2.json');store._lastBackupStatus=null;
   assert.match(store.lastBackupText(),/上次保存于/);
+  store.noteBackupResult('error','样例写入失败');store._lastBackupStatus=null;
+  assert.match(store.lastBackupText(),/样例写入失败.*上次保存于.*nianxiatian-backup-2\.json/);
 });
 
 test('小数工时录入和编辑精度一致，拒绝无效金额和工时', () => {
@@ -311,6 +340,18 @@ test('小数工时录入和编辑精度一致，拒绝无效金额和工时', ()
   assert.equal(w.hours, 2.75);
   assert.equal(store.parseAmount('¥12.03'), 1203);
   assert.equal(store.parseAmount('99999999999999999999'), null);
+});
+
+test('金额按整数分解析，保留合法千分位、负余额及安全整数边界', () => {
+  const {store} = fixture();
+  assert.equal(store.parseBalance('−1，200.09'),-120009);
+  assert.equal(store.parseBalance('0.00'),0);
+  assert.equal(store.parseAmount('-0.05'),null);
+  assert.equal(store.parseAmount('¥90,071,992,547,409.91'),Number.MAX_SAFE_INTEGER);
+  for (const value of ['90,071,992,547,409.92','1,2','1,00,000','12.345','3元'])
+    assert.equal(store.parseBalance(value),null,value);
+  const account=store.addAccount({name:'精确期初',openingMinor:12345});
+  assert.equal(store.accountBalance(account.id),12345);
 });
 
 test('同一天混合日薪和时薪按笔算到分，出勤只算一天', () => {

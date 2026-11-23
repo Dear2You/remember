@@ -3,7 +3,8 @@
  * 页面流水见 bills.js，统计图表见 stats.js
  */
 Views.expense = (() => {
-  const filter = { type: '', accountId: '', categoryId: '', subId: '', kw: '' };
+  const emptyFilter = { type:'', accountId:'', categoryId:'', subId:'', kw:'', minMinor:null, maxMinor:null };
+  const filter = { ...emptyFilter };
   const curBook = () => Store.settings.currentBookId;
   const parseFee=value=>!String(value || '').trim() || /^0(?:\.0{1,2})?$/.test(String(value).trim())?0:Store.parseAmount(value);
   function feeFields(state) {
@@ -78,6 +79,12 @@ Views.expense = (() => {
     }
     let saving = false, sentence = '', reviewing = !!draft && !draft._direct;
     let focusAmount = !editItem && !draft;
+    const initialTripExpense = tripExpense;
+    let initialFields;
+    function hasChanges() {
+      return !!sentence.trim() || tripExpense !== initialTripExpense ||
+        Object.keys(state).some(key => (state[key] ?? '') !== (initialFields[key] ?? ''));
+    }
 
     function accountChoices(active, field) {
       if (!editItem || editItem.type !== state.type) return active;
@@ -88,10 +95,14 @@ Views.expense = (() => {
 
     UI.sheet({
       title: editItem ? '编辑账单' : repeating ? '再记一笔' : '记一笔',
+      beforeDismiss() {
+        if (!hasChanges()) return true;
+        return UI.confirm({title:'这笔账还没保存', msg:editItem?'放弃后，原账单会保留上次保存的内容。':'放弃后，刚填的内容会清除。',
+          okText:'放弃修改', cancelText:'继续填写', danger:true});
+      },
       content(body, close) {
         body.classList.add('entry-sheet');body.closest('.sheet-panel').classList.add('ledger-entry-panel');
         body.closest('.sheet-panel').querySelector('.sheet-title').insertAdjacentHTML('afterbegin',UI.art('edit'));
-        let initialFields;
         let paymentExpanded = !!state.paymentChannel;
         function render() {
           const isTransfer = state.type === 'transfer';
@@ -211,8 +222,7 @@ Views.expense = (() => {
           }
           const repeat = body.querySelector('.j-repeat');
           if (repeat) repeat.onclick = async () => {
-            const dirty = Object.keys(initialFields).some(key => initialFields[key] !== state[key]);
-            if (dirty && !await UI.confirm({title:'按已保存的账单再记一笔？',msg:'当前修改还没有保存。继续将用原账单的内容新建一笔。',okText:'按原账新建',cancelText:'继续编辑'})) return;
+            if (hasChanges() && !await UI.confirm({title:'按已保存的账单再记一笔？',msg:'当前修改还没有保存。继续将用原账单的内容新建一笔。',okText:'按原账新建',cancelText:'继续编辑'})) return;
             repeatEntry(editItem);
           };
           const amend = body.querySelector('.j-amend');
@@ -345,7 +355,7 @@ Views.expense = (() => {
             } catch (e) {
               UI.toast('保存失败：' + e.message, 'err');
               saving = false;
-              body.querySelector('.j-save').textContent = '保存';
+              body.querySelector('.j-save').textContent = reviewing ? '确认记账' : '保存';
               return;
             }
             close();
@@ -355,14 +365,15 @@ Views.expense = (() => {
           const delBtn = body.querySelector('.j-del');
           if (delBtn) delBtn.onclick = async () => {
             if (await UI.confirm({ title: '删除账单', msg: editItem.feeMinor?'删除这笔转账及关联手续费？两边账户余额和支出统计会一起恢复。':'确定删除这条记录吗？账户余额将恢复。', danger: true, okText: '删除' })) {
-              Store.removeTransaction(editItem.id);
+              try { Store.removeTransaction(editItem.id); }
+              catch (e) { UI.toast('删除失败：' + e.message, 'err'); return; }
               UI.toast('已删除');
               close();
             }
           };
         }
         render();
-        if (editItem) initialFields = {...state};
+        initialFields = {...state};
       }
     });
   }
@@ -372,7 +383,11 @@ Views.expense = (() => {
     UI.sheet({
       title: '筛选账单',
       content(body, close) {
+        body.classList.add('ledger-filter-sheet');
         const draft = { ...filter };
+        let exact = draft.minMinor === draft.maxMinor;
+        let low = draft.minMinor == null ? '' : Store.fmtMinor(draft.minMinor);
+        let high = draft.maxMinor == null ? '' : Store.fmtMinor(draft.maxMinor);
         const accs = Store.accounts();
         const roots = Store.rootCategories('', true);
         let pickRoot = draft.categoryId ? (Store.catRoot(draft.categoryId) || {}).id : '';
@@ -385,9 +400,14 @@ Views.expense = (() => {
             ['', 'out', 'in', 'transfer', 'advance', 'reimbursement'].map(t =>
               '<button class="chip j-f ' + (draft.type === t ? 'on' : '') + '" data-v="' + t + '">' + ({ '': '全部', out: '支出', in: '收入', transfer: '转账/还款', advance:'出差垫付', reimbursement:'报销到账' })[t] + '</button>').join('') +
             '</div></div>' +
+            `<fieldset class="ledger-amount-filter"><legend>每笔金额（元）</legend>
+              <select aria-label="金额匹配方式"><option value="exact">等于</option><option value="range"${exact?'':' selected'}>范围</option></select>
+              <div class="amount-bounds"><input class="j-low" type="${Store.settings.hideAmount?'password':'text'}" inputmode="decimal" aria-label="${exact?'指定金额':'最低金额'}" placeholder="${exact?'不限金额':'最低不限'}" value="${U.escapeHtml(low)}">
+              ${exact?'':`<span>至</span><input class="j-high" type="${Store.settings.hideAmount?'password':'text'}" inputmode="decimal" aria-label="最高金额" placeholder="最高不限" value="${U.escapeHtml(high)}">`}</div>
+              <p class="amount-error" role="status"></p></fieldset>` +
             '<div class="field"><label>账户</label><div class="chips-wrap">' +
             '<button class="chip j-a ' + (!draft.accountId ? 'on' : '') + '" data-v="">全部</button>' +
-            accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + a.id + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + '</button>').join('') +
+            accs.map(a => '<button class="chip j-a ' + (draft.accountId === a.id ? 'on' : '') + '" data-v="' + U.escapeHtml(a.id) + '">' + UI.accountIcon(a) + ' ' + U.escapeHtml(a.name) + (a.archived?'（停用）':'') + '</button>').join('') +
             '</div></div>' +
             (!hasCategories ? '' : '<div class="field"><label>一级分类</label><div class="chips-wrap">' +
             '<button class="chip j-c ' + (!draft.categoryId ? 'on' : '') + '" data-v="">全部</button>' +
@@ -400,7 +420,7 @@ Views.expense = (() => {
                 '</div></div>'
               : '') +
             '<div class="field"><label>关键词</label><input class="j-kw" placeholder="备注、分类或账户" value="' + U.escapeHtml(draft.kw) + '"></div>' +
-            '<div class="field-row">' +
+            '<div class="field-row ledger-filter-actions">' +
             '  <button class="btn btn-ghost j-clear" style="flex:1">重置</button>' +
             '  <button class="btn btn-primary j-ok" style="flex:2">应用筛选</button>' +
             '</div>';
@@ -421,12 +441,28 @@ Views.expense = (() => {
           });
           bind('.j-s', b => { draft.subId = b.dataset.v; render(); });
           body.querySelector('.j-kw').oninput = e => { draft.kw = e.target.value; };
+          const bounds = body.querySelector('.ledger-amount-filter');
+          bounds.querySelector('select').onchange = e => { exact = e.target.value === 'exact'; render(); };
+          bounds.querySelector('.j-low').oninput = e => { low = e.target.value; };
+          if (!exact) bounds.querySelector('.j-high').oninput = e => { high = e.target.value; };
           body.querySelector('.j-clear').onclick = () => {
-            draft.type = ''; draft.accountId = ''; draft.categoryId = ''; draft.subId = ''; draft.kw = '';
+            Object.assign(draft, emptyFilter);
+            exact = true; low = high = '';
             pickRoot = '';
             render();
           };
           body.querySelector('.j-ok').onclick = () => {
+            const min = Store.parseBalance(low), max = exact ? min : Store.parseBalance(high);
+            const error = bounds.querySelector('.amount-error');
+            if (low.trim() && (min == null || min < 0)) {
+              error.textContent = '金额须为非负数，最多两位小数'; bounds.querySelector('.j-low').focus(); return;
+            }
+            if (!exact && high.trim() && (max == null || max < 0 || (min != null && max < min))) {
+              error.textContent = max != null && max >= 0 ? '最高金额不能小于最低金额' : '金额须为非负数，最多两位小数';
+              bounds.querySelector('.j-high').focus(); return;
+            }
+            draft.minMinor = min;
+            draft.maxMinor = max;
             Object.assign(filter, draft);
             close();
             App.refresh(true);
@@ -461,6 +497,8 @@ Views.expense = (() => {
   function applyFilter(list) {
     const needle = filter.kw.trim().toLowerCase();
     return list.filter(t => {
+      if (filter.minMinor != null && t.amountMinor < filter.minMinor) return false;
+      if (filter.maxMinor != null && t.amountMinor > filter.maxMinor) return false;
       if (filter.type && t.type !== filter.type) return false;
       if (filter.accountId && t.accountId !== filter.accountId && t.fromId !== filter.accountId && t.toId !== filter.accountId) return false;
       if (filter.categoryId) {
@@ -481,6 +519,6 @@ Views.expense = (() => {
   return {
     openEntrySheet, openFilterSheet, tSummary, tAmountHtml, applyFilter,feeFields,feeTerms,bindFee,paintTransfer,
     curBook, filter,
-    clearFilter() { filter.type = ''; filter.accountId = ''; filter.categoryId = ''; filter.subId = ''; filter.kw = ''; }
+    clearFilter() { Object.assign(filter, emptyFilter); }
   };
 })();

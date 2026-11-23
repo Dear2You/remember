@@ -1,4 +1,12 @@
 /* One account statement, with the balance and its underlying accounts together. */
+.reconcile-date { display: flex; align-items: end; gap: 8px; margin: 12px 0; }
+.reconcile-date label { flex: 1; min-width: 0; color: var(--text-2); font-size: 12px; }
+.reconcile-date input { display: block; width: 100%; min-width: 0; margin-top: 4px; }
+.reconcile-date button { min-height: 39px; }
+.reconcile-date button:disabled { opacity: .55; }
+.reconcile-date ~ .j-difference { color: var(--text); font-variant-numeric: tabular-nums; }
+.reconcile-rows .c-sub { display: block; }
+.reconcile-rows + .j-more[hidden] { display: none; }
 .assets-page .asset-folio, .assets-page .asset-month {
   border: 1px solid var(--hairline); border-radius: 11px; background: var(--paper-glass);
   margin: 0; overflow: hidden; box-shadow: none;
